@@ -32,7 +32,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON (LOGO FIX) ---
+# --- CSS: ESTÉTICA BLUE NEON (FINAL) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
@@ -96,7 +96,7 @@ st.markdown("""
             box-shadow: 0 10px 20px rgba(0, 229, 255, 0.15);
         }
         .metric-icon-img {
-            width: 50px; /* Iconos más grandes */
+            width: 50px;
             height: 50px;
             object-fit: contain;
             margin-bottom: 8px;
@@ -172,16 +172,15 @@ if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
+if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 
 # --- HELPER: IMÁGENES A BASE64 ---
 def get_img_as_base64(file_path):
-    if not os.path.exists(file_path):
-        return ""
-    with open(file_path, "rb") as f:
-        data = f.read()
+    if not os.path.exists(file_path): return ""
+    with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- FUNCIONES LÓGICAS (MISMAS) ---
+# --- FUNCIONES LÓGICAS ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -310,12 +309,19 @@ def validar_login():
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         
+                        # Contexto (Uni, Año, Estado)
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
                             ano_data = props.get("Año", {}).get("select")
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
-                        except: st.session_state.uni_actual = None; st.session_state.ano_actual = None
+                            
+                            # NUEVO: Leer Estado UAM
+                            estado_data = props.get("Estado UAM", {}).get("select")
+                            st.session_state.estado_uam = estado_data["name"] if estado_data else "Desconocido"
+                        except: 
+                            st.session_state.uni_actual = None; st.session_state.ano_actual = None
+                            st.session_state.estado_uam = "Desconocido"
 
                         sq_name = "Sin Escuadrón"
                         try:
@@ -345,6 +351,7 @@ def cerrar_sesion():
     st.session_state.habilidades_data = []
     st.session_state.uni_actual = None
     st.session_state.ano_actual = None
+    st.session_state.estado_uam = None
 
 # ================= UI PRINCIPAL =================
 
@@ -354,11 +361,9 @@ if not st.session_state.jugador:
         st.image("assets/cover.png", use_container_width=True)
     
     with st.container():
-        # Aumentamos el tamaño de la columna del logo
         c_l, c_r = st.columns([1.2, 3.8])
         with c_l:
             if os.path.exists("assets/logo.png"):
-                # Logo más grande en Login (110px)
                 st.image("assets/logo.png", width=110)
             else:
                 st.markdown("🛡️")
@@ -387,17 +392,32 @@ else:
     
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
+    estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
+    
+    # Definir color del estado
+    status_color = "#00e5ff" # Default cyan
+    if estado_label == "Finalizado": status_color = "#ff4b4b" # Rojo
+    elif estado_label == "Sin empezar": status_color = "#FFD700" # Dorado
 
-    # HEADER DASHBOARD
-    # Ajuste de columnas para dar más espacio al logo
+    # HEADER DASHBOARD ÉPICO
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
-        if os.path.exists("assets/logo.png"):
-             # Logo más grande en Dashboard (100px)
-             st.image("assets/logo.png", width=100)
+        if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
-        st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2;'>HOLA, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
-        st.caption(f"📍 {uni_label} | 📅 {ano_label}")
+        # "Hola" corregido
+        st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2;'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        
+        # Nueva Cabecera de Contexto Épica
+        st.markdown(f"""
+            <div style="display: flex; align-items: center; margin-top: 5px;">
+                <span style="color: #b0bec5; margin-right: 15px; font-size: 0.9em;">📍 {uni_label}</span>
+                <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1.2em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
+            </div>
+            <div style="margin-top: 8px; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 10px; height: 10px; background-color: {status_color}; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 8px {status_color};"></span>
+                <span style="color: {status_color}; font-weight: bold; font-size: 0.85em; letter-spacing: 1px;">ESTADO: {estado_label.upper()}</span>
+            </div>
+        """, unsafe_allow_html=True)
 
     # PESTAÑAS
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
