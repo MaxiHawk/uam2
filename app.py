@@ -407,10 +407,10 @@ else:
         # "Hola" corregido
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
         
-        # Nueva Cabecera de Contexto (Diseño Panel de Datos)
+        # Cabecera de Contexto (Full Epic)
         st.markdown(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
-                <div style="color: #4dd0e1; font-size: 0.7em; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px;">🌌 Multiverso Detectado</div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
                 <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">
                     {uni_label.upper()}
                 </div>
