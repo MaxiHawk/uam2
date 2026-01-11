@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Torre de Control", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Sumo Cartógrafo", page_icon="🗺️", layout="wide")
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -29,16 +29,18 @@ st.markdown("""
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         /* Resaltar filtros */
         .stSelectbox label { color: #FFD700 !important; font-weight: bold; }
+        /* Título Principal */
+        h1 { color: #FFD700; font-family: 'sans-serif'; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIN DE PROFESOR ---
+# --- LOGIN DE SUMO CARTÓGRAFO ---
 if "admin_logged" not in st.session_state: st.session_state.admin_logged = False
 
 if not st.session_state.admin_logged:
     c1, c2, c3 = st.columns([1,1,1])
     with c2:
-        st.markdown("### 🛡️ Torre de Control")
+        st.markdown("### 🗺️ Acceso Sumo Cartógrafo")
         pwd = st.text_input("Clave Maestra:", type="password")
         if st.button("Entrar"):
             if pwd == ADMIN_PASS:
@@ -48,10 +50,9 @@ if not st.session_state.admin_logged:
     st.stop()
 
 # --- FUNCIONES DE NOTION ---
-def get_all_players():
-    """Descarga jugadores incluyendo Universidad y Año"""
+def get_all_aspirantes():
+    """Descarga aspirantes incluyendo Universidad y Año"""
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    # Sin filtro = Trae todo (luego filtramos con Pandas que es más rápido para el Admin)
     res = requests.post(url, headers=headers, json={})
     players = []
     if res.status_code == 200:
@@ -60,7 +61,6 @@ def get_all_players():
             try:
                 nombre = props["Jugador"]["title"][0]["text"]["content"]
                 
-                # Extraer Uni y Año de forma segura
                 try: uni = props["Universidad"]["select"]["name"]
                 except: uni = "Sin Asignar"
                 
@@ -89,26 +89,25 @@ def delete_message(page_id):
     requests.patch(url, headers=headers, json={"archived": True})
 
 # --- INTERFAZ PRINCIPAL ---
-st.title("⚡ Torre de Control - AngioMasters")
+st.title("🗺️ Interfaz Sumo Cartógrafo")
 
-# Cargamos los datos UNA vez al principio
-df_master = get_all_players()
+# Carga inicial de datos
+df_master = get_all_aspirantes()
 
-tab_jugadores, tab_solicitudes = st.tabs(["👥 GESTIÓN JUGADORES", "📩 SOLICITUDES"])
+tab_aspirantes, tab_solicitudes = st.tabs(["👥 GESTIÓN ASPIRANTES", "📩 SOLICITUDES"])
 
 # ==========================================
-# 1. GESTIÓN JUGADORES
+# 1. GESTIÓN ASPIRANTES
 # ==========================================
-with tab_jugadores:
+with tab_aspirantes:
     if df_master.empty:
-        st.warning("No hay jugadores en la base de datos.")
+        st.warning("No hay aspirantes en la base de datos.")
     else:
-        # --- BARRA DE FILTROS SUPERIOR ---
+        # --- BARRA DE FILTROS ---
         with st.container():
             st.markdown("#### 🔍 Filtros de Universo")
             col_f1, col_f2 = st.columns(2)
             
-            # Obtener opciones únicas de la BD
             opciones_uni = ["Todos"] + sorted(df_master["Universidad"].unique().tolist())
             opciones_ano = ["Todos"] + sorted(df_master["Año"].unique().tolist())
             
@@ -126,16 +125,15 @@ with tab_jugadores:
         if filtro_ano != "Todos":
             df_filtrado = df_filtrado[df_filtrado["Año"] == filtro_ano]
         
-        # --- SELECTOR DE JUGADOR ---
+        # --- SELECTOR DE ASPIRANTE ---
         if not df_filtrado.empty:
-            st.markdown(f"**Mostrando {len(df_filtrado)} agentes:**")
-            alumno_selec = st.selectbox("Seleccionar Agente:", df_filtrado["Nombre"].tolist())
+            st.markdown(f"**Mostrando {len(df_filtrado)} aspirantes:**")
+            alumno_selec = st.selectbox("Seleccionar Aspirante:", df_filtrado["Nombre"].tolist())
             
-            # Obtener datos del seleccionado
+            # Datos del seleccionado
             datos = df_filtrado[df_filtrado["Nombre"] == alumno_selec].iloc[0]
             pid = datos["id"]
             
-            # Contexto visual
             st.caption(f"📍 {datos['Universidad']} | Generación {datos['Año']}")
             
             # --- MÉTRICAS ---
@@ -149,7 +147,6 @@ with tab_jugadores:
             # --- PANEL DE ACCIONES ---
             col_mp, col_ap, col_vp = st.columns(3)
             
-            # COLUMNA MP
             with col_mp:
                 st.markdown("#### ⭐ Ajustar MP")
                 if st.button("+10 MP (Participación)", key="mp10"):
@@ -165,7 +162,6 @@ with tab_jugadores:
                     update_notion_stat(pid, "MP", val_mp)
                     st.rerun()
 
-            # COLUMNA AP
             with col_ap:
                 st.markdown("#### ⚡ Ajustar AP")
                 if st.button("+5 AP (Bonus)", key="ap5"):
@@ -177,7 +173,6 @@ with tab_jugadores:
                     update_notion_stat(pid, "AP", val_ap)
                     st.rerun()
 
-            # COLUMNA VP
             with col_vp:
                 st.markdown("#### ❤️ Ajustar VP")
                 if st.button("💔 -10 VP (Daño)", key="vp_minus"):
@@ -194,7 +189,7 @@ with tab_jugadores:
                     update_notion_stat(pid, "VP", val_vp)
                     st.rerun()
         else:
-            st.info("No se encontraron alumnos con estos filtros.")
+            st.info("No se encontraron aspirantes con estos filtros.")
 
 # ==========================================
 # 2. SOLICITUDES
@@ -246,7 +241,6 @@ with tab_solicitudes:
                         
                         if es_compra and costo > 0:
                             if st.button(f"✅ Aprobar (-{costo})", key=f"ok_{mid}"):
-                                # Buscar jugador en el DataFrame maestro (sin filtrar) para asegurar match
                                 nombre_clean = remitente.replace("SOLICITUD: ", "").strip()
                                 jugador_row = df_master[df_master["Nombre"] == nombre_clean]
                                 
@@ -259,7 +253,7 @@ with tab_solicitudes:
                                         st.success(f"Aprobado. Saldo: {ap_actual-costo}")
                                         st.rerun()
                                     else: st.error(f"❌ Saldo insuficiente ({ap_actual}).")
-                                else: st.error("Jugador no encontrado.")
+                                else: st.error("Aspirante no encontrado.")
                                     
                         if st.button("🗑️ Borrar", key=f"del_{mid}"):
                             delete_message(mid)
