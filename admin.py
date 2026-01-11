@@ -348,8 +348,17 @@ else:
         st.button("CERRAR SESIÓN", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING (FILTRADO) ---
+# --- TAB 2: RANKING (FILTRADO) ---
     with tab_ranking:
+        # --- CÓDIGO DE DIAGNÓSTICO (BORRAR LUEGO) ---
+        with st.expander("🕵️‍♂️ Inspector de Filtros"):
+            st.write(f"Tu Universidad detectada: **{st.session_state.uni_actual}**")
+            st.write(f"Tu Año detectado: **{st.session_state.ano_actual}**")
+            st.info("La tabla de abajo solo debería mostrar jugadores que coincidan EXACTAMENTE con estos dos valores.")
+        # ---------------------------------------------
+
         st.markdown(f"### ⚔️ TOP AGENTES ({uni_label} {ano_label})")
+        # ... (sigue el resto del código igual)        st.markdown(f"### ⚔️ TOP AGENTES ({uni_label} {ano_label})")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
