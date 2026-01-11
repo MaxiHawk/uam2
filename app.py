@@ -63,20 +63,18 @@ if "jugador" not in st.session_state: st.session_state.jugador = None
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
 
-# --- FUNCIÓN: OBTENER PUNTAJE EQUIPO (VERSIÓN TEXTO) ---
+# --- FUNCIÓN: OBTENER PUNTAJE EQUIPO ---
 def obtener_puntaje_equipo_texto(nombre_escuadron):
     if not nombre_escuadron: return 0
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     
-    # ⚠️ CAMBIO CLAVE: El filtro ahora busca en "rich_text" (Texto) en vez de "select"
-    # Asumimos que la columna se llama "Nombre Escuadrón" tal cual dijiste
+    # Filtro de texto (Rich Text)
     payload = {
         "filter": {
             "property": "Nombre Escuadrón", 
             "rich_text": {"equals": nombre_escuadron}
         }
     }
-    
     try:
         res = requests.post(url, headers=headers, json=payload)
         total_mp = 0
@@ -90,54 +88,60 @@ def obtener_puntaje_equipo_texto(nombre_escuadron):
         return total_mp
     except: return 0
 
-# --- LOGIN ---
+# --- LOGIN (AHORA CON FORMULARIO) ---
 if not st.session_state.jugador:
-    usuario = st.text_input("Codename:", placeholder="Ej: Neo")
-    clave = st.text_input("Password:", type="password")
-    
-    if st.button("INICIAR SISTEMA"):
-        url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-        payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
+    # ⚠️ AQUÍ ESTÁ EL CAMBIO CLAVE: st.form
+    with st.form("login_form"):
+        st.markdown("### 🔐 ACCESO A LA MATRIX")
+        usuario = st.text_input("Codename:", placeholder="Ej: Neo")
+        clave = st.text_input("Password:", type="password")
         
-        try:
-            with st.spinner("Conectando..."):
-                res = requests.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    if len(data["results"]) > 0:
-                        props = data["results"][0]["properties"]
-                        # Validar Clave
-                        try:
-                            c_obj = props.get("Clave", {}).get("rich_text", [])
-                            c_real = c_obj[0]["text"]["content"] if c_obj else ""
-                            
-                            if clave == c_real:
-                                st.session_state.jugador = props
-                                st.session_state.nombre = usuario
+        # El botón ahora es un "submit_button" vinculado al formulario
+        submitted = st.form_submit_button("INICIAR SISTEMA")
+    
+    if submitted:
+        if not usuario or not clave:
+            st.warning("⚠️ Ingresa usuario y contraseña.")
+        else:
+            url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+            payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
+            
+            try:
+                with st.spinner("Conectando..."):
+                    res = requests.post(url, headers=headers, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        if len(data["results"]) > 0:
+                            props = data["results"][0]["properties"]
+                            # Validar Clave
+                            try:
+                                c_obj = props.get("Clave", {}).get("rich_text", [])
+                                c_real = c_obj[0]["text"]["content"] if c_obj else ""
                                 
-                                # --- EXTRACCIÓN DE ESCUADRÓN (MODO TEXTO) ---
-                                # Buscamos específicamente en "Nombre Escuadrón" como texto
-                                sq_name = "Sin Escuadrón"
-                                try:
-                                    # Intentamos leer como Texto (Rich Text)
-                                    sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-                                    if sq_obj:
-                                        sq_name = sq_obj[0]["text"]["content"]
-                                except: pass
-                                
-                                st.session_state.squad_name = sq_name
-                                st.session_state.team_stats = obtener_puntaje_equipo_texto(sq_name)
-                                st.rerun()
-                            else: st.error("❌ CLAVE INCORRECTA")
-                        except: st.error("❌ ERROR DE CREDENCIALES")
-                    else: st.error("❌ USUARIO NO ENCONTRADO")
-        except Exception as e: st.error(f"Error: {e}")
+                                if clave == c_real:
+                                    st.session_state.jugador = props
+                                    st.session_state.nombre = usuario
+                                    
+                                    # Extraer Escuadrón
+                                    sq_name = "Sin Escuadrón"
+                                    try:
+                                        sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
+                                        if sq_obj: sq_name = sq_obj[0]["text"]["content"]
+                                    except: pass
+                                    
+                                    st.session_state.squad_name = sq_name
+                                    st.session_state.team_stats = obtener_puntaje_equipo_texto(sq_name)
+                                    st.rerun()
+                                else: st.error("❌ CLAVE INCORRECTA")
+                            except: st.error("❌ ERROR DE CREDENCIALES")
+                        else: st.error("❌ USUARIO NO ENCONTRADO")
+            except Exception as e: st.error(f"Error: {e}")
 
 # --- DASHBOARD ---
 else:
     p = st.session_state.jugador
     
-    # 1. AVATAR
+    # AVATAR
     avatar_url = None
     try:
         f_list = p.get("Avatar", {}).get("files", [])
@@ -146,22 +150,19 @@ else:
             elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
     except: pass
 
-    # 2. DATOS TEXTO
+    # DATOS
     try:
-        # Rol (Asumo que Rol SÍ es un Select, si también es texto avísame)
         r_data = p.get("Rol", {}).get("select")
         rol = r_data["name"] if r_data else "Sin Rol"
     except: rol = "Sin Rol"
     
     try:
-        # Nivel (Asumo que Nivel es Select)
         n_data = p.get("Nivel", {}).get("select")
         nivel = n_data["name"] if n_data else "Iniciado"
     except: nivel = "Iniciado"
 
     skuad = st.session_state.squad_name
 
-    # 3. DATOS NUMÉRICOS
     try: mp = p.get("MP", {}).get("number", 0) or 0
     except: mp = 0
     try: ap = p.get("AP", {}).get("number", 0) or 0
@@ -171,7 +172,7 @@ else:
         vp = int(vp_raw * 100) if vp_raw <= 1 and vp_raw > 0 else int(vp_raw)
     except: vp = 0
 
-    # UI
+    # UI DASHBOARD
     with st.container():
         html_avatar = f"""
         <div class="profile-card">
