@@ -30,50 +30,91 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA GAMER ---
+# --- CSS: ESTÉTICA CYBER-MEDICAL ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
-        h1, h2, h3 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 2px; }
-        html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
-        .block-container { padding-top: 2rem !important; }
+        
+        /* FUENTES Y COLORES GLOBALES */
+        h1, h2, h3, [data-testid="stMetricLabel"] { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; }
+        html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #0E1117; }
+        
+        /* LIMPIEZA DE INTERFAZ */
+        .block-container { padding-top: 1.5rem !important; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"], [data-testid="stToolbar"] { display: none !important; }
         
-        /* PERFIL */
+        /* TARJETA DE PERFIL (GLASSMORPHISM) */
         .profile-card {
-            background: linear-gradient(145deg, #1e1e1e, #2d2d2d);
-            border: 2px solid #990000; border-radius: 15px; padding: 20px;
-            text-align: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, rgba(30,30,30,0.9), rgba(20,20,20,0.9));
+            border: 1px solid #444;
+            border-top: 4px solid #990000;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
         .avatar-img {
-            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-            border: 4px solid #FF4B4B; margin-bottom: 10px;
+            width: 130px; height: 130px; border-radius: 50%; object-fit: cover;
+            border: 3px solid #FF4B4B; margin-bottom: 15px;
+            box-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
         }
-        /* HABILIDADES */
-        .skill-card {
-            background-color: #1A1A1A; border: 1px solid #333;
-            border-radius: 10px; padding: 15px; margin-bottom: 15px;
+        
+        /* MÉTRICAS (HUD) */
+        [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; font-size: 2.2rem !important; color: #fff; }
+        [data-testid="stMetricLabel"] { color: #aaa; font-size: 0.9rem !important; }
+        div[data-testid="metric-container"] {
+            background-color: #161920;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
             transition: transform 0.2s;
         }
-        .skill-card:hover { border-color: #990000; transform: translateY(-2px); }
-        .skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .skill-cost { background-color: #333; color: #FFD700; padding: 4px 8px; border-radius: 5px; font-family: 'Orbitron', sans-serif; font-size: 0.9em; }
+        div[data-testid="metric-container"]:hover {
+            border-color: #990000;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(153, 0, 0, 0.2);
+        }
         
-        /* GENERAL */
-        [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; font-size: 2rem !important; }
-        .stButton>button { width: 100%; border-radius: 8px; background-color: #990000; color: white; border: none; padding: 10px 24px; font-weight: bold; font-family: 'Orbitron', sans-serif; }
-        .stButton>button:hover { background-color: #FF0000; }
-        .stButton button:disabled { background-color: #333333; color: #666666; cursor: not-allowed; }
+        /* TARJETAS DE HABILIDAD */
+        .skill-card {
+            background-color: #1A1A1A; border: 1px solid #333;
+            border-radius: 10px; padding: 20px; margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .skill-card:hover { border-color: #990000; box-shadow: 0 0 15px rgba(153,0,0,0.2); transform: translateX(5px); }
+        .skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .skill-cost { background-color: #222; color: #FFD700; padding: 5px 10px; border-radius: 20px; font-family: 'Orbitron', sans-serif; font-size: 0.8em; border: 1px solid #555; }
+        
+        /* PESTAÑAS PERSONALIZADAS */
+        .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: transparent; }
+        .stTabs [data-baseweb="tab"] {
+            background-color: #1E1E1E; border-radius: 4px; color: #aaa; border: 1px solid #333; flex-grow: 1; justify-content: center;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #990000 !important; color: white !important; border-color: #FF4B4B !important;
+        }
+        
+        /* BOTONES */
+        .stButton>button { width: 100%; border-radius: 6px; background: linear-gradient(90deg, #800000, #990000); color: white; border: none; padding: 12px 24px; font-weight: bold; font-family: 'Orbitron', sans-serif; transition: all 0.3s; }
+        .stButton>button:hover { background: linear-gradient(90deg, #990000, #BB0000); box-shadow: 0 0 20px rgba(187, 0, 0, 0.4); }
+        .stButton button:disabled { background: #222; color: #555; cursor: not-allowed; border: 1px solid #333; }
+        
+        /* ALERTA */
+        .stAlert { background-color: #1E1E1E; border: 1px solid #333; color: white; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
-c1, c2 = st.columns([1,5])
-with c1: st.markdown("# 🛡️")
-with c2: 
-    st.markdown("# ANGIOMASTERS")
-    st.caption("Sistema de Gestión RPG - Hemodinamia IV")
+# --- CABECERA DE MARCA ---
+c_logo, c_texto = st.columns([1, 6])
+with c_logo:
+    st.markdown("# 🛡️") # Si tienes un logo.png, usa st.image("logo.png")
+with c_texto:
+    st.markdown("<h1 style='margin-bottom:0; padding-bottom:0;'>UNIVERSO ANGIOMASTERS</h1>", unsafe_allow_html=True)
+    st.caption("PLATAFORMA DE GAMIFICACIÓN CLÍNICA | HEMODINAMIA IV")
+
 st.divider()
 
 # --- ESTADO DE SESIÓN ---
@@ -84,11 +125,10 @@ if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
 
-# Variables de Contexto (Universo)
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 
-# --- FUNCIONES LÓGICAS ---
+# --- FUNCIONES LÓGICAS (MISMAS QUE ANTES) ---
 
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
@@ -136,12 +176,8 @@ def solicitar_activacion_habilidad(nombre_habilidad, costo, jugador_nombre):
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
     return res.status_code == 200
 
-# --- FUNCIONES DE FILTRADO POR UNIVERSO ---
-
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
-    """Suma puntos SOLO del escuadrón en esa Universidad y Año"""
     if not nombre_escuadron or not uni or not ano: return 0
-    
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     payload = {
         "filter": {
@@ -165,9 +201,7 @@ def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
     except: return 0
 
 def cargar_ranking_filtrado(uni, ano):
-    """Carga ranking SOLO de la Universidad y Año del jugador"""
     if not uni or not ano: return pd.DataFrame()
-    
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     payload = {
         "filter": {
@@ -177,7 +211,6 @@ def cargar_ranking_filtrado(uni, ano):
             ]
         }
     }
-    
     try:
         res = requests.post(url, headers=headers, json=payload)
         if res.status_code == 200:
@@ -227,18 +260,14 @@ def validar_login():
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         
-                        # --- DETECTAR UNIVERSO (UNI + AÑO) ---
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
-                            
                             ano_data = props.get("Año", {}).get("select")
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
                         except: 
-                            st.session_state.uni_actual = None
-                            st.session_state.ano_actual = None
+                            st.session_state.uni_actual = None; st.session_state.ano_actual = None
 
-                        # Cargar Datos Contextualizados
                         sq_name = "Sin Escuadrón"
                         try:
                             sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
@@ -246,14 +275,8 @@ def validar_login():
                         except: pass
                         st.session_state.squad_name = sq_name
                         
-                        st.session_state.team_stats = obtener_puntaje_equipo_filtrado(
-                            sq_name, st.session_state.uni_actual, st.session_state.ano_actual
-                        )
-                        
-                        # CARGA EL RANKING FILTRADO AL INICIO
-                        st.session_state.ranking_data = cargar_ranking_filtrado(
-                            st.session_state.uni_actual, st.session_state.ano_actual
-                        )
+                        st.session_state.team_stats = obtener_puntaje_equipo_filtrado(sq_name, st.session_state.uni_actual, st.session_state.ano_actual)
+                        st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                         
                         try:
                             rol_data = props.get("Rol", {}).get("select")
@@ -261,7 +284,6 @@ def validar_login():
                         except: rol_usuario = None
                         if rol_usuario:
                             st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
-                        
                     else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
                 except Exception as e: st.session_state.login_error = f"Error Credenciales: {e}"
             else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
@@ -275,15 +297,19 @@ def cerrar_sesion():
     st.session_state.uni_actual = None
     st.session_state.ano_actual = None
 
-# ================= UI =================
+# ================= UI PRINCIPAL =================
 
 if not st.session_state.jugador:
-    with st.form("login_form"):
-        st.markdown("### 🔐 ACCESO A LA MATRIX")
-        st.text_input("Codename:", placeholder="Ej: Neo", key="input_user")
-        st.text_input("Password:", type="password", key="input_pass")
-        st.form_submit_button("INICIAR SISTEMA", on_click=validar_login)
-    if st.session_state.login_error: st.error(st.session_state.login_error)
+    with st.container():
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            st.markdown("### 🔐 INICIO DE SESIÓN")
+            st.text_input("Codename (Usuario):", placeholder="Ej: Neo", key="input_user")
+            st.text_input("Password:", type="password", key="input_pass")
+            st.form_submit_button("CONECTAR AL SISTEMA", on_click=validar_login)
+    
+    if st.session_state.login_error:
+        st.error(st.session_state.login_error)
 
 else:
     p = st.session_state.jugador
@@ -292,13 +318,21 @@ else:
     nivel_num = calcular_nivel_usuario(mp)
     nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
     
-    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Uni"
+    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "????"
-    st.caption(f"📍 Conectado a: **{uni_label} - Generación {ano_label}**")
+
+    # --- BARRA DE ESTADO SUPERIOR ---
+    st.markdown(f"""
+    <div style="display:flex; justify-content:space-between; color:#666; font-size:0.8em; margin-bottom:10px;">
+        <span>📍 UBICACIÓN: {uni_label}</span>
+        <span>📅 CICLO: {ano_label}</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     if not st.session_state.uni_actual or not st.session_state.ano_actual:
-        st.warning("⚠️ ALERTA: Tu usuario no tiene asignada una Universidad o Año en Notion. El ranking no funcionará correctamente.")
+        st.warning("⚠️ Tu perfil no tiene Universidad o Año asignado. El ranking no funcionará.")
 
+    # --- PESTAÑAS DE NAVEGACIÓN ---
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
     # --- TAB 1: PERFIL ---
@@ -311,47 +345,37 @@ else:
                 elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
         except: pass
         
-        try:
-            r_data = p.get("Rol", {}).get("select")
-            rol = r_data["name"] if r_data else "Sin Rol"
+        try: rol = p.get("Rol", {}).get("select")["name"]
         except: rol = "Sin Rol"
         
         skuad = st.session_state.squad_name
-        try: 
-            vp_raw = p.get("VP", {}).get("number", 1) or 0
-            vp = int(vp_raw) 
+        try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        with st.container():
-            html_avatar = f"""
-            <div class="profile-card">
-                {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
-                <h2 style="margin:0; color:#FF4B4B;">{st.session_state.nombre}</h2>
-                <h3 style="margin:5px 0; color:white;">{skuad} | {rol}</h3>
-                <p style="color:#aaa;">Nivel {nivel_num}: {nombre_rango}</p>
+        # Tarjeta de Perfil
+        st.markdown(f"""
+        <div class="profile-card">
+            {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+            <h2 style="margin:0; color:#FF4B4B; text-transform: uppercase;">{st.session_state.nombre}</h2>
+            <h3 style="margin:5px 0; color:white; font-size:1.1em;">{skuad} | {rol}</h3>
+            <div style="margin-top:10px; display:inline-block; background:#333; padding:5px 15px; border-radius:20px; border:1px solid #FFD700; color:#FFD700;">
+                Nivel {nivel_num}: {nombre_rango}
             </div>
-            """
-            st.markdown(html_avatar, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
             
+        # HUD Stats
         c1, c2, c3 = st.columns(3)
-        c1.metric("⭐ MP", mp)
-        c2.metric("⚡ AP", ap)
-        c3.metric("❤️ VP", f"{vp}%")
+        c1.metric("⭐ MP (XP)", mp)
+        c2.metric("⚡ AP (Poder)", ap)
+        c3.metric("❤️ VP (Salud)", f"{vp}%")
         
-        st.divider()
+        st.markdown("<br>", unsafe_allow_html=True)
         st.button("CERRAR SESIÓN", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (CORREGIDO) ---
+    # --- TAB 2: RANKING ---
     with tab_ranking:
-        # --- INSPECTOR DE FILTROS ---
-        with st.expander("🕵️‍♂️ Inspector de Filtros (Si ves gente de otra U, abre aquí)"):
-            st.write(f"Filtrando por Universidad: **{st.session_state.uni_actual}**")
-            st.write(f"Filtrando por Año: **{st.session_state.ano_actual}**")
-            if st.session_state.ranking_data is not None:
-                st.write(f"Jugadores encontrados: {len(st.session_state.ranking_data)}")
-        # -----------------------------
-
-        st.markdown(f"### ⚔️ TOP AGENTES ({uni_label} {ano_label})")
+        st.markdown(f"### ⚔️ TOP AGENTES")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
@@ -368,7 +392,7 @@ else:
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
             st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#990000")
         else:
-            st.info(f"No hay datos para {uni_label} - {ano_label}.")
+            st.info(f"No hay datos registrados en {uni_label} ({ano_label}).")
             if st.button("🔄 Refrescar"):
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
@@ -380,7 +404,7 @@ else:
         habilidades = st.session_state.habilidades_data
         
         if not habilidades:
-            st.info("No se encontraron habilidades para tu Rol.")
+            st.info("No hay habilidades disponibles para tu Rol.")
         else:
             for hab in habilidades:
                 nombre = hab["nombre"]
@@ -392,20 +416,22 @@ else:
                 puede_pagar = ap >= costo
                 
                 with st.container():
-                    border_color = "#990000" if desbloqueada else "#555"
-                    opacity = "1" if desbloqueada else "0.6"
+                    # Lógica visual de bloqueado/desbloqueado
+                    border_color = "#990000" if desbloqueada else "#444"
+                    opacity = "1" if desbloqueada else "0.5"
+                    grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
                     st.markdown(f"""
-                    <div class="skill-card" style="border-left: 5px solid {border_color}; opacity: {opacity};">
+                    <div class="skill-card" style="border-left: 5px solid {border_color}; opacity: {opacity}; {grayscale}">
                         <div class="skill-header">
-                            <h3 style="margin:0; color:white;">{nombre}</h3>
+                            <h3 style="margin:0; color:white; font-size:1.1em;">{nombre}</h3>
                             <span class="skill-cost">⚡ {costo} AP</span>
                         </div>
-                        <p style="color:#ccc; font-size:0.9em;">{desc}</p>
+                        <p style="color:#ccc; font-size:0.9em; margin:0;">{desc}</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    col_btn, col_msg = st.columns([1, 3])
+                    col_btn, col_msg = st.columns([1, 2])
                     with col_btn:
                         if desbloqueada:
                             if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
