@@ -32,7 +32,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON (FINAL FIX) ---
+# --- CSS: ESTÉTICA BLUE NEON (FINAL) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
@@ -69,12 +69,12 @@ st.markdown("""
             box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
         }
         .squad-badge {
-            width: 90px; height: 90px; object-fit: contain;
-            margin-top: 20px;
-            filter: drop-shadow(0 0 10px rgba(0,229,255,0.5));
+            width: 80px; height: 80px; object-fit: contain;
+            margin-top: 15px;
+            filter: drop-shadow(0 0 8px rgba(0,229,255,0.6));
             transition: transform 0.3s;
         }
-        .squad-badge:hover { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(0,229,255,0.8)); }
+        .squad-badge:hover { transform: scale(1.1); }
         
         /* CUSTOM METRICS (HUD INTEGRADO) */
         .hud-container {
@@ -443,20 +443,21 @@ else:
         
         skuad = st.session_state.squad_name
         
-        # --- CORRECCIÓN IMÁGENES ESCUADRÓN ---
-        # Busca: nombre_escuadron + "_team.png" (Ej: egipcios_team.png)
-        if skuad:
-            clean_name = skuad.lower().strip().replace(" ", "_")
-            emblema_filename = f"{clean_name}_team.png"
-        else:
-            emblema_filename = None
-            
-        b64_badge = get_img_as_base64(f"assets/{emblema_filename}")
+        # --- LÓGICA DE ESCUADRÓN CON DIAGNÓSTICO ---
+        emblema_filename = "none.png"
+        b64_badge = ""
         
+        if skuad and skuad != "Sin Escuadrón":
+            # Nombre Limpio: Minúsculas y guiones bajos (ej: "Alpha Team" -> "alpha_team")
+            clean_name = skuad.lower().strip().replace(" ", "_")
+            # Busca: alpha_team_team.png (según lo que me dijiste que tenías)
+            emblema_filename = f"{clean_name}_team.png"
+            b64_badge = get_img_as_base64(f"assets/{emblema_filename}")
+
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # --- GENERACIÓN LIMPIA DE HTML ---
+        # --- GENERACIÓN LIMPIA DE HTML (FIX CÓDIGO VISIBLE) ---
         badge_html_block = ""
         if b64_badge:
             badge_html_block = f"""
@@ -466,22 +467,28 @@ else:
             </div>
             """
         
-        # HTML TARJETA
+        # HTML TARJETA SIN INDENTACIÓN PROFUNDA
         profile_html = f"""
-        <div class="profile-card">
-            <div class="avatar-container">
-                {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
-            </div>
-            <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
-            <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
-            <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
-                NIVEL {nivel_num}: {nombre_rango.upper()}
-            </div>
-            {badge_html_block}
-        </div>
-        """
+<div class="profile-card">
+    <div class="avatar-container">
+        {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+    </div>
+    <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
+    <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
+    <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
+        NIVEL {nivel_num}: {nombre_rango.upper()}
+    </div>
+    {badge_html_block}
+</div>
+"""
         st.markdown(profile_html, unsafe_allow_html=True)
         
+        # DEBUG VISIBLE (SOLO SI NO ENCUENTRA IMAGEN Y HAY ESCUADRÓN)
+        if skuad and not b64_badge:
+            with st.expander("🔧 Diagnóstico de Imágenes (Solo Admin)"):
+                st.write(f"El sistema buscó este archivo: **assets/{emblema_filename}**")
+                st.error("❌ Archivo no encontrado. Sube la imagen a la carpeta 'assets' con ese nombre exacto.")
+
         # HUD METRICS
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
@@ -509,20 +516,20 @@ else:
         
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (BARRAS AMARILLAS) ---
+    # --- TAB 2: RANKING (FIX BARRAS AMARILLAS) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max())
-            # Pandas Styler: Barra Amarilla (#FFD700)
+            # FIX: Quitamos la config de columna de Streamlit para MP para que Pandas mande
             st.dataframe(
                 df.style.bar(subset=["MasterPoints"], color="#FFD700", vmin=0, vmax=max_mp),
                 use_container_width=True,
                 column_config={
-                    "MasterPoints": st.column_config.NumberColumn("Progreso MP", format="%d"),
                     "Escuadrón": st.column_config.TextColumn("Escuadrón"),
+                    # MasterPoints NO se configura aquí para respetar el estilo Pandas
                 },
                 hide_index=True
             )
@@ -536,7 +543,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (NOMBRES BLANCOS) ---
+    # --- TAB 3: HABILIDADES (FIX NOMBRES) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -559,15 +566,17 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    st.markdown(f"""
-                    <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
-                        <div class="skill-header">
-                            <div style="font-family:'Orbitron', sans-serif; color:#FFFFFF !important; font-size:1.2em; font-weight:900; text-shadow:0 0 5px rgba(0,0,0,0.8);">{nombre}</div>
-                            <span class="skill-cost">⚡ {costo} AP</span>
-                        </div>
-                        <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # HTML SIMPLE SIN INDENTACIÓN INTERNA PARA EVITAR ERRORES
+                    card_html = f"""
+<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
+    <div class="skill-header">
+        <span style="font-family:'Orbitron', sans-serif; color: #FFFFFF; font-size:1.1em; font-weight:bold; text-transform: uppercase;">{nombre}</span>
+        <span class="skill-cost">⚡ {costo} AP</span>
+    </div>
+    <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
+</div>
+"""
+                    st.markdown(card_html, unsafe_allow_html=True)
                     
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
