@@ -38,8 +38,8 @@ st.markdown("""
             width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
             border: 4px solid #FF4B4B; margin-bottom: 10px;
         }
-        /* MÉTRICAS */
         [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; font-size: 2rem !important; }
+        
         /* BOTONES */
         .stButton>button {
             width: 100%; border-radius: 8px; background-color: #990000; 
@@ -58,17 +58,16 @@ with c2:
     st.caption("Sistema de Gestión RPG - Hemodinamia IV")
 st.divider()
 
-# --- ESTADO ---
+# --- INICIALIZAR ESTADO ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
+if "login_error" not in st.session_state: st.session_state.login_error = None
 
-# --- FUNCIÓN: OBTENER PUNTAJE EQUIPO ---
+# --- FUNCIONES AUXILIARES ---
 def obtener_puntaje_equipo_texto(nombre_escuadron):
     if not nombre_escuadron: return 0
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    
-    # Filtro de texto (Rich Text)
     payload = {
         "filter": {
             "property": "Nombre Escuadrón", 
@@ -88,60 +87,88 @@ def obtener_puntaje_equipo_texto(nombre_escuadron):
         return total_mp
     except: return 0
 
-# --- LOGIN (AHORA CON FORMULARIO) ---
+# --- FUNCIÓN DE LOGIN (CALLBACK) ---
+# Esta función se ejecuta ANTES de recargar la página
+def validar_login():
+    # Leemos los inputs directamente del estado usando sus 'key'
+    usuario = st.session_state.input_user.strip() # .strip() quita espacios accidentales
+    clave = st.session_state.input_pass.strip()
+    
+    if not usuario or not clave:
+        st.session_state.login_error = "⚠️ Ingresa usuario y contraseña."
+        return
+
+    url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+    payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            data = res.json()
+            if len(data["results"]) > 0:
+                props = data["results"][0]["properties"]
+                try:
+                    c_obj = props.get("Clave", {}).get("rich_text", [])
+                    c_real = c_obj[0]["text"]["content"] if c_obj else ""
+                    
+                    if clave == c_real:
+                        # Login Exitoso
+                        st.session_state.jugador = props
+                        st.session_state.nombre = usuario
+                        st.session_state.login_error = None # Limpiar errores
+                        
+                        # Extraer Escuadrón
+                        sq_name = "Sin Escuadrón"
+                        try:
+                            sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
+                            if sq_obj: sq_name = sq_obj[0]["text"]["content"]
+                        except: pass
+                        
+                        st.session_state.squad_name = sq_name
+                        st.session_state.team_stats = obtener_puntaje_equipo_texto(sq_name)
+                    else:
+                        st.session_state.login_error = "❌ CLAVE INCORRECTA"
+                except:
+                    st.session_state.login_error = "❌ ERROR DE CREDENCIALES"
+            else:
+                st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
+        else:
+            st.session_state.login_error = "⚠️ Error de conexión con Notion"
+    except Exception as e:
+        st.session_state.login_error = f"Error técnico: {e}"
+
+# --- FUNCIÓN LOGOUT ---
+def cerrar_sesion():
+    st.session_state.jugador = None
+    st.session_state.login_error = None
+    # No es necesario st.rerun() en callbacks, pero ayuda a limpiar inputs
+    
+
+# ==========================================
+# INTERFAZ PRINCIPAL
+# ==========================================
+
 if not st.session_state.jugador:
-    # ⚠️ AQUÍ ESTÁ EL CAMBIO CLAVE: st.form
+    # --- PANTALLA DE LOGIN ---
     with st.form("login_form"):
         st.markdown("### 🔐 ACCESO A LA MATRIX")
-        usuario = st.text_input("Codename:", placeholder="Ej: Neo")
-        clave = st.text_input("Password:", type="password")
         
-        # El botón ahora es un "submit_button" vinculado al formulario
-        submitted = st.form_submit_button("INICIAR SISTEMA")
+        # OJO: Usamos 'key' para vincular estos inputs con la función de arriba
+        st.text_input("Codename:", placeholder="Ej: Neo", key="input_user")
+        st.text_input("Password:", type="password", key="input_pass")
+        
+        # OJO: El botón llama a la función 'validar_login' cuando se presiona
+        st.form_submit_button("INICIAR SISTEMA", on_click=validar_login)
     
-    if submitted:
-        if not usuario or not clave:
-            st.warning("⚠️ Ingresa usuario y contraseña.")
-        else:
-            url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-            payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
-            
-            try:
-                with st.spinner("Conectando..."):
-                    res = requests.post(url, headers=headers, json=payload)
-                    if res.status_code == 200:
-                        data = res.json()
-                        if len(data["results"]) > 0:
-                            props = data["results"][0]["properties"]
-                            # Validar Clave
-                            try:
-                                c_obj = props.get("Clave", {}).get("rich_text", [])
-                                c_real = c_obj[0]["text"]["content"] if c_obj else ""
-                                
-                                if clave == c_real:
-                                    st.session_state.jugador = props
-                                    st.session_state.nombre = usuario
-                                    
-                                    # Extraer Escuadrón
-                                    sq_name = "Sin Escuadrón"
-                                    try:
-                                        sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-                                        if sq_obj: sq_name = sq_obj[0]["text"]["content"]
-                                    except: pass
-                                    
-                                    st.session_state.squad_name = sq_name
-                                    st.session_state.team_stats = obtener_puntaje_equipo_texto(sq_name)
-                                    st.rerun()
-                                else: st.error("❌ CLAVE INCORRECTA")
-                            except: st.error("❌ ERROR DE CREDENCIALES")
-                        else: st.error("❌ USUARIO NO ENCONTRADO")
-            except Exception as e: st.error(f"Error: {e}")
+    # Mostrar errores si existen (fuera del formulario)
+    if st.session_state.login_error:
+        st.error(st.session_state.login_error)
 
-# --- DASHBOARD ---
 else:
+    # --- PANTALLA DE DASHBOARD ---
     p = st.session_state.jugador
     
-    # AVATAR
+    # 1. Procesar Datos
     avatar_url = None
     try:
         f_list = p.get("Avatar", {}).get("files", [])
@@ -150,7 +177,6 @@ else:
             elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
     except: pass
 
-    # DATOS
     try:
         r_data = p.get("Rol", {}).get("select")
         rol = r_data["name"] if r_data else "Sin Rol"
@@ -172,7 +198,7 @@ else:
         vp = int(vp_raw * 100) if vp_raw <= 1 and vp_raw > 0 else int(vp_raw)
     except: vp = 0
 
-    # UI DASHBOARD
+    # 2. Renderizar UI
     with st.container():
         html_avatar = f"""
         <div class="profile-card">
@@ -193,6 +219,4 @@ else:
     st.subheader(f"🏆 Escuadrón: {skuad}")
     st.metric("Puntaje Colectivo", st.session_state.team_stats)
     
-    if st.button("CERRAR SESIÓN"):
-        st.session_state.jugador = None
-        st.rerun()
+    st.button("CERRAR SESIÓN", on_click=cerrar_sesion)
