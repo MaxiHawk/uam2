@@ -32,7 +32,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON (PULIDO) ---
+# --- CSS: ESTÉTICA BLUE NEON (LOGO FIX) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
@@ -96,8 +96,8 @@ st.markdown("""
             box-shadow: 0 10px 20px rgba(0, 229, 255, 0.15);
         }
         .metric-icon-img {
-            width: 45px;
-            height: 45px;
+            width: 50px; /* Iconos más grandes */
+            height: 50px;
             object-fit: contain;
             margin-bottom: 8px;
             filter: drop-shadow(0 0 5px rgba(0,229,255,0.6));
@@ -118,9 +118,6 @@ st.markdown("""
             margin-top: 5px;
         }
 
-        /* EMBLEMA ESCUADRÓN */
-        .squad-emblem { width: 80px; height: 80px; object-fit: contain; margin-top: 10px; filter: drop-shadow(0 0 8px rgba(0,229,255,0.4)); }
-
         /* BOTONES NEON BLUE */
         .stButton>button { 
             width: 100%; border-radius: 8px; 
@@ -139,7 +136,7 @@ st.markdown("""
         }
         .stButton button:disabled { background: #0f1520; color: #444; border: 1px solid #333; cursor: not-allowed; }
         
-        /* TABS Y DATAFRAME (CORREGIDO ROJO A CYAN) */
+        /* TABS Y DATAFRAME */
         .stTabs [data-baseweb="tab-list"] { gap: 10px; border-bottom: none; }
         .stTabs [data-baseweb="tab"] {
             background-color: #0a101a; 
@@ -176,16 +173,15 @@ if "habilidades_data" not in st.session_state: st.session_state.habilidades_data
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 
-# --- HELPER: IMÁGENES A BASE64 (ESTO ARREGLA LA VISUALIZACIÓN) ---
+# --- HELPER: IMÁGENES A BASE64 ---
 def get_img_as_base64(file_path):
-    """Convierte una imagen local a string base64 para insertar en HTML puro"""
     if not os.path.exists(file_path):
         return ""
     with open(file_path, "rb") as f:
         data = f.read()
     return base64.b64encode(data).decode()
 
-# --- FUNCIONES LÓGICAS ---
+# --- FUNCIONES LÓGICAS (MISMAS) ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -354,15 +350,16 @@ def cerrar_sesion():
 
 if not st.session_state.jugador:
     # --- PANTALLA LOGIN ---
-    # Usamos st.image directo para cover y logo en login porque es layout simple
     if os.path.exists("assets/cover.png"):
         st.image("assets/cover.png", use_container_width=True)
     
     with st.container():
-        c_l, c_r = st.columns([1, 4])
+        # Aumentamos el tamaño de la columna del logo
+        c_l, c_r = st.columns([1.2, 3.8])
         with c_l:
             if os.path.exists("assets/logo.png"):
-                st.image("assets/logo.png", width=80)
+                # Logo más grande en Login (110px)
+                st.image("assets/logo.png", width=110)
             else:
                 st.markdown("🛡️")
         with c_r:
@@ -391,18 +388,21 @@ else:
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
 
-    # HEADER COMPACTO
-    c_head1, c_head2 = st.columns([1, 5])
+    # HEADER DASHBOARD
+    # Ajuste de columnas para dar más espacio al logo
+    c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
-        if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=60)
+        if os.path.exists("assets/logo.png"):
+             # Logo más grande en Dashboard (100px)
+             st.image("assets/logo.png", width=100)
     with c_head2:
-        st.markdown(f"<h2 style='margin:0; font-size:1.8em;'>HOLA, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2;'>HOLA, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
         st.caption(f"📍 {uni_label} | 📅 {ano_label}")
 
     # PESTAÑAS
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL (HUD REDISEÑADO) ---
+    # --- TAB 1: PERFIL ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -416,6 +416,8 @@ else:
         except: rol = "Sin Rol"
         
         skuad = st.session_state.squad_name
+        emblema_filename = skuad.lower().replace(" ", "_") + ".png" if skuad else "none.png"
+        
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
@@ -433,13 +435,11 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # --- HUD METRICS CON BASE64 (SOLUCIÓN A IMÁGENES ROTAS) ---
-        # Cargamos las imágenes en Base64 para inyectarlas en el HTML
+        # HUD METRICS
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
-        # HTML del HUD (Flexbox puro)
         st.markdown(f"""
         <div class="hud-container">
             <div class="metric-box">
