@@ -316,7 +316,7 @@ def validar_login():
                             ano_data = props.get("Año", {}).get("select")
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
                             
-                            # NUEVO: Leer Estado UAM
+                            # Leer Estado UAM
                             estado_data = props.get("Estado UAM", {}).get("select")
                             st.session_state.estado_uam = estado_data["name"] if estado_data else "Desconocido"
                         except: 
@@ -409,13 +409,13 @@ else:
         
         # Nueva Cabecera de Contexto Épica
         st.markdown(f"""
-            <div style="display: flex; align-items: center; margin-top: 5px;">
-                <span style="color: #b0bec5; margin-right: 15px; font-size: 0.9em;">📍 {uni_label}</span>
-                <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1.2em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
-            </div>
-            <div style="margin-top: 8px; display: flex; align-items: center;">
-                <span style="display: inline-block; width: 10px; height: 10px; background-color: {status_color}; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 8px {status_color};"></span>
-                <span style="color: {status_color}; font-weight: bold; font-size: 0.85em; letter-spacing: 1px;">ESTADO: {estado_label.upper()}</span>
+            <div style="margin-top: 5px;">
+                <div style="color: #b0bec5; font-size: 0.85em; margin-bottom: 2px;">🌌 MULTIVERSO DETECTADO:</div>
+                <div style="color: #e0f7fa; font-size: 1em; font-weight: bold; margin-bottom: 8px;">{uni_label.upper()}</div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1.1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
+                    <span style="border: 1px solid {status_color}; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.75em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
