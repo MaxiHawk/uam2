@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -19,9 +20,9 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-st.set_page_config(page_title="Universo AngioMasters", page_icon="🫀", layout="centered")
+st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
-# --- DICCIONARIO DE NIVELES (LORE) ---
+# --- DICCIONARIO DE NIVELES ---
 NOMBRES_NIVELES = {
     1: "🧪 Aprendiz",
     2: "🚀 Navegante",
@@ -30,92 +31,88 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA CYBER-MEDICAL ---
+# --- CSS: ESTÉTICA BLUE NEON / PRAXIS PRIMORIS ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
         
-        /* FUENTES Y COLORES GLOBALES */
-        h1, h2, h3, [data-testid="stMetricLabel"] { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; }
-        html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #0E1117; }
+        /* FUENTES Y FONDO */
+        h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3); }
+        html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
         
-        /* LIMPIEZA DE INTERFAZ */
-        .block-container { padding-top: 1.5rem !important; }
+        /* LIMPIEZA */
+        .block-container { padding-top: 0rem !important; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
-        [data-testid="stDecoration"], [data-testid="stStatusWidget"], [data-testid="stToolbar"] { display: none !important; }
+        [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
-        /* TARJETA DE PERFIL (GLASSMORPHISM) */
+        /* TARJETA DE PERFIL (BLUE GLASS) */
         .profile-card {
-            background: linear-gradient(135deg, rgba(30,30,30,0.9), rgba(20,20,20,0.9));
-            border: 1px solid #444;
-            border-top: 4px solid #990000;
-            border-radius: 12px;
-            padding: 25px;
+            background: linear-gradient(135deg, rgba(5, 20, 40, 0.9), rgba(0, 10, 20, 0.95));
+            border: 1px solid #004d66;
+            border-top: 3px solid #00e5ff;
+            border-radius: 15px;
+            padding: 20px;
             text-align: center;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
         }
         .avatar-img {
-            width: 130px; height: 130px; border-radius: 50%; object-fit: cover;
-            border: 3px solid #FF4B4B; margin-bottom: 15px;
-            box-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
+            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+            border: 3px solid #00e5ff; margin-bottom: 10px;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
         }
         
-        /* MÉTRICAS (HUD) */
-        [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; font-size: 2.2rem !important; color: #fff; }
-        [data-testid="stMetricLabel"] { color: #aaa; font-size: 0.9rem !important; }
-        div[data-testid="metric-container"] {
-            background-color: #161920;
-            border: 1px solid #333;
-            padding: 15px;
+        /* CUSTOM METRICS (IMÁGENES) */
+        .metric-container {
+            background: rgba(0, 20, 30, 0.6);
+            border: 1px solid #004d66;
             border-radius: 10px;
+            padding: 10px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
             transition: transform 0.2s;
         }
-        div[data-testid="metric-container"]:hover {
-            border-color: #990000;
-            transform: translateY(-3px);
-            box-shadow: 0 4px 10px rgba(153, 0, 0, 0.2);
+        .metric-container:hover { transform: translateY(-5px); border-color: #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2); }
+        .metric-icon { width: 50px; height: 50px; object-fit: contain; margin-bottom: 5px; filter: drop-shadow(0 0 5px rgba(0,229,255,0.5)); }
+        .metric-value { font-family: 'Orbitron'; font-size: 1.5rem; color: #fff; font-weight: bold; }
+        .metric-label { font-size: 0.8rem; color: #00bcd4; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* EMBLEMA ESCUADRÓN */
+        .squad-emblem { width: 80px; height: 80px; object-fit: contain; margin-top: 10px; filter: drop-shadow(0 0 8px rgba(0,229,255,0.4)); }
+
+        /* BOTONES NEON BLUE */
+        .stButton>button { 
+            width: 100%; border-radius: 6px; 
+            background: linear-gradient(90deg, #006064, #00bcd4); 
+            color: white; border: none; padding: 12px 24px; 
+            font-weight: bold; font-family: 'Orbitron', sans-serif; 
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.3s; 
         }
-        
-        /* TARJETAS DE HABILIDAD */
-        .skill-card {
-            background-color: #1A1A1A; border: 1px solid #333;
-            border-radius: 10px; padding: 20px; margin-bottom: 15px;
-            transition: all 0.3s ease;
+        .stButton>button:hover { 
+            background: linear-gradient(90deg, #00bcd4, #00e5ff); 
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6); 
+            color: #000;
         }
-        .skill-card:hover { border-color: #990000; box-shadow: 0 0 15px rgba(153,0,0,0.2); transform: translateX(5px); }
-        .skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .skill-cost { background-color: #222; color: #FFD700; padding: 5px 10px; border-radius: 20px; font-family: 'Orbitron', sans-serif; font-size: 0.8em; border: 1px solid #555; }
+        .stButton button:disabled { background: #0f1520; color: #444; border: 1px solid #333; }
         
-        /* PESTAÑAS PERSONALIZADAS */
-        .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: transparent; }
-        .stTabs [data-baseweb="tab"] {
-            background-color: #1E1E1E; border-radius: 4px; color: #aaa; border: 1px solid #333; flex-grow: 1; justify-content: center;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #990000 !important; color: white !important; border-color: #FF4B4B !important;
-        }
+        /* TABS Y DATAFRAME */
+        .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+        .stTabs [data-baseweb="tab"] { background-color: #0a101a; border: 1px solid #004d66; color: #00bcd4; }
+        .stTabs [aria-selected="true"] { background-color: #00bcd4 !important; color: black !important; font-weight: bold; box-shadow: 0 0 10px #00bcd4; }
         
-        /* BOTONES */
-        .stButton>button { width: 100%; border-radius: 6px; background: linear-gradient(90deg, #800000, #990000); color: white; border: none; padding: 12px 24px; font-weight: bold; font-family: 'Orbitron', sans-serif; transition: all 0.3s; }
-        .stButton>button:hover { background: linear-gradient(90deg, #990000, #BB0000); box-shadow: 0 0 20px rgba(187, 0, 0, 0.4); }
-        .stButton button:disabled { background: #222; color: #555; cursor: not-allowed; border: 1px solid #333; }
-        
+        /* SKILL CARDS */
+        .skill-card { background-color: #0a141f; border: 1px solid #004d66; border-radius: 8px; padding: 15px; margin-bottom: 10px; }
+        .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.1); }
+        .skill-cost { background: #002d38; color: #00e5ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #006064; font-size: 0.8em; }
+
         /* ALERTA */
-        .stAlert { background-color: #1E1E1E; border: 1px solid #333; color: white; }
+        .stAlert { background-color: #05101a; border: 1px solid #00bcd4; color: #e0f7fa; }
     </style>
 """, unsafe_allow_html=True)
-
-# --- CABECERA DE MARCA ---
-c_logo, c_texto = st.columns([1, 6])
-with c_logo:
-    st.markdown("# 🛡️") # Si tienes un logo.png, usa st.image("logo.png")
-with c_texto:
-    st.markdown("<h1 style='margin-bottom:0; padding-bottom:0;'>UNIVERSO ANGIOMASTERS</h1>", unsafe_allow_html=True)
-    st.caption("PLATAFORMA DE GAMIFICACIÓN CLÍNICA | HEMODINAMIA IV")
-
-st.divider()
 
 # --- ESTADO DE SESIÓN ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
@@ -124,12 +121,10 @@ if "squad_name" not in st.session_state: st.session_state.squad_name = None
 if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
-
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 
 # --- FUNCIONES LÓGICAS (MISMAS QUE ANTES) ---
-
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -193,9 +188,7 @@ def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
         total_mp = 0
         if res.status_code == 200:
             for miembro in res.json()["results"]:
-                try:
-                    val = miembro["properties"]["MP"]["number"]
-                    if val: total_mp += val
+                try: val = miembro["properties"]["MP"]["number"]; total_mp += val if val else 0
                 except: pass
         return total_mp
     except: return 0
@@ -222,7 +215,7 @@ def cargar_ranking_filtrado(uni, ano):
                     mp = props["MP"]["number"] or 0
                     esc_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
                     escuadron = esc_obj[0]["text"]["content"] if esc_obj else "Sin Escuadrón"
-                    lista.append({"Agente": nombre, "Escuadrón": escuadron, "MasterPoints": mp})
+                    lista.append({"Aspirante": nombre, "Escuadrón": escuadron, "MasterPoints": mp})
                 except: pass
             
             df = pd.DataFrame(lista)
@@ -265,8 +258,7 @@ def validar_login():
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
                             ano_data = props.get("Año", {}).get("select")
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
-                        except: 
-                            st.session_state.uni_actual = None; st.session_state.ano_actual = None
+                        except: st.session_state.uni_actual = None; st.session_state.ano_actual = None
 
                         sq_name = "Sin Escuadrón"
                         try:
@@ -299,40 +291,55 @@ def cerrar_sesion():
 
 # ================= UI PRINCIPAL =================
 
+# HELPER: Función para verificar si existe imagen, si no devuelve una transparente o placeholder
+def get_image_path(filename):
+    if os.path.exists(f"assets/{filename}"):
+        return f"assets/{filename}"
+    return "https://via.placeholder.com/150?text=IMG" # Placeholder si falla
+
 if not st.session_state.jugador:
+    # --- PANTALLA LOGIN ---
+    st.image(get_image_path("cover.png"), use_container_width=True)
+    
     with st.container():
+        # Logo y Título
+        c_l, c_r = st.columns([1, 4])
+        with c_l:
+            st.image(get_image_path("logo.png"), width=80)
+        with c_r:
+            st.markdown("<h3 style='margin-bottom:0;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
+            st.caption("PLATAFORMA COMPUTADORA CENTRAL")
+        
         st.markdown("<br>", unsafe_allow_html=True)
+        
         with st.form("login_form"):
-            st.markdown("### 🔐 INICIO DE SESIÓN")
-            st.text_input("Codename (Usuario):", placeholder="Ej: Neo", key="input_user")
+            st.markdown("##### 🔐 IDENTIFICACIÓN REQUERIDA")
+            st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
             st.text_input("Password:", type="password", key="input_pass")
-            st.form_submit_button("CONECTAR AL SISTEMA", on_click=validar_login)
+            st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
     
     if st.session_state.login_error:
         st.error(st.session_state.login_error)
 
 else:
+    # --- DASHBOARD USUARIO ---
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
     nivel_num = calcular_nivel_usuario(mp)
     nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
     
-    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
-    ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "????"
+    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
+    ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
 
-    # --- BARRA DE ESTADO SUPERIOR ---
-    st.markdown(f"""
-    <div style="display:flex; justify-content:space-between; color:#666; font-size:0.8em; margin-bottom:10px;">
-        <span>📍 UBICACIÓN: {uni_label}</span>
-        <span>📅 CICLO: {ano_label}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    # Header Dashboard
+    c_head1, c_head2 = st.columns([1, 5])
+    with c_head1: st.image(get_image_path("logo.png"), width=60)
+    with c_head2:
+        st.markdown(f"<h2 style='margin:0;'>HOLA, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        st.caption(f"📍 {uni_label} | 📅 {ano_label}")
 
-    if not st.session_state.uni_actual or not st.session_state.ano_actual:
-        st.warning("⚠️ Tu perfil no tiene Universidad o Año asignado. El ranking no funcionará.")
-
-    # --- PESTAÑAS DE NAVEGACIÓN ---
+    # Pestañas
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
     # --- TAB 1: PERFIL ---
@@ -349,33 +356,70 @@ else:
         except: rol = "Sin Rol"
         
         skuad = st.session_state.squad_name
+        # Intento de cargar emblema del escuadrón (basado en nombre archivo = nombre escuadron minusculas y guiones bajos)
+        emblema_filename = skuad.lower().replace(" ", "_") + ".png" if skuad else "none.png"
+        
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # Tarjeta de Perfil
+        # Tarjeta Perfil
         st.markdown(f"""
         <div class="profile-card">
             {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
-            <h2 style="margin:0; color:#FF4B4B; text-transform: uppercase;">{st.session_state.nombre}</h2>
-            <h3 style="margin:5px 0; color:white; font-size:1.1em;">{skuad} | {rol}</h3>
-            <div style="margin-top:10px; display:inline-block; background:#333; padding:5px 15px; border-radius:20px; border:1px solid #FFD700; color:#FFD700;">
-                Nivel {nivel_num}: {nombre_rango}
-            </div>
+            <h2 style="margin:0; color:#00e5ff; text-transform: uppercase;">{st.session_state.nombre}</h2>
+            <h3 style="margin:5px 0; color:#e0f7fa; font-size:1.1em;">{rol}</h3>
+            <p style="color:#00bcd4; letter-spacing:2px;">NIVEL {nivel_num}: {nombre_rango.upper()}</p>
         </div>
         """, unsafe_allow_html=True)
+
+        # Emblema Squad (Visualización extra)
+        if os.path.exists(f"assets/{emblema_filename}"):
+             st.markdown(f"""
+             <div style="text-align:center; margin-bottom:20px;">
+                <img src="app/static/{emblema_filename}" style="width:60px; opacity:0.8;">
+                <div style="color:#00bcd4; font-size:0.8em;">{skuad}</div>
+             </div>
+             """, unsafe_allow_html=True)
             
-        # HUD Stats
-        c1, c2, c3 = st.columns(3)
-        c1.metric("⭐ MP (XP)", mp)
-        c2.metric("⚡ AP (Poder)", ap)
-        c3.metric("❤️ VP (Salud)", f"{vp}%")
+        # HUD Stats con IMÁGENES
+        # Nota: Streamlit no sirve imagenes locales en HTML puro facil sin base64, 
+        # pero usaremos st.image dentro de columnas para simular el componente.
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
+            st.image(get_image_path("icon_mp.png"), width=50)
+            st.markdown(f"""
+                <div class="metric-value">{mp}</div>
+                <div class="metric-label">MasterPoints</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
+            st.image(get_image_path("icon_ap.png"), width=50)
+            st.markdown(f"""
+                <div class="metric-value">{ap}</div>
+                <div class="metric-label">AngioPoints</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col3:
+            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
+            st.image(get_image_path("icon_vp.png"), width=50)
+            st.markdown(f"""
+                <div class="metric-value">{vp}%</div>
+                <div class="metric-label">VitaPoints</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
-        st.button("CERRAR SESIÓN", on_click=cerrar_sesion)
+        st.button("DESCONECTAR", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING ---
     with tab_ranking:
-        st.markdown(f"### ⚔️ TOP AGENTES")
+        st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
@@ -384,27 +428,30 @@ else:
                 use_container_width=True,
                 column_config={
                     "MasterPoints": st.column_config.ProgressColumn(
-                        "XP Total", format="%d", min_value=0, max_value=int(df["MasterPoints"].max())
+                        "Progreso MP", format="%d", min_value=0, max_value=int(df["MasterPoints"].max())
                     ),
+                    "Escuadrón": st.column_config.TextColumn("Escuadrón"),
                 }
             )
-            st.markdown("### 🛡️ GUERRA DE ESCUADRONES")
+            
+            st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
+            # Gráfico con color Cyan
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
-            st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#990000")
+            st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#00bcd4")
         else:
-            st.info(f"No hay datos registrados en {uni_label} ({ano_label}).")
-            if st.button("🔄 Refrescar"):
+            st.info(f"Sin datos en el sector {uni_label}.")
+            if st.button("🔄 Refrescar Señal"):
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
     # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
-        st.markdown(f"### 📜 Grimorio del {rol}")
-        st.caption(f"Tus AP disponibles: **{ap}**")
+        st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
+        st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
         habilidades = st.session_state.habilidades_data
         
         if not habilidades:
-            st.info("No hay habilidades disponibles para tu Rol.")
+            st.info("Sin datos en el Grimorio.")
         else:
             for hab in habilidades:
                 nombre = hab["nombre"]
@@ -416,32 +463,31 @@ else:
                 puede_pagar = ap >= costo
                 
                 with st.container():
-                    # Lógica visual de bloqueado/desbloqueado
-                    border_color = "#990000" if desbloqueada else "#444"
+                    border_color = "#00e5ff" if desbloqueada else "#1c2630"
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
                     st.markdown(f"""
-                    <div class="skill-card" style="border-left: 5px solid {border_color}; opacity: {opacity}; {grayscale}">
+                    <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                         <div class="skill-header">
-                            <h3 style="margin:0; color:white; font-size:1.1em;">{nombre}</h3>
+                            <h4 style="margin:0; color:#e0f7fa; font-size:1em;">{nombre}</h4>
                             <span class="skill-cost">⚡ {costo} AP</span>
                         </div>
-                        <p style="color:#ccc; font-size:0.9em; margin:0;">{desc}</p>
+                        <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    col_btn, col_msg = st.columns([1, 2])
-                    with col_btn:
+                    c_btn, _ = st.columns([1, 2])
+                    with c_btn:
                         if desbloqueada:
                             if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
                                 if puede_pagar:
                                     exito = solicitar_activacion_habilidad(nombre, costo, st.session_state.nombre)
                                     if exito:
-                                        st.toast(f"✅ Solicitud enviada.", icon="🔥")
+                                        st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
                                         st.balloons()
-                                    else: st.error("Error de comunicación")
-                                else: st.toast("❌ AP Insuficientes", icon="⚠️")
+                                    else: st.error("Error de enlace.")
+                                else: st.toast("❌ Energía Insuficiente", icon="⚠️")
                         else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
