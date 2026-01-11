@@ -103,11 +103,13 @@ with tab_jugadores:
         datos = df[df["Nombre"] == alumno_selec].iloc[0]
         pid = datos["id"]
         
-        # Mostrar stats actuales
+       # Mostrar stats actuales (AQUÍ ESTÁ EL CAMBIO)
         c1, c2, c3 = st.columns(3)
         c1.metric("⭐ MasterPoints (MP)", datos["MP"])
         c2.metric("⚡ AngioPoints (AP)", datos["AP"])
-        c3.metric("❤️ VitaPoints (VP)", datos["VP"])
+        
+        # Agregamos la f-string f"{...}%" para que se vea el porcentaje
+        c3.metric("❤️ VitaPoints (VP)", f"{datos['VP']}%") 
         
         st.divider()
         
