@@ -22,40 +22,24 @@ st.set_page_config(page_title="Universo AngioMasters", page_icon="🫀", layout=
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
-        
-        /* FUENTES */
         h1, h2, h3 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 2px; }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
-
-        /* LIMPIEZA */
         .block-container { padding-top: 2rem !important; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"], [data-testid="stToolbar"] { display: none !important; }
         
-        /* TARJETA DE PERFIL */
+        /* PERFIL */
         .profile-card {
             background: linear-gradient(145deg, #1e1e1e, #2d2d2d);
-            border: 2px solid #990000;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 2px solid #990000; border-radius: 15px; padding: 20px;
+            text-align: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        
-        /* AVATAR */
         .avatar-img {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #FF4B4B;
-            margin-bottom: 10px;
+            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+            border: 4px solid #FF4B4B; margin-bottom: 10px;
         }
-
         /* MÉTRICAS */
         [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; font-size: 2rem !important; }
-        
         /* BOTONES */
         .stButton>button {
             width: 100%; border-radius: 8px; background-color: #990000; 
@@ -67,27 +51,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- HEADER ---
-col_head_1, col_head_2 = st.columns([1,5])
-with col_head_1:
-    st.markdown("# 🛡️")
-with col_head_2:
+c1, c2 = st.columns([1,5])
+with c1: st.markdown("# 🛡️")
+with c2: 
     st.markdown("# ANGIOMASTERS")
     st.caption("Sistema de Gestión RPG - Hemodinamia IV")
 st.divider()
 
-# --- ESTADO DE SESIÓN ---
-if "jugador" not in st.session_state:
-    st.session_state.jugador = None
-if "team_stats" not in st.session_state:
-    st.session_state.team_stats = 0
+# --- ESTADO ---
+if "jugador" not in st.session_state: st.session_state.jugador = None
+if "team_stats" not in st.session_state: st.session_state.team_stats = 0
+if "squad_name" not in st.session_state: st.session_state.squad_name = None
 
-# --- FUNCIÓN: OBTENER PUNTAJE EQUIPO ---
-def obtener_puntaje_equipo(nombre_escuadron, propiedad_escuadron_exacta):
-    if not nombre_escuadron or nombre_escuadron == "Sin Escuadrón": return 0
+# --- FUNCIÓN: OBTENER PUNTAJE EQUIPO (VERSIÓN TEXTO) ---
+def obtener_puntaje_equipo_texto(nombre_escuadron):
+    if not nombre_escuadron: return 0
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     
-    # Usamos el nombre exacto de la columna que encontramos en el login
-    payload = {"filter": {"property": propiedad_escuadron_exacta, "select": {"equals": nombre_escuadron}}}
+    # ⚠️ CAMBIO CLAVE: El filtro ahora busca en "rich_text" (Texto) en vez de "select"
+    # Asumimos que la columna se llama "Nombre Escuadrón" tal cual dijiste
+    payload = {
+        "filter": {
+            "property": "Nombre Escuadrón", 
+            "rich_text": {"equals": nombre_escuadron}
+        }
+    }
     
     try:
         res = requests.post(url, headers=headers, json=payload)
@@ -104,135 +92,106 @@ def obtener_puntaje_equipo(nombre_escuadron, propiedad_escuadron_exacta):
 
 # --- LOGIN ---
 if not st.session_state.jugador:
-    usuario_input = st.text_input("Codename:", placeholder="Ej: Neo")
-    clave_input = st.text_input("Password:", type="password")
+    usuario = st.text_input("Codename:", placeholder="Ej: Neo")
+    clave = st.text_input("Password:", type="password")
     
     if st.button("INICIAR SISTEMA"):
         url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-        payload = {"filter": {"property": "Jugador", "title": {"equals": usuario_input}}}
+        payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
         
         try:
-            with st.spinner("Conectando con la base..."):
-                response = requests.post(url, headers=headers, json=payload)
-                if response.status_code == 200:
-                    data = response.json()
+            with st.spinner("Conectando..."):
+                res = requests.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
                     if len(data["results"]) > 0:
                         props = data["results"][0]["properties"]
                         # Validar Clave
                         try:
-                            clave_obj = props.get("Clave", {}).get("rich_text", [])
-                            clave_real = clave_obj[0]["text"]["content"] if clave_obj else ""
+                            c_obj = props.get("Clave", {}).get("rich_text", [])
+                            c_real = c_obj[0]["text"]["content"] if c_obj else ""
                             
-                            if clave_input == clave_real:
+                            if clave == c_real:
                                 st.session_state.jugador = props
-                                st.session_state.nombre = usuario_input
+                                st.session_state.nombre = usuario
                                 
-                                # --- BÚSQUEDA INTELIGENTE DE ESCUADRÓN ---
-                                # Buscamos en 3 posibles nombres de columna
-                                nombre_columna_escuadron = "Escuadron" # Default
-                                esc_data = None
+                                # --- EXTRACCIÓN DE ESCUADRÓN (MODO TEXTO) ---
+                                # Buscamos específicamente en "Nombre Escuadrón" como texto
+                                sq_name = "Sin Escuadrón"
+                                try:
+                                    # Intentamos leer como Texto (Rich Text)
+                                    sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
+                                    if sq_obj:
+                                        sq_name = sq_obj[0]["text"]["content"]
+                                except: pass
                                 
-                                if "Escuadron" in props: 
-                                    esc_data = props["Escuadron"].get("select")
-                                    nombre_columna_escuadron = "Escuadron"
-                                elif "Escuadrón" in props: 
-                                    esc_data = props["Escuadrón"].get("select")
-                                    nombre_columna_escuadron = "Escuadrón"
-                                elif "Nombre Escuadrón" in props:
-                                    esc_data = props["Nombre Escuadrón"].get("select")
-                                    nombre_columna_escuadron = "Nombre Escuadrón"
-                                
-                                nombre_esc = esc_data["name"] if esc_data else "Sin Escuadrón"
-                                st.session_state.nombre_escuadron = nombre_esc
-                                
-                                # Calculamos puntaje del equipo usando la columna correcta
-                                st.session_state.team_stats = obtener_puntaje_equipo(nombre_esc, nombre_columna_escuadron)
-                                
+                                st.session_state.squad_name = sq_name
+                                st.session_state.team_stats = obtener_puntaje_equipo_texto(sq_name)
                                 st.rerun()
-                            else:
-                                st.error("❌ CLAVE INCORRECTA")
-                        except Exception as e:
-                            st.error(f"Error procesando clave: {e}")
-                    else:
-                        st.error("❌ USUARIO NO ENCONTRADO")
-        except Exception as e:
-            st.error(f"Error técnico: {e}")
+                            else: st.error("❌ CLAVE INCORRECTA")
+                        except: st.error("❌ ERROR DE CREDENCIALES")
+                    else: st.error("❌ USUARIO NO ENCONTRADO")
+        except Exception as e: st.error(f"Error: {e}")
 
 # --- DASHBOARD ---
 else:
     p = st.session_state.jugador
     
-    # 1. EXTRACCIÓN DE DATOS
-    
-    # --- AVATAR ---
+    # 1. AVATAR
     avatar_url = None
     try:
-        # Busca en la propiedad "Avatar". Soporta subida directa (file) o enlace (external)
-        files_list = p.get("Avatar", {}).get("files", [])
-        if files_list:
-            if "file" in files_list[0]:
-                avatar_url = files_list[0]["file"]["url"]
-            elif "external" in files_list[0]:
-                avatar_url = files_list[0]["external"]["url"]
+        f_list = p.get("Avatar", {}).get("files", [])
+        if f_list:
+            if "file" in f_list[0]: avatar_url = f_list[0]["file"]["url"]
+            elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
     except: pass
 
-    # --- DATOS DE TEXTO ---
+    # 2. DATOS TEXTO
     try:
-        nivel_data = p.get("Nivel", {}).get("select")
-        nivel = nivel_data["name"] if nivel_data else "Iniciado"
-    except: nivel = "Nivel Desconocido"
-
-    try:
-        rol_data = p.get("Rol", {}).get("select")
-        rol = rol_data["name"] if rol_data else "Recluta"
+        # Rol (Asumo que Rol SÍ es un Select, si también es texto avísame)
+        r_data = p.get("Rol", {}).get("select")
+        rol = r_data["name"] if r_data else "Sin Rol"
     except: rol = "Sin Rol"
     
-    skuad = st.session_state.nombre_escuadron
+    try:
+        # Nivel (Asumo que Nivel es Select)
+        n_data = p.get("Nivel", {}).get("select")
+        nivel = n_data["name"] if n_data else "Iniciado"
+    except: nivel = "Iniciado"
 
-    # --- DATOS NUMÉRICOS (CORRECCIÓN VP) ---
+    skuad = st.session_state.squad_name
+
+    # 3. DATOS NUMÉRICOS
     try: mp = p.get("MP", {}).get("number", 0) or 0
     except: mp = 0
-    
     try: ap = p.get("AP", {}).get("number", 0) or 0
     except: ap = 0
-    
     try: 
         vp_raw = p.get("VP", {}).get("number", 1) or 0
-        # CORRECCIÓN PORCENTAJE: Si Notion manda 0.8 o 1, lo convertimos a 80 o 100
-        if vp_raw <= 1 and vp_raw > 0:
-            vp = int(vp_raw * 100)
-        else:
-            vp = int(vp_raw)
+        vp = int(vp_raw * 100) if vp_raw <= 1 and vp_raw > 0 else int(vp_raw)
     except: vp = 0
 
-    # 2. INTERFAZ VISUAL
-    
-    # Contenedor de Perfil
+    # UI
     with st.container():
-        # HTML personalizado para centrar imagen y datos
         html_avatar = f"""
         <div class="profile-card">
             {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
             <h2 style="margin:0; color:#FF4B4B;">{st.session_state.nombre}</h2>
             <h3 style="margin:5px 0; color:white;">{skuad} | {rol}</h3>
-            <p style="color:#aaa; font-style:italic;">Rango: {nivel}</p>
+            <p style="color:#aaa;">Rango: {nivel}</p>
         </div>
         """
         st.markdown(html_avatar, unsafe_allow_html=True)
 
-    # Métricas Personales
     c1, c2, c3 = st.columns(3)
     c1.metric("⭐ MP (XP)", mp)
     c2.metric("⚡ AP (Poder)", ap)
-    c3.metric("❤️ VP (Salud)", f"{vp}%") # Agregamos el signo % visualmente
+    c3.metric("❤️ VP (Salud)", f"{vp}%")
     
     st.divider()
+    st.subheader(f"🏆 Escuadrón: {skuad}")
+    st.metric("Puntaje Colectivo", st.session_state.team_stats)
     
-    # Métricas de Equipo
-    st.subheader(f"🏆 Escuadrón {skuad}")
-    st.metric("Puntaje Colectivo", st.session_state.team_stats, delta="Total Equipo")
-    
-    st.divider()
     if st.button("CERRAR SESIÓN"):
         st.session_state.jugador = None
         st.rerun()
