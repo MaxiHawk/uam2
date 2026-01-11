@@ -2,420 +2,257 @@ import streamlit as st
 import requests
 import pandas as pd
 
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Torre de Control", page_icon="⚡", layout="wide")
+
 # --- GESTIÓN DE SECRETOS ---
 try:
     NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
-    DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
-except FileNotFoundError:
-    st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
+    # Si no configuraste la clave, usa 'admin123' por defecto
+    ADMIN_PASS = st.secrets.get("ADMIN_PASSWORD", "admin123") 
+except:
+    st.error("⚠️ Error Crítico: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
 
-# --- CONFIGURACIÓN GLOBAL ---
 headers = {
     "Authorization": "Bearer " + NOTION_TOKEN,
     "Content-Type": "application/json",
     "Notion-Version": "2022-06-28"
 }
 
-st.set_page_config(page_title="Universo AngioMasters", page_icon="🫀", layout="centered")
-
-# --- DICCIONARIO DE NIVELES (LORE) ---
-NOMBRES_NIVELES = {
-    1: "🧪 Aprendiz",
-    2: "🚀 Navegante",
-    3: "🎯 Caza Arterias",
-    4: "🔍 Clarividente",
-    5: "👑 AngioMaster"
-}
-
-# --- CSS: ESTÉTICA GAMER ---
+# --- ESTILOS CSS (MODO DARK) ---
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
-        h1, h2, h3 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 2px; }
-        html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
-        .block-container { padding-top: 2rem !important; }
-        #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
-        [data-testid="stDecoration"], [data-testid="stStatusWidget"], [data-testid="stToolbar"] { display: none !important; }
-        
-        /* PERFIL */
-        .profile-card {
-            background: linear-gradient(145deg, #1e1e1e, #2d2d2d);
-            border: 2px solid #990000; border-radius: 15px; padding: 20px;
-            text-align: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        .stat-box {
+            background-color: #262730; padding: 10px; border-radius: 5px;
+            border: 1px solid #444; text-align: center;
         }
-        .avatar-img {
-            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-            border: 4px solid #FF4B4B; margin-bottom: 10px;
+        .req-card {
+            background-color: #1E1E1E; border-left: 5px solid #FFD700;
+            padding: 15px; margin-bottom: 10px; border-radius: 5px;
         }
-        /* HABILIDADES */
-        .skill-card {
-            background-color: #1A1A1A; border: 1px solid #333;
-            border-radius: 10px; padding: 15px; margin-bottom: 15px;
-            transition: transform 0.2s;
+        /* Ajuste para inputs numéricos */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
         }
-        .skill-card:hover { border-color: #990000; transform: translateY(-2px); }
-        .skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .skill-cost { background-color: #333; color: #FFD700; padding: 4px 8px; border-radius: 5px; font-family: 'Orbitron', sans-serif; font-size: 0.9em; }
-        
-        /* GENERAL */
-        [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; font-size: 2rem !important; }
-        .stButton>button { width: 100%; border-radius: 8px; background-color: #990000; color: white; border: none; padding: 10px 24px; font-weight: bold; font-family: 'Orbitron', sans-serif; }
-        .stButton>button:hover { background-color: #FF0000; }
-        .stButton button:disabled { background-color: #333333; color: #666666; cursor: not-allowed; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
-c1, c2 = st.columns([1,5])
-with c1: st.markdown("# 🛡️")
-with c2: 
-    st.markdown("# ANGIOMASTERS")
-    st.caption("Sistema de Gestión RPG - Hemodinamia IV")
-st.divider()
+# --- LOGIN DE PROFESOR ---
+if "admin_logged" not in st.session_state: st.session_state.admin_logged = False
 
-# --- ESTADO DE SESIÓN ---
-if "jugador" not in st.session_state: st.session_state.jugador = None
-if "team_stats" not in st.session_state: st.session_state.team_stats = 0
-if "squad_name" not in st.session_state: st.session_state.squad_name = None
-if "login_error" not in st.session_state: st.session_state.login_error = None
-if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
-if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
+if not st.session_state.admin_logged:
+    c1, c2, c3 = st.columns([1,1,1])
+    with c2:
+        st.markdown("### 🛡️ Acceso Restringido")
+        pwd = st.text_input("Clave Maestra:", type="password")
+        if st.button("Entrar"):
+            if pwd == ADMIN_PASS:
+                st.session_state.admin_logged = True
+                st.rerun()
+            else:
+                st.error("❌ Acceso Denegado")
+    st.stop()
 
-# Variables de Contexto (Universo)
-if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
-if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
-
-# --- FUNCIONES LÓGICAS ---
-
-def calcular_nivel_usuario(mp):
-    if mp <= 50: return 1
-    elif mp <= 150: return 2
-    elif mp <= 300: return 3
-    elif mp <= 500: return 4
-    else: return 5
-
-def cargar_habilidades_rol(rol_jugador):
-    if not rol_jugador: return []
-    url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
-    payload = {
-        "filter": {"property": "Rol", "select": {"equals": rol_jugador}},
-        "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
-    }
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        habilidades = []
-        if res.status_code == 200:
-            for item in res.json()["results"]:
-                props = item["properties"]
-                try:
-                    nombre = props["Habilidad"]["title"][0]["text"]["content"]
-                    costo = props["Costo AP"]["number"]
-                    nivel_req = props["Nivel Requerido"]["number"]
-                    desc_obj = props.get("Descripcion", {}).get("rich_text", [])
-                    descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
-                    habilidades.append({
-                        "id": item["id"], "nombre": nombre, "costo": costo,
-                        "nivel_req": nivel_req, "descripcion": descripcion
-                    })
-                except: pass
-        return habilidades
-    except: return []
-
-def solicitar_activacion_habilidad(nombre_habilidad, costo, jugador_nombre):
-    url = "https://api.notion.com/v1/pages"
-    nuevo_mensaje = {
-        "parent": {"database_id": DB_SOLICITUDES_ID},
-        "properties": {
-            "Remitente": {"title": [{"text": {"content": f"SOLICITUD: {jugador_nombre}"}}]},
-            "Mensaje": {"rich_text": [{"text": {"content": f"Desea activar: '{nombre_habilidad}' (Costo: {costo} AP). Contexto: {st.session_state.uni_actual} {st.session_state.ano_actual}"}}]}
-        }
-    }
-    res = requests.post(url, headers=headers, json=nuevo_mensaje)
-    return res.status_code == 200
-
-# --- FUNCIONES DE FILTRADO POR UNIVERSO ---
-
-def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
-    """Suma puntos SOLO del escuadrón en esa Universidad y Año"""
-    if not nombre_escuadron or not uni or not ano: return 0
-    
+# --- FUNCIONES DE NOTION ---
+def get_all_players():
+    """Descarga todos los jugadores para la lista de selección"""
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    payload = {
-        "filter": {
-            "and": [
-                {"property": "Nombre Escuadrón", "rich_text": {"equals": nombre_escuadron}},
-                {"property": "Universidad", "select": {"equals": uni}},
-                {"property": "Año", "select": {"equals": ano}}
-            ]
-        }
-    }
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        total_mp = 0
-        if res.status_code == 200:
-            for miembro in res.json()["results"]:
-                try:
-                    val = miembro["properties"]["MP"]["number"]
-                    if val: total_mp += val
-                except: pass
-        return total_mp
-    except: return 0
+    res = requests.post(url, headers=headers, json={})
+    players = []
+    if res.status_code == 200:
+        for p in res.json()["results"]:
+            props = p["properties"]
+            try:
+                nombre = props["Jugador"]["title"][0]["text"]["content"]
+                players.append({
+                    "id": p["id"],
+                    "Nombre": nombre,
+                    "MP": props["MP"]["number"] or 0,
+                    "AP": props["AP"]["number"] or 0,
+                    "VP": props["VP"]["number"] or 0
+                })
+            except: pass
+    return pd.DataFrame(players).sort_values("Nombre")
 
-def cargar_ranking_filtrado(uni, ano):
-    """Carga ranking SOLO de la Universidad y Año del jugador"""
-    if not uni or not ano: return pd.DataFrame()
+def update_notion_stat(page_id, prop, new_value):
+    """Actualiza un valor numérico en Notion"""
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    # Convertimos a entero para asegurar compatibilidad
+    data = {"properties": {prop: {"number": int(new_value)}}}
+    requests.patch(url, headers=headers, json=data)
+
+def delete_message(page_id):
+    """Archiva un mensaje/solicitud (Soft Delete)"""
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    requests.patch(url, headers=headers, json={"archived": True})
+
+# --- INTERFAZ PRINCIPAL ---
+st.title("⚡ Torre de Control - AngioMasters")
+
+tab_jugadores, tab_solicitudes = st.tabs(["👥 GESTIÓN JUGADORES", "📩 SOLICITUDES"])
+
+# ==========================================
+# 1. GESTIÓN JUGADORES
+# ==========================================
+with tab_jugadores:
+    st.markdown("### Modificar Estadísticas")
     
-    url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    payload = {
-        "filter": {
-            "and": [
-                {"property": "Universidad", "select": {"equals": uni}},
-                {"property": "Año", "select": {"equals": ano}}
-            ]
-        }
-    }
+    df = get_all_players()
     
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        if res.status_code == 200:
-            lista = []
-            for p in res.json()["results"]:
-                props = p["properties"]
-                try:
-                    nombre = props["Jugador"]["title"][0]["text"]["content"]
-                    mp = props["MP"]["number"] or 0
-                    esc_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-                    escuadron = esc_obj[0]["text"]["content"] if esc_obj else "Sin Escuadrón"
-                    lista.append({"Agente": nombre, "Escuadrón": escuadron, "MasterPoints": mp})
-                except: pass
-            
-            df = pd.DataFrame(lista)
-            if not df.empty:
-                df = df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
-                df.index += 1 
-            return df
-    except: return pd.DataFrame()
-    return pd.DataFrame()
-
-# --- LOGIN ---
-def validar_login():
-    usuario = st.session_state.input_user.strip()
-    clave = st.session_state.input_pass.strip()
-    
-    if not usuario or not clave:
-        st.session_state.login_error = "⚠️ Ingresa usuario y contraseña."
-        return
-
-    url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
-    
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        if res.status_code == 200:
-            data = res.json()
-            if len(data["results"]) > 0:
-                props = data["results"][0]["properties"]
-                try:
-                    c_obj = props.get("Clave", {}).get("rich_text", [])
-                    c_real = c_obj[0]["text"]["content"] if c_obj else ""
-                    
-                    if clave == c_real:
-                        st.session_state.jugador = props
-                        st.session_state.nombre = usuario
-                        st.session_state.login_error = None
-                        
-                        # --- DETECTAR UNIVERSO (UNI + AÑO) ---
-                        try:
-                            uni_data = props.get("Universidad", {}).get("select")
-                            st.session_state.uni_actual = uni_data["name"] if uni_data else None
-                            
-                            ano_data = props.get("Año", {}).get("select")
-                            st.session_state.ano_actual = ano_data["name"] if ano_data else None
-                        except: 
-                            st.session_state.uni_actual = None
-                            st.session_state.ano_actual = None
-
-                        # Cargar Datos Contextualizados
-                        sq_name = "Sin Escuadrón"
-                        try:
-                            sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-                            if sq_obj: sq_name = sq_obj[0]["text"]["content"]
-                        except: pass
-                        st.session_state.squad_name = sq_name
-                        
-                        st.session_state.team_stats = obtener_puntaje_equipo_filtrado(
-                            sq_name, st.session_state.uni_actual, st.session_state.ano_actual
-                        )
-                        
-                        # CARGA EL RANKING FILTRADO AL INICIO
-                        st.session_state.ranking_data = cargar_ranking_filtrado(
-                            st.session_state.uni_actual, st.session_state.ano_actual
-                        )
-                        
-                        try:
-                            rol_data = props.get("Rol", {}).get("select")
-                            rol_usuario = rol_data["name"] if rol_data else None
-                        except: rol_usuario = None
-                        if rol_usuario:
-                            st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
-                        
-                    else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
-                except Exception as e: st.session_state.login_error = f"Error Credenciales: {e}"
-            else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
-        else: st.session_state.login_error = "⚠️ Error de conexión"
-    except Exception as e: st.session_state.login_error = f"Error técnico: {e}"
-
-def cerrar_sesion():
-    st.session_state.jugador = None
-    st.session_state.ranking_data = None
-    st.session_state.habilidades_data = []
-    st.session_state.uni_actual = None
-    st.session_state.ano_actual = None
-
-# ================= UI =================
-
-if not st.session_state.jugador:
-    with st.form("login_form"):
-        st.markdown("### 🔐 ACCESO A LA MATRIX")
-        st.text_input("Codename:", placeholder="Ej: Neo", key="input_user")
-        st.text_input("Password:", type="password", key="input_pass")
-        st.form_submit_button("INICIAR SISTEMA", on_click=validar_login)
-    if st.session_state.login_error: st.error(st.session_state.login_error)
-
-else:
-    p = st.session_state.jugador
-    mp = p.get("MP", {}).get("number", 0) or 0
-    ap = p.get("AP", {}).get("number", 0) or 0
-    nivel_num = calcular_nivel_usuario(mp)
-    nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
-    
-    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Uni"
-    ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "????"
-    st.caption(f"📍 Conectado a: **{uni_label} - Generación {ano_label}**")
-
-    if not st.session_state.uni_actual or not st.session_state.ano_actual:
-        st.warning("⚠️ ALERTA: Tu usuario no tiene asignada una Universidad o Año en Notion. El ranking no funcionará correctamente.")
-
-    tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
-    
-    # --- TAB 1: PERFIL ---
-    with tab_perfil:
-        avatar_url = None
-        try:
-            f_list = p.get("Avatar", {}).get("files", [])
-            if f_list:
-                if "file" in f_list[0]: avatar_url = f_list[0]["file"]["url"]
-                elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
-        except: pass
+    if not df.empty:
+        # Selector de alumno
+        alumno_selec = st.selectbox("Seleccionar Agente:", df["Nombre"].tolist())
         
-        try:
-            r_data = p.get("Rol", {}).get("select")
-            rol = r_data["name"] if r_data else "Sin Rol"
-        except: rol = "Sin Rol"
+        # Obtener datos del seleccionado (Fila completa)
+        datos = df[df["Nombre"] == alumno_selec].iloc[0]
+        pid = datos["id"]
         
-        skuad = st.session_state.squad_name
-        try: 
-            vp_raw = p.get("VP", {}).get("number", 1) or 0
-            vp = int(vp_raw) 
-        except: vp = 0
-        
-        with st.container():
-            html_avatar = f"""
-            <div class="profile-card">
-                {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
-                <h2 style="margin:0; color:#FF4B4B;">{st.session_state.nombre}</h2>
-                <h3 style="margin:5px 0; color:white;">{skuad} | {rol}</h3>
-                <p style="color:#aaa;">Nivel {nivel_num}: {nombre_rango}</p>
-            </div>
-            """
-            st.markdown(html_avatar, unsafe_allow_html=True)
-            
+        # --- VISUALIZACIÓN DE MÉTRICAS ---
         c1, c2, c3 = st.columns(3)
-        c1.metric("⭐ MP", mp)
-        c2.metric("⚡ AP", ap)
-        c3.metric("❤️ VP", f"{vp}%")
+        c1.metric("⭐ MasterPoints (MP)", int(datos["MP"]))
+        c2.metric("⚡ AngioPoints (AP)", int(datos["AP"]))
+        # VP formateado como Entero + %
+        c3.metric("❤️ VitaPoints (VP)", f"{int(datos['VP'])}%")
         
         st.divider()
-        st.button("CERRAR SESIÓN", on_click=cerrar_sesion)
-
-    # --- TAB 2: RANKING (CORREGIDO) ---
-    with tab_ranking:
-        # --- INSPECTOR DE FILTROS ---
-        with st.expander("🕵️‍♂️ Inspector de Filtros (Si ves gente de otra U, abre aquí)"):
-            st.write(f"Filtrando por Universidad: **{st.session_state.uni_actual}**")
-            st.write(f"Filtrando por Año: **{st.session_state.ano_actual}**")
-            if st.session_state.ranking_data is not None:
-                st.write(f"Jugadores encontrados: {len(st.session_state.ranking_data)}")
-        # -----------------------------
-
-        st.markdown(f"### ⚔️ TOP AGENTES ({uni_label} {ano_label})")
-        df = st.session_state.ranking_data
         
-        if df is not None and not df.empty:
-            st.dataframe(
-                df.head(10), 
-                use_container_width=True,
-                column_config={
-                    "MasterPoints": st.column_config.ProgressColumn(
-                        "XP Total", format="%d", min_value=0, max_value=int(df["MasterPoints"].max())
-                    ),
-                }
-            )
-            st.markdown("### 🛡️ GUERRA DE ESCUADRONES")
-            df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
-            st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#990000")
-        else:
-            st.info(f"No hay datos para {uni_label} - {ano_label}.")
-            if st.button("🔄 Refrescar"):
-                st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
+        # --- PANEL DE ACCIONES ---
+        col_mp, col_ap, col_vp = st.columns(3)
+        
+        # COLUMNA MP
+        with col_mp:
+            st.markdown("#### ⭐ Ajustar MP")
+            if st.button("+10 MP (Participación)", key="mp10"):
+                update_notion_stat(pid, "MP", datos["MP"] + 10)
+                st.success("✅ +10 MP")
+                st.rerun()
+            if st.button("+50 MP (Gran Logro)", key="mp50"):
+                update_notion_stat(pid, "MP", datos["MP"] + 50)
+                st.success("✅ +50 MP")
+                st.rerun()
+            
+            # Input Manual MP
+            val_mp = st.number_input("Manual MP", value=int(datos["MP"]), step=1, key="n_mp")
+            if st.button("Guardar MP", key="s_mp"):
+                update_notion_stat(pid, "MP", val_mp)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES ---
-    with tab_habilidades:
-        st.markdown(f"### 📜 Grimorio del {rol}")
-        st.caption(f"Tus AP disponibles: **{ap}**")
-        habilidades = st.session_state.habilidades_data
+        # COLUMNA AP
+        with col_ap:
+            st.markdown("#### ⚡ Ajustar AP")
+            if st.button("+5 AP (Bonus)", key="ap5"):
+                update_notion_stat(pid, "AP", datos["AP"] + 5)
+                st.success("✅ +5 AP")
+                st.rerun()
+            
+            # Input Manual AP
+            val_ap = st.number_input("Manual AP", value=int(datos["AP"]), step=1, key="n_ap")
+            if st.button("Guardar AP", key="s_ap"):
+                update_notion_stat(pid, "AP", val_ap)
+                st.rerun()
+
+        # COLUMNA VP (CORREGIDA)
+        with col_vp:
+            st.markdown("#### ❤️ Ajustar VP")
+            if st.button("💔 -10 VP (Daño)", key="vp_minus"):
+                nuevo_vp = max(0, int(datos["VP"]) - 10)
+                update_notion_stat(pid, "VP", nuevo_vp)
+                st.warning("⚠️ -10 VP Aplicado")
+                st.rerun()
+            if st.button("❤️ Curar Total (100%)", key="vp_full"):
+                update_notion_stat(pid, "VP", 100)
+                st.success("✅ Salud Restaurada")
+                st.rerun()
+            
+            # Input Manual VP (Solo Enteros)
+            val_vp = st.number_input("Manual VP (0-100)", value=int(datos["VP"]), step=1, key="n_vp")
+            if st.button("Guardar VP", key="s_vp"):
+                update_notion_stat(pid, "VP", val_vp)
+                st.rerun()
+
+# ==========================================
+# 2. SOLICITUDES
+# ==========================================
+with tab_solicitudes:
+    st.markdown("### Buzón de Habilidades y Mensajes")
+    if st.button("🔄 Actualizar Buzón"): st.rerun()
+    
+    # Consultar DB Solicitudes
+    url_req = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
+    res_req = requests.post(url_req, headers=headers, json={})
+    
+    if res_req.status_code == 200:
+        msgs = res_req.json()["results"]
+        if not msgs:
+            st.info("📭 No hay solicitudes pendientes.")
         
-        if not habilidades:
-            st.info("No se encontraron habilidades para tu Rol.")
-        else:
-            for hab in habilidades:
-                nombre = hab["nombre"]
-                costo = hab["costo"]
-                nivel_req = hab["nivel_req"]
-                desc = hab["descripcion"]
+        for m in msgs:
+            try:
+                mid = m["id"]
+                props = m["properties"]
                 
-                desbloqueada = nivel_num >= nivel_req
-                puede_pagar = ap >= costo
+                # Extracción segura de datos
+                remitente = "Anónimo"
+                texto = "Sin contenido"
                 
+                # Ajusta estos nombres si tus columnas se llaman diferente en Notion
+                if "Remitente" in props:
+                    t = props["Remitente"].get("title", [])
+                    if t: remitente = t[0]["text"]["content"]
+                
+                if "Mensaje" in props:
+                    r = props["Mensaje"].get("rich_text", [])
+                    if r: texto = r[0]["text"]["content"]
+                
+                # Renderizar Tarjeta
                 with st.container():
-                    border_color = "#990000" if desbloqueada else "#555"
-                    opacity = "1" if desbloqueada else "0.6"
-                    
-                    st.markdown(f"""
-                    <div class="skill-card" style="border-left: 5px solid {border_color}; opacity: {opacity};">
-                        <div class="skill-header">
-                            <h3 style="margin:0; color:white;">{nombre}</h3>
-                            <span class="skill-cost">⚡ {costo} AP</span>
+                    col_txt, col_act = st.columns([3, 1])
+                    with col_txt:
+                        st.markdown(f"""
+                        <div class="req-card">
+                            <strong>👤 {remitente}</strong><br>
+                            {texto}
                         </div>
-                        <p style="color:#ccc; font-size:0.9em;">{desc}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
                     
-                    col_btn, col_msg = st.columns([1, 3])
-                    with col_btn:
-                        if desbloqueada:
-                            if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
-                                if puede_pagar:
-                                    exito = solicitar_activacion_habilidad(nombre, costo, st.session_state.nombre)
-                                    if exito:
-                                        st.toast(f"✅ Solicitud enviada.", icon="🔥")
-                                        st.balloons()
-                                    else: st.error("Error de comunicación")
-                                else: st.toast("❌ AP Insuficientes", icon="⚠️")
-                        else:
-                            nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
-                            st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
+                    with col_act:
+                        # Detectar costo en el texto (Formato esperado: "Costo: X AP")
+                        es_compra = "Costo:" in texto
+                        costo = 0
+                        if es_compra:
+                            try:
+                                part = texto.split("Costo:")[1]
+                                costo = int(part.split("AP")[0].strip())
+                            except: pass
+                        
+                        if es_compra and costo > 0:
+                            if st.button(f"✅ Aprobar (-{costo} AP)", key=f"ok_{mid}"):
+                                # 1. Recargar datos actuales para evitar restar sobre saldo viejo
+                                df_p = get_all_players()
+                                nombre_clean = remitente.replace("SOLICITUD: ", "").strip()
+                                jugador_row = df_p[df_p["Nombre"] == nombre_clean]
+                                
+                                if not jugador_row.empty:
+                                    pid_jugador = jugador_row.iloc[0]["id"]
+                                    ap_actual = jugador_row.iloc[0]["AP"]
+                                    
+                                    if ap_actual >= costo:
+                                        # Restar y Borrar
+                                        update_notion_stat(pid_jugador, "AP", ap_actual - costo)
+                                        delete_message(mid)
+                                        st.success(f"Cobrado. Nuevo saldo: {ap_actual-costo} AP.")
+                                        st.rerun()
+                                    else:
+                                        st.error(f"❌ Saldo insuficiente ({ap_actual} AP).")
+                                else:
+                                    st.error("Jugador no encontrado en DB.")
+                                    
+                        if st.button("🗑️ Borrar", key=f"del_{mid}"):
+                            delete_message(mid)
+                            st.rerun()
+            except Exception as e:
+                st.error(f"Error leyendo mensaje: {e}")
