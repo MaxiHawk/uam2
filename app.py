@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import os
+import base64
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -31,86 +32,137 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON / PRAXIS PRIMORIS ---
+# --- CSS: ESTÉTICA BLUE NEON (PULIDO) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
         
         /* FUENTES Y FONDO */
-        h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3); }
+        h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
         
-        /* LIMPIEZA */
-        .block-container { padding-top: 0rem !important; }
+        /* LIMPIEZA INTERFAZ */
+        .block-container { padding-top: 1rem !important; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
         /* TARJETA DE PERFIL (BLUE GLASS) */
         .profile-card {
-            background: linear-gradient(135deg, rgba(5, 20, 40, 0.9), rgba(0, 10, 20, 0.95));
+            background: linear-gradient(180deg, rgba(6, 22, 38, 0.9), rgba(4, 12, 20, 0.95));
             border: 1px solid #004d66;
-            border-top: 3px solid #00e5ff;
-            border-radius: 15px;
-            padding: 20px;
+            border-top: 2px solid #00e5ff;
+            border-radius: 16px;
+            padding: 30px 20px;
             text-align: center;
-            margin-bottom: 20px;
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+            margin-bottom: 30px;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.05);
+            position: relative;
+        }
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 15px;
         }
         .avatar-img {
-            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-            border: 3px solid #00e5ff; margin-bottom: 10px;
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+            width: 130px; height: 130px; border-radius: 50%; object-fit: cover;
+            border: 3px solid #00e5ff;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
         }
         
-        /* CUSTOM METRICS (IMÁGENES) */
-        .metric-container {
-            background: rgba(0, 20, 30, 0.6);
-            border: 1px solid #004d66;
-            border-radius: 10px;
-            padding: 10px;
+        /* CUSTOM METRICS (HUD INTEGRADO) */
+        .hud-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .metric-box {
+            background: rgba(8, 28, 48, 0.6);
+            border: 1px solid #005f73;
+            border-radius: 12px;
+            padding: 15px 5px;
             text-align: center;
+            flex: 1;
+            transition: all 0.3s ease;
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100%;
-            transition: transform 0.2s;
+            justify-content: center;
         }
-        .metric-container:hover { transform: translateY(-5px); border-color: #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2); }
-        .metric-icon { width: 50px; height: 50px; object-fit: contain; margin-bottom: 5px; filter: drop-shadow(0 0 5px rgba(0,229,255,0.5)); }
-        .metric-value { font-family: 'Orbitron'; font-size: 1.5rem; color: #fff; font-weight: bold; }
-        .metric-label { font-size: 0.8rem; color: #00bcd4; text-transform: uppercase; letter-spacing: 1px; }
+        .metric-box:hover {
+            border-color: #00e5ff;
+            background: rgba(8, 28, 48, 0.9);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 229, 255, 0.15);
+        }
+        .metric-icon-img {
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 5px rgba(0,229,255,0.6));
+        }
+        .metric-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            color: #fff;
+            font-weight: 700;
+            line-height: 1.2;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        .metric-label {
+            font-size: 0.75rem;
+            color: #4dd0e1;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 5px;
+        }
 
         /* EMBLEMA ESCUADRÓN */
         .squad-emblem { width: 80px; height: 80px; object-fit: contain; margin-top: 10px; filter: drop-shadow(0 0 8px rgba(0,229,255,0.4)); }
 
         /* BOTONES NEON BLUE */
         .stButton>button { 
-            width: 100%; border-radius: 6px; 
+            width: 100%; border-radius: 8px; 
             background: linear-gradient(90deg, #006064, #00bcd4); 
-            color: white; border: none; padding: 12px 24px; 
+            color: white; border: none; padding: 14px 24px; 
             font-weight: bold; font-family: 'Orbitron', sans-serif; 
-            text-transform: uppercase; letter-spacing: 1px;
+            text-transform: uppercase; letter-spacing: 2px;
             transition: all 0.3s; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .stButton>button:hover { 
             background: linear-gradient(90deg, #00bcd4, #00e5ff); 
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6); 
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.5); 
             color: #000;
+            transform: scale(1.02);
         }
-        .stButton button:disabled { background: #0f1520; color: #444; border: 1px solid #333; }
+        .stButton button:disabled { background: #0f1520; color: #444; border: 1px solid #333; cursor: not-allowed; }
         
-        /* TABS Y DATAFRAME */
-        .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-        .stTabs [data-baseweb="tab"] { background-color: #0a101a; border: 1px solid #004d66; color: #00bcd4; }
-        .stTabs [aria-selected="true"] { background-color: #00bcd4 !important; color: black !important; font-weight: bold; box-shadow: 0 0 10px #00bcd4; }
+        /* TABS Y DATAFRAME (CORREGIDO ROJO A CYAN) */
+        .stTabs [data-baseweb="tab-list"] { gap: 10px; border-bottom: none; }
+        .stTabs [data-baseweb="tab"] {
+            background-color: #0a101a; 
+            border: 1px solid #004d66; 
+            color: #5aa1b0; 
+            border-radius: 6px;
+            padding: 10px 20px;
+        }
+        .stTabs [aria-selected="true"] { 
+            background-color: rgba(0, 229, 255, 0.1) !important; 
+            color: #00e5ff !important; 
+            font-weight: bold; 
+            border: 1px solid #00e5ff !important;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
         
         /* SKILL CARDS */
-        .skill-card { background-color: #0a141f; border: 1px solid #004d66; border-radius: 8px; padding: 15px; margin-bottom: 10px; }
-        .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.1); }
-        .skill-cost { background: #002d38; color: #00e5ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #006064; font-size: 0.8em; }
+        .skill-card { background-color: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 20px; margin-bottom: 15px; }
+        .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.1); }
+        .skill-cost { background: #002d38; color: #00e5ff; padding: 4px 12px; border-radius: 20px; border: 1px solid #006064; font-size: 0.8em; font-weight: bold; }
 
         /* ALERTA */
-        .stAlert { background-color: #05101a; border: 1px solid #00bcd4; color: #e0f7fa; }
+        .stAlert { background-color: rgba(0, 77, 102, 0.2); border: 1px solid #00bcd4; color: #e0f7fa; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -124,7 +176,16 @@ if "habilidades_data" not in st.session_state: st.session_state.habilidades_data
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 
-# --- FUNCIONES LÓGICAS (MISMAS QUE ANTES) ---
+# --- HELPER: IMÁGENES A BASE64 (ESTO ARREGLA LA VISUALIZACIÓN) ---
+def get_img_as_base64(file_path):
+    """Convierte una imagen local a string base64 para insertar en HTML puro"""
+    if not os.path.exists(file_path):
+        return ""
+    with open(file_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# --- FUNCIONES LÓGICAS ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -291,21 +352,19 @@ def cerrar_sesion():
 
 # ================= UI PRINCIPAL =================
 
-# HELPER: Función para verificar si existe imagen, si no devuelve una transparente o placeholder
-def get_image_path(filename):
-    if os.path.exists(f"assets/{filename}"):
-        return f"assets/{filename}"
-    return "https://via.placeholder.com/150?text=IMG" # Placeholder si falla
-
 if not st.session_state.jugador:
     # --- PANTALLA LOGIN ---
-    st.image(get_image_path("cover.png"), use_container_width=True)
+    # Usamos st.image directo para cover y logo en login porque es layout simple
+    if os.path.exists("assets/cover.png"):
+        st.image("assets/cover.png", use_container_width=True)
     
     with st.container():
-        # Logo y Título
         c_l, c_r = st.columns([1, 4])
         with c_l:
-            st.image(get_image_path("logo.png"), width=80)
+            if os.path.exists("assets/logo.png"):
+                st.image("assets/logo.png", width=80)
+            else:
+                st.markdown("🛡️")
         with c_r:
             st.markdown("<h3 style='margin-bottom:0;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
             st.caption("PLATAFORMA COMPUTADORA CENTRAL")
@@ -332,17 +391,18 @@ else:
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
 
-    # Header Dashboard
+    # HEADER COMPACTO
     c_head1, c_head2 = st.columns([1, 5])
-    with c_head1: st.image(get_image_path("logo.png"), width=60)
+    with c_head1: 
+        if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=60)
     with c_head2:
-        st.markdown(f"<h2 style='margin:0;'>HOLA, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0; font-size:1.8em;'>HOLA, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
         st.caption(f"📍 {uni_label} | 📅 {ano_label}")
 
-    # Pestañas
+    # PESTAÑAS
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL ---
+    # --- TAB 1: PERFIL (HUD REDISEÑADO) ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -356,65 +416,50 @@ else:
         except: rol = "Sin Rol"
         
         skuad = st.session_state.squad_name
-        # Intento de cargar emblema del escuadrón (basado en nombre archivo = nombre escuadron minusculas y guiones bajos)
-        emblema_filename = skuad.lower().replace(" ", "_") + ".png" if skuad else "none.png"
-        
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
         # Tarjeta Perfil
         st.markdown(f"""
         <div class="profile-card">
-            {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
-            <h2 style="margin:0; color:#00e5ff; text-transform: uppercase;">{st.session_state.nombre}</h2>
-            <h3 style="margin:5px 0; color:#e0f7fa; font-size:1.1em;">{rol}</h3>
-            <p style="color:#00bcd4; letter-spacing:2px;">NIVEL {nivel_num}: {nombre_rango.upper()}</p>
+            <div class="avatar-container">
+                {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+            </div>
+            <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
+            <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
+            <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
+                NIVEL {nivel_num}: {nombre_rango.upper()}
+            </div>
         </div>
         """, unsafe_allow_html=True)
-
-        # Emblema Squad (Visualización extra)
-        if os.path.exists(f"assets/{emblema_filename}"):
-             st.markdown(f"""
-             <div style="text-align:center; margin-bottom:20px;">
-                <img src="app/static/{emblema_filename}" style="width:60px; opacity:0.8;">
-                <div style="color:#00bcd4; font-size:0.8em;">{skuad}</div>
-             </div>
-             """, unsafe_allow_html=True)
-            
-        # HUD Stats con IMÁGENES
-        # Nota: Streamlit no sirve imagenes locales en HTML puro facil sin base64, 
-        # pero usaremos st.image dentro de columnas para simular el componente.
         
-        col1, col2, col3 = st.columns(3)
+        # --- HUD METRICS CON BASE64 (SOLUCIÓN A IMÁGENES ROTAS) ---
+        # Cargamos las imágenes en Base64 para inyectarlas en el HTML
+        b64_mp = get_img_as_base64("assets/icon_mp.png")
+        b64_ap = get_img_as_base64("assets/icon_ap.png")
+        b64_vp = get_img_as_base64("assets/icon_vp.png")
         
-        with col1:
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.image(get_image_path("icon_mp.png"), width=50)
-            st.markdown(f"""
-                <div class="metric-value">{mp}</div>
+        # HTML del HUD (Flexbox puro)
+        st.markdown(f"""
+        <div class="hud-container">
+            <div class="metric-box">
+                <img src="data:image/png;base64,{b64_mp}" class="metric-icon-img">
+                <div class="metric-value" style="color:#FFD700;">{mp}</div>
                 <div class="metric-label">MasterPoints</div>
             </div>
-            """, unsafe_allow_html=True)
-            
-        with col2:
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.image(get_image_path("icon_ap.png"), width=50)
-            st.markdown(f"""
-                <div class="metric-value">{ap}</div>
+            <div class="metric-box">
+                <img src="data:image/png;base64,{b64_ap}" class="metric-icon-img">
+                <div class="metric-value" style="color:#00e5ff;">{ap}</div>
                 <div class="metric-label">AngioPoints</div>
             </div>
-            """, unsafe_allow_html=True)
-
-        with col3:
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.image(get_image_path("icon_vp.png"), width=50)
-            st.markdown(f"""
-                <div class="metric-value">{vp}%</div>
+            <div class="metric-box">
+                <img src="data:image/png;base64,{b64_vp}" class="metric-icon-img">
+                <div class="metric-value" style="color:#ff4b4b;">{vp}%</div>
                 <div class="metric-label">VitaPoints</div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING ---
@@ -435,7 +480,6 @@ else:
             )
             
             st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
-            # Gráfico con color Cyan
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
             st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#00bcd4")
         else:
