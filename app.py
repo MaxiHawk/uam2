@@ -68,6 +68,14 @@ st.markdown("""
             border: 3px solid #00e5ff;
             box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
         }
+        .squad-badge {
+            width: 50px; height: 50px; object-fit: contain;
+            margin-top: 15px;
+            filter: drop-shadow(0 0 8px rgba(0,229,255,0.6));
+            opacity: 0.9;
+            transition: transform 0.3s;
+        }
+        .squad-badge:hover { transform: scale(1.1); opacity: 1; }
         
         /* CUSTOM METRICS (HUD INTEGRADO) */
         .hud-container {
@@ -157,7 +165,7 @@ st.markdown("""
         .skill-card { background-color: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 20px; margin-bottom: 15px; }
         .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.1); }
         .skill-cost { background: #002d38; color: #00e5ff; padding: 4px 12px; border-radius: 20px; border: 1px solid #006064; font-size: 0.8em; font-weight: bold; }
-
+        
         /* ALERTA */
         .stAlert { background-color: rgba(0, 77, 102, 0.2); border: 1px solid #00bcd4; color: #e0f7fa; }
     </style>
@@ -309,14 +317,11 @@ def validar_login():
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         
-                        # Contexto (Uni, Año, Estado)
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
                             ano_data = props.get("Año", {}).get("select")
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
-                            
-                            # Leer Estado UAM
                             estado_data = props.get("Estado UAM", {}).get("select")
                             st.session_state.estado_uam = estado_data["name"] if estado_data else "Desconocido"
                         except: 
@@ -394,20 +399,17 @@ else:
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
     
-    # Definir color del estado
-    status_color = "#00e5ff" # Default cyan
-    if estado_label == "Finalizado": status_color = "#ff4b4b" # Rojo
-    elif estado_label == "Sin empezar": status_color = "#FFD700" # Dorado
+    status_color = "#00e5ff" 
+    if estado_label == "Finalizado": status_color = "#ff4b4b" 
+    elif estado_label == "Sin empezar": status_color = "#FFD700" 
 
-    # HEADER DASHBOARD ÉPICO
+    # HEADER DASHBOARD
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
         if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
-        # "Hola" corregido
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
         
-        # Cabecera de Contexto (Full Epic)
         st.markdown(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
                 <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
@@ -420,6 +422,9 @@ else:
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+    # ESPACIO PARA RESPIRAR (Spacer)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # PESTAÑAS
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
@@ -438,12 +443,25 @@ else:
         except: rol = "Sin Rol"
         
         skuad = st.session_state.squad_name
-        emblema_filename = skuad.lower().replace(" ", "_") + ".png" if skuad else "none.png"
+        
+        # Lógica para Escudo de Escuadrón (nombre archivo = nombre escuadron lower + .png)
+        # Ejemplo: "Seldinger" -> "seldinger.png"
+        emblema_filename = skuad.lower().replace(" ", "_") + ".png" if skuad else None
+        b64_badge = get_img_as_base64(f"assets/{emblema_filename}")
         
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # Tarjeta Perfil
+        # Tarjeta Perfil con Logo de Escuadrón integrado
+        badge_html = ""
+        if b64_badge:
+            badge_html = f"""
+            <div style="margin-top:10px;">
+                <img src="data:image/png;base64,{b64_badge}" class="squad-badge" title="{skuad}">
+                <div style="font-size:0.7em; color:#4dd0e1; margin-top:5px; letter-spacing:1px;">{skuad.upper()}</div>
+            </div>
+            """
+
         st.markdown(f"""
         <div class="profile-card">
             <div class="avatar-container">
@@ -454,6 +472,7 @@ else:
             <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
                 NIVEL {nivel_num}: {nombre_rango.upper()}
             </div>
+            {badge_html}
         </div>
         """, unsafe_allow_html=True)
         
@@ -490,13 +509,13 @@ else:
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
+            # PANDAS STYLING PARA BARRAS AMARILLAS
+            max_mp = int(df["MasterPoints"].max())
             st.dataframe(
-                df.head(10), 
+                df.style.bar(subset=["MasterPoints"], color="#FFD700", vmin=0, vmax=max_mp),
                 use_container_width=True,
                 column_config={
-                    "MasterPoints": st.column_config.ProgressColumn(
-                        "Progreso MP", format="%d", min_value=0, max_value=int(df["MasterPoints"].max())
-                    ),
+                    "MasterPoints": st.column_config.NumberColumn("Progreso MP"),
                     "Escuadrón": st.column_config.TextColumn("Escuadrón"),
                 }
             )
@@ -536,7 +555,7 @@ else:
                     st.markdown(f"""
                     <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                         <div class="skill-header">
-                            <h4 style="margin:0; color:#e0f7fa; font-size:1em;">{nombre}</h4>
+                            <div style="font-family:'Orbitron', sans-serif; color:#e0f7fa; font-size:1.1em; font-weight:bold;">{nombre}</div>
                             <span class="skill-cost">⚡ {costo} AP</span>
                         </div>
                         <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
