@@ -2,18 +2,18 @@ import streamlit as st
 import requests
 import pandas as pd
 
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Torre de Control", page_icon="⚡", layout="wide")
 
-# --- SECRETOS ---
+# --- GESTIÓN DE SECRETOS ---
 try:
     NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
-    # Define una contraseña simple para ti en los secrets luego
+    # Si no configuraste la clave, usa 'admin123' por defecto
     ADMIN_PASS = st.secrets.get("ADMIN_PASSWORD", "admin123") 
 except:
-    st.error("⚠️ Configura los secretos (incluyendo ADMIN_PASSWORD).")
+    st.error("⚠️ Error Crítico: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
 
 headers = {
@@ -22,7 +22,7 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-# --- ESTILOS ---
+# --- ESTILOS CSS (MODO DARK) ---
 st.markdown("""
     <style>
         .stat-box {
@@ -32,6 +32,11 @@ st.markdown("""
         .req-card {
             background-color: #1E1E1E; border-left: 5px solid #FFD700;
             padding: 15px; margin-bottom: 10px; border-radius: 5px;
+        }
+        /* Ajuste para inputs numéricos */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
         }
     </style>
 """, unsafe_allow_html=True)
@@ -49,11 +54,12 @@ if not st.session_state.admin_logged:
                 st.session_state.admin_logged = True
                 st.rerun()
             else:
-                st.error("Acceso Denegado")
+                st.error("❌ Acceso Denegado")
     st.stop()
 
-# --- FUNCIONES NOTION ---
+# --- FUNCIONES DE NOTION ---
 def get_all_players():
+    """Descarga todos los jugadores para la lista de selección"""
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     res = requests.post(url, headers=headers, json={})
     players = []
@@ -73,11 +79,14 @@ def get_all_players():
     return pd.DataFrame(players).sort_values("Nombre")
 
 def update_notion_stat(page_id, prop, new_value):
+    """Actualiza un valor numérico en Notion"""
     url = f"https://api.notion.com/v1/pages/{page_id}"
+    # Convertimos a entero para asegurar compatibilidad
     data = {"properties": {prop: {"number": int(new_value)}}}
     requests.patch(url, headers=headers, json=data)
 
 def delete_message(page_id):
+    """Archiva un mensaje/solicitud (Soft Delete)"""
     url = f"https://api.notion.com/v1/pages/{page_id}"
     requests.patch(url, headers=headers, json={"archived": True})
 
@@ -92,65 +101,75 @@ tab_jugadores, tab_solicitudes = st.tabs(["👥 GESTIÓN JUGADORES", "📩 SOLIC
 with tab_jugadores:
     st.markdown("### Modificar Estadísticas")
     
-    # Cargar jugadores
     df = get_all_players()
     
     if not df.empty:
         # Selector de alumno
         alumno_selec = st.selectbox("Seleccionar Agente:", df["Nombre"].tolist())
         
-        # Obtener datos del seleccionado
+        # Obtener datos del seleccionado (Fila completa)
         datos = df[df["Nombre"] == alumno_selec].iloc[0]
         pid = datos["id"]
         
-       # Mostrar stats actuales (AQUÍ ESTÁ EL CAMBIO)
+        # --- VISUALIZACIÓN DE MÉTRICAS ---
         c1, c2, c3 = st.columns(3)
-        c1.metric("⭐ MasterPoints (MP)", datos["MP"])
-        c2.metric("⚡ AngioPoints (AP)", datos["AP"])
-        
-        # Agregamos la f-string f"{...}%" para que se vea el porcentaje
-        c3.metric("❤️ VitaPoints (VP)", f"{datos['VP']}%") 
+        c1.metric("⭐ MasterPoints (MP)", int(datos["MP"]))
+        c2.metric("⚡ AngioPoints (AP)", int(datos["AP"]))
+        # VP formateado como Entero + %
+        c3.metric("❤️ VitaPoints (VP)", f"{int(datos['VP'])}%")
         
         st.divider()
         
-        # --- ACCIONES RÁPIDAS ---
+        # --- PANEL DE ACCIONES ---
         col_mp, col_ap, col_vp = st.columns(3)
         
+        # COLUMNA MP
         with col_mp:
             st.markdown("#### ⭐ Ajustar MP")
             if st.button("+10 MP (Participación)", key="mp10"):
                 update_notion_stat(pid, "MP", datos["MP"] + 10)
-                st.success("Añadidos 10 MP")
+                st.success("✅ +10 MP")
                 st.rerun()
             if st.button("+50 MP (Gran Logro)", key="mp50"):
                 update_notion_stat(pid, "MP", datos["MP"] + 50)
-                st.success("Añadidos 50 MP")
+                st.success("✅ +50 MP")
                 st.rerun()
             
-            val_mp = st.number_input("Manual MP", value=datos["MP"], key="n_mp")
+            # Input Manual MP
+            val_mp = st.number_input("Manual MP", value=int(datos["MP"]), step=1, key="n_mp")
             if st.button("Guardar MP", key="s_mp"):
                 update_notion_stat(pid, "MP", val_mp)
                 st.rerun()
 
+        # COLUMNA AP
         with col_ap:
             st.markdown("#### ⚡ Ajustar AP")
             if st.button("+5 AP (Bonus)", key="ap5"):
                 update_notion_stat(pid, "AP", datos["AP"] + 5)
+                st.success("✅ +5 AP")
                 st.rerun()
-            val_ap = st.number_input("Manual AP", value=datos["AP"], key="n_ap")
+            
+            # Input Manual AP
+            val_ap = st.number_input("Manual AP", value=int(datos["AP"]), step=1, key="n_ap")
             if st.button("Guardar AP", key="s_ap"):
                 update_notion_stat(pid, "AP", val_ap)
                 st.rerun()
 
+        # COLUMNA VP (CORREGIDA)
         with col_vp:
             st.markdown("#### ❤️ Ajustar VP")
             if st.button("💔 -10 VP (Daño)", key="vp_minus"):
-                update_notion_stat(pid, "VP", max(0, datos["VP"] - 10))
+                nuevo_vp = max(0, int(datos["VP"]) - 10)
+                update_notion_stat(pid, "VP", nuevo_vp)
+                st.warning("⚠️ -10 VP Aplicado")
                 st.rerun()
-            if st.button("❤️ Curar Total (100)", key="vp_full"):
+            if st.button("❤️ Curar Total (100%)", key="vp_full"):
                 update_notion_stat(pid, "VP", 100)
+                st.success("✅ Salud Restaurada")
                 st.rerun()
-            val_vp = st.number_input("Manual VP", value=datos["VP"], key="n_vp")
+            
+            # Input Manual VP (Solo Enteros)
+            val_vp = st.number_input("Manual VP (0-100)", value=int(datos["VP"]), step=1, key="n_vp")
             if st.button("Guardar VP", key="s_vp"):
                 update_notion_stat(pid, "VP", val_vp)
                 st.rerun()
@@ -162,9 +181,8 @@ with tab_solicitudes:
     st.markdown("### Buzón de Habilidades y Mensajes")
     if st.button("🔄 Actualizar Buzón"): st.rerun()
     
-    # Leer Solicitudes
+    # Consultar DB Solicitudes
     url_req = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    # Filtro: Solo las NO archivadas (Notion API trae activas por defecto)
     res_req = requests.post(url_req, headers=headers, json={})
     
     if res_req.status_code == 200:
@@ -177,11 +195,11 @@ with tab_solicitudes:
                 mid = m["id"]
                 props = m["properties"]
                 
-                # Intentar leer remitente y mensaje
+                # Extracción segura de datos
                 remitente = "Anónimo"
                 texto = "Sin contenido"
                 
-                # Ajusta esto según tus columnas reales de DB Solicitudes/Mensajes
+                # Ajusta estos nombres si tus columnas se llaman diferente en Notion
                 if "Remitente" in props:
                     t = props["Remitente"].get("title", [])
                     if t: remitente = t[0]["text"]["content"]
@@ -190,7 +208,7 @@ with tab_solicitudes:
                     r = props["Mensaje"].get("rich_text", [])
                     if r: texto = r[0]["text"]["content"]
                 
-                # Tarjeta
+                # Renderizar Tarjeta
                 with st.container():
                     col_txt, col_act = st.columns([3, 1])
                     with col_txt:
@@ -202,23 +220,20 @@ with tab_solicitudes:
                         """, unsafe_allow_html=True)
                     
                     with col_act:
-                        # Detectar si es compra (busca la palabra 'Costo:' en el texto)
+                        # Detectar costo en el texto (Formato esperado: "Costo: X AP")
                         es_compra = "Costo:" in texto
                         costo = 0
                         if es_compra:
                             try:
-                                # Extraer numero "Costo: 5 AP" -> 5
                                 part = texto.split("Costo:")[1]
                                 costo = int(part.split("AP")[0].strip())
                             except: pass
                         
                         if es_compra and costo > 0:
                             if st.button(f"✅ Aprobar (-{costo} AP)", key=f"ok_{mid}"):
-                                # 1. Buscar jugador para restar puntos
-                                df_p = get_all_players() # Recargamos para tener dato fresco
-                                # Limpiamos nombre remitente (quitamos "SOLICITUD: ")
+                                # 1. Recargar datos actuales para evitar restar sobre saldo viejo
+                                df_p = get_all_players()
                                 nombre_clean = remitente.replace("SOLICITUD: ", "").strip()
-                                
                                 jugador_row = df_p[df_p["Nombre"] == nombre_clean]
                                 
                                 if not jugador_row.empty:
@@ -226,18 +241,17 @@ with tab_solicitudes:
                                     ap_actual = jugador_row.iloc[0]["AP"]
                                     
                                     if ap_actual >= costo:
-                                        # Restar Puntos
+                                        # Restar y Borrar
                                         update_notion_stat(pid_jugador, "AP", ap_actual - costo)
-                                        # Borrar Mensaje
                                         delete_message(mid)
-                                        st.success(f"Cobrado y Aprobado. {nombre_clean} tiene ahora {ap_actual-costo} AP.")
+                                        st.success(f"Cobrado. Nuevo saldo: {ap_actual-costo} AP.")
                                         st.rerun()
                                     else:
-                                        st.error(f"❌ {nombre_clean} no tiene suficientes AP ({ap_actual}).")
+                                        st.error(f"❌ Saldo insuficiente ({ap_actual} AP).")
                                 else:
-                                    st.error("No encontré al jugador en la base de datos.")
+                                    st.error("Jugador no encontrado en DB.")
                                     
-                        if st.button("🗑️ Borrar/Archivar", key=f"del_{mid}"):
+                        if st.button("🗑️ Borrar", key=f"del_{mid}"):
                             delete_message(mid)
                             st.rerun()
             except Exception as e:
