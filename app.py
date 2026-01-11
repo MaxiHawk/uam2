@@ -405,16 +405,18 @@ else:
         if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
         # "Hola" corregido
-        st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2;'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
         
-        # Nueva Cabecera de Contexto Épica
+        # Nueva Cabecera de Contexto (Diseño Panel de Datos)
         st.markdown(f"""
-            <div style="margin-top: 5px;">
-                <div style="color: #b0bec5; font-size: 0.85em; margin-bottom: 2px;">🌌 MULTIVERSO DETECTADO:</div>
-                <div style="color: #e0f7fa; font-size: 1em; font-weight: bold; margin-bottom: 8px;">{uni_label.upper()}</div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1.1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
-                    <span style="border: 1px solid {status_color}; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.75em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
+            <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
+                <div style="color: #4dd0e1; font-size: 0.7em; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px;">🌌 Multiverso Detectado</div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">
+                    {uni_label.upper()}
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
+                    <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
