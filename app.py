@@ -69,13 +69,13 @@ st.markdown("""
             box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
         }
         .squad-badge {
-            width: 50px; height: 50px; object-fit: contain;
+            width: 80px; height: 80px; object-fit: contain;
             margin-top: 15px;
             filter: drop-shadow(0 0 8px rgba(0,229,255,0.6));
-            opacity: 0.9;
+            opacity: 1.0;
             transition: transform 0.3s;
         }
-        .squad-badge:hover { transform: scale(1.1); opacity: 1; }
+        .squad-badge:hover { transform: scale(1.1); }
         
         /* CUSTOM METRICS (HUD INTEGRADO) */
         .hud-container {
@@ -423,8 +423,8 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-    # ESPACIO PARA RESPIRAR (Spacer)
-    st.markdown("<br>", unsafe_allow_html=True)
+    # ESPACIO PARA RESPIRAR (DOBLE)
+    st.markdown("<br><br>", unsafe_allow_html=True)
 
     # PESTAÑAS
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
@@ -444,23 +444,26 @@ else:
         
         skuad = st.session_state.squad_name
         
-        # Lógica para Escudo de Escuadrón (nombre archivo = nombre escuadron lower + .png)
-        # Ejemplo: "Seldinger" -> "seldinger.png"
-        emblema_filename = skuad.lower().replace(" ", "_") + ".png" if skuad else None
+        # BUSCADOR DE LOGO DE ESCUADRÓN
+        emblema_filename = skuad.lower().strip().replace(" ", "_") + ".png" if skuad else None
         b64_badge = get_img_as_base64(f"assets/{emblema_filename}")
         
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # Tarjeta Perfil con Logo de Escuadrón integrado
+        # TARJETA DE PERFIL
         badge_html = ""
         if b64_badge:
             badge_html = f"""
-            <div style="margin-top:10px;">
+            <div style="margin-top:15px;">
                 <img src="data:image/png;base64,{b64_badge}" class="squad-badge" title="{skuad}">
-                <div style="font-size:0.7em; color:#4dd0e1; margin-top:5px; letter-spacing:1px;">{skuad.upper()}</div>
+                <div style="font-size:0.75em; color:#4dd0e1; margin-top:5px; letter-spacing:2px; font-weight:bold;">{skuad.upper()}</div>
             </div>
             """
+        else:
+            # DEBUG: Si no encuentra la imagen, mostramos qué está buscando (Solo para admin/debug)
+            if skuad and skuad != "Sin Escuadrón":
+                badge_html = f"""<div style="margin-top:10px; color:#555; font-size:0.7em;">(No se encontró: assets/{emblema_filename})</div>"""
 
         st.markdown(f"""
         <div class="profile-card">
@@ -503,21 +506,21 @@ else:
         
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING ---
+    # --- TAB 2: RANKING (FIXED YELLOW BAR) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
-            # PANDAS STYLING PARA BARRAS AMARILLAS
             max_mp = int(df["MasterPoints"].max())
+            # Usamos Pandas Styler puro para la barra amarilla
             st.dataframe(
                 df.style.bar(subset=["MasterPoints"], color="#FFD700", vmin=0, vmax=max_mp),
                 use_container_width=True,
                 column_config={
-                    "MasterPoints": st.column_config.NumberColumn("Progreso MP"),
                     "Escuadrón": st.column_config.TextColumn("Escuadrón"),
-                }
+                },
+                hide_index=True
             )
             
             st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
@@ -529,7 +532,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES ---
+    # --- TAB 3: HABILIDADES (TITLES FIXED) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -555,7 +558,7 @@ else:
                     st.markdown(f"""
                     <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                         <div class="skill-header">
-                            <div style="font-family:'Orbitron', sans-serif; color:#e0f7fa; font-size:1.1em; font-weight:bold;">{nombre}</div>
+                            <span style="font-family:'Orbitron', sans-serif; color: white; font-size:1.1em; font-weight:bold; display:block;">{nombre}</span>
                             <span class="skill-cost">⚡ {costo} AP</span>
                         </div>
                         <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
