@@ -136,14 +136,13 @@ def solicitar_activacion_habilidad(nombre_habilidad, costo, jugador_nombre):
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
     return res.status_code == 200
 
-# --- FUNCIONES DE FILTRADO POR UNIVERSO (NUEVO) ---
+# --- FUNCIONES DE FILTRADO POR UNIVERSO ---
 
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
     """Suma puntos SOLO del escuadrón en esa Universidad y Año"""
     if not nombre_escuadron or not uni or not ano: return 0
     
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    # Filtro Compuesto (AND)
     payload = {
         "filter": {
             "and": [
@@ -170,7 +169,6 @@ def cargar_ranking_filtrado(uni, ano):
     if not uni or not ano: return pd.DataFrame()
     
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    # Filtro Compuesto (AND)
     payload = {
         "filter": {
             "and": [
@@ -240,11 +238,7 @@ def validar_login():
                             st.session_state.uni_actual = None
                             st.session_state.ano_actual = None
 
-                        # Validar si tiene contexto asignado
-                        if not st.session_state.uni_actual or not st.session_state.ano_actual:
-                            st.warning("⚠️ Tu perfil no tiene asignada Universidad o Año en la Base de Datos. Contacta al profesor.")
-                        
-                        # Datos Escuadrón (Filtrado por contexto)
+                        # Cargar Datos Contextualizados
                         sq_name = "Sin Escuadrón"
                         try:
                             sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
@@ -252,17 +246,15 @@ def validar_login():
                         except: pass
                         st.session_state.squad_name = sq_name
                         
-                        # Cargar Stats de Equipo (FILTRADO)
                         st.session_state.team_stats = obtener_puntaje_equipo_filtrado(
                             sq_name, st.session_state.uni_actual, st.session_state.ano_actual
                         )
                         
-                        # Cargar Ranking Global (FILTRADO)
+                        # CARGA EL RANKING FILTRADO AL INICIO
                         st.session_state.ranking_data = cargar_ranking_filtrado(
                             st.session_state.uni_actual, st.session_state.ano_actual
                         )
                         
-                        # Cargar Habilidades
                         try:
                             rol_data = props.get("Rol", {}).get("select")
                             rol_usuario = rol_data["name"] if rol_data else None
@@ -300,10 +292,12 @@ else:
     nivel_num = calcular_nivel_usuario(mp)
     nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
     
-    # Header con contexto
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Uni"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "????"
     st.caption(f"📍 Conectado a: **{uni_label} - Generación {ano_label}**")
+
+    if not st.session_state.uni_actual or not st.session_state.ano_actual:
+        st.warning("⚠️ ALERTA: Tu usuario no tiene asignada una Universidad o Año en Notion. El ranking no funcionará correctamente.")
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
@@ -325,7 +319,7 @@ else:
         skuad = st.session_state.squad_name
         try: 
             vp_raw = p.get("VP", {}).get("number", 1) or 0
-            vp = int(vp_raw) # Asumimos entero puro ya
+            vp = int(vp_raw) 
         except: vp = 0
         
         with st.container():
@@ -347,18 +341,17 @@ else:
         st.divider()
         st.button("CERRAR SESIÓN", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (FILTRADO) ---
-# --- TAB 2: RANKING (FILTRADO) ---
+    # --- TAB 2: RANKING (CORREGIDO) ---
     with tab_ranking:
-        # --- CÓDIGO DE DIAGNÓSTICO (BORRAR LUEGO) ---
-        with st.expander("🕵️‍♂️ Inspector de Filtros"):
-            st.write(f"Tu Universidad detectada: **{st.session_state.uni_actual}**")
-            st.write(f"Tu Año detectado: **{st.session_state.ano_actual}**")
-            st.info("La tabla de abajo solo debería mostrar jugadores que coincidan EXACTAMENTE con estos dos valores.")
-        # ---------------------------------------------
+        # --- INSPECTOR DE FILTROS ---
+        with st.expander("🕵️‍♂️ Inspector de Filtros (Si ves gente de otra U, abre aquí)"):
+            st.write(f"Filtrando por Universidad: **{st.session_state.uni_actual}**")
+            st.write(f"Filtrando por Año: **{st.session_state.ano_actual}**")
+            if st.session_state.ranking_data is not None:
+                st.write(f"Jugadores encontrados: {len(st.session_state.ranking_data)}")
+        # -----------------------------
 
         st.markdown(f"### ⚔️ TOP AGENTES ({uni_label} {ano_label})")
-        # ... (sigue el resto del código igual)        st.markdown(f"### ⚔️ TOP AGENTES ({uni_label} {ano_label})")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
@@ -375,7 +368,7 @@ else:
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
             st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#990000")
         else:
-            st.info("No hay datos para este Universo (Universidad/Año).")
+            st.info(f"No hay datos para {uni_label} - {ano_label}.")
             if st.button("🔄 Refrescar"):
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
