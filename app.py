@@ -32,7 +32,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON (FINAL) ---
+# --- CSS: ESTÉTICA BLUE NEON (FINAL FIX) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
@@ -69,13 +69,12 @@ st.markdown("""
             box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
         }
         .squad-badge {
-            width: 80px; height: 80px; object-fit: contain;
-            margin-top: 15px;
-            filter: drop-shadow(0 0 8px rgba(0,229,255,0.6));
-            opacity: 1.0;
+            width: 90px; height: 90px; object-fit: contain;
+            margin-top: 20px;
+            filter: drop-shadow(0 0 10px rgba(0,229,255,0.5));
             transition: transform 0.3s;
         }
-        .squad-badge:hover { transform: scale(1.1); }
+        .squad-badge:hover { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(0,229,255,0.8)); }
         
         /* CUSTOM METRICS (HUD INTEGRADO) */
         .hud-container {
@@ -444,28 +443,31 @@ else:
         
         skuad = st.session_state.squad_name
         
-        # BUSCADOR DE LOGO DE ESCUADRÓN
-        emblema_filename = skuad.lower().strip().replace(" ", "_") + ".png" if skuad else None
+        # --- CORRECCIÓN IMÁGENES ESCUADRÓN ---
+        # Busca: nombre_escuadron + "_team.png" (Ej: egipcios_team.png)
+        if skuad:
+            clean_name = skuad.lower().strip().replace(" ", "_")
+            emblema_filename = f"{clean_name}_team.png"
+        else:
+            emblema_filename = None
+            
         b64_badge = get_img_as_base64(f"assets/{emblema_filename}")
         
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # TARJETA DE PERFIL
-        badge_html = ""
+        # --- GENERACIÓN LIMPIA DE HTML ---
+        badge_html_block = ""
         if b64_badge:
-            badge_html = f"""
-            <div style="margin-top:15px;">
+            badge_html_block = f"""
+            <div style="margin-top:20px;">
                 <img src="data:image/png;base64,{b64_badge}" class="squad-badge" title="{skuad}">
-                <div style="font-size:0.75em; color:#4dd0e1; margin-top:5px; letter-spacing:2px; font-weight:bold;">{skuad.upper()}</div>
+                <div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div>
             </div>
             """
-        else:
-            # DEBUG: Si no encuentra la imagen, mostramos qué está buscando (Solo para admin/debug)
-            if skuad and skuad != "Sin Escuadrón":
-                badge_html = f"""<div style="margin-top:10px; color:#555; font-size:0.7em;">(No se encontró: assets/{emblema_filename})</div>"""
-
-        st.markdown(f"""
+        
+        # HTML TARJETA
+        profile_html = f"""
         <div class="profile-card">
             <div class="avatar-container">
                 {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
@@ -475,9 +477,10 @@ else:
             <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
                 NIVEL {nivel_num}: {nombre_rango.upper()}
             </div>
-            {badge_html}
+            {badge_html_block}
         </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(profile_html, unsafe_allow_html=True)
         
         # HUD METRICS
         b64_mp = get_img_as_base64("assets/icon_mp.png")
@@ -506,18 +509,19 @@ else:
         
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (FIXED YELLOW BAR) ---
+    # --- TAB 2: RANKING (BARRAS AMARILLAS) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max())
-            # Usamos Pandas Styler puro para la barra amarilla
+            # Pandas Styler: Barra Amarilla (#FFD700)
             st.dataframe(
                 df.style.bar(subset=["MasterPoints"], color="#FFD700", vmin=0, vmax=max_mp),
                 use_container_width=True,
                 column_config={
+                    "MasterPoints": st.column_config.NumberColumn("Progreso MP", format="%d"),
                     "Escuadrón": st.column_config.TextColumn("Escuadrón"),
                 },
                 hide_index=True
@@ -532,7 +536,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (TITLES FIXED) ---
+    # --- TAB 3: HABILIDADES (NOMBRES BLANCOS) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -558,7 +562,7 @@ else:
                     st.markdown(f"""
                     <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                         <div class="skill-header">
-                            <span style="font-family:'Orbitron', sans-serif; color: white; font-size:1.1em; font-weight:bold; display:block;">{nombre}</span>
+                            <div style="font-family:'Orbitron', sans-serif; color:#FFFFFF !important; font-size:1.2em; font-weight:900; text-shadow:0 0 5px rgba(0,0,0,0.8);">{nombre}</div>
                             <span class="skill-cost">⚡ {costo} AP</span>
                         </div>
                         <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
