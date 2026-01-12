@@ -149,10 +149,15 @@ def cargar_habilidades_rol(rol_jugador):
             for item in res.json()["results"]:
                 props = item["properties"]
                 try:
-                    # Título de la Habilidad
-                    nombre = props["Habilidad"]["title"][0]["text"]["content"]
-                    
-                    # Búsqueda robusta del Costo (por si cambia el nombre en Notion)
+                    # FIX: Extracción Robusta del Título (Plain Text Join)
+                    # Esto une todos los fragmentos de texto, evitando errores si tiene formato.
+                    nombre_list = props.get("Habilidad", {}).get("title", [])
+                    if nombre_list:
+                        nombre = "".join([t.get("plain_text", "") for t in nombre_list])
+                    else:
+                        nombre = "Habilidad Sin Nombre"
+
+                    # Costo
                     costo = 0
                     if "Costo AP" in props: costo = props["Costo AP"]["number"]
                     elif "Costo" in props: costo = props["Costo"]["number"]
@@ -164,7 +169,7 @@ def cargar_habilidades_rol(rol_jugador):
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     
-                    # Intento de cargar Icono desde Notion (Columna 'Icono' tipo File)
+                    # Icono (Columna 'Icono')
                     icon_url = None
                     if "Icono" in props:
                         files = props["Icono"].get("files", [])
@@ -176,7 +181,6 @@ def cargar_habilidades_rol(rol_jugador):
                         "nivel_req": nivel_req, "descripcion": descripcion, "icon_url": icon_url
                     })
                 except Exception as e:
-                    # Si falla una habilidad, la saltamos pero no rompemos todo
                     pass
         return habilidades
     except: return []
@@ -404,7 +408,6 @@ else:
         
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # HUD ÉPICO
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
@@ -445,16 +448,12 @@ else:
                 squad = row["Escuadrón"]
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
-                
                 table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
             
-            full_table = f"""<table class="rank-table">{table_rows}</table>"""
-            st.markdown(full_table, unsafe_allow_html=True)
+            st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
             
             st.markdown("### 🛡️ TOP ESCUADRONES")
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
-            
-            # --- MISMA ESTRUCTURA DE TABLA PARA ESCUADRONES ---
             if not df_squads.empty:
                 max_squad_mp = int(df_squads["MasterPoints"].max()) if df_squads["MasterPoints"].max() > 0 else 1
                 squad_rows = ""
@@ -463,20 +462,17 @@ else:
                     squad_name = row["Escuadrón"]
                     points = row["MasterPoints"]
                     pct = (points / max_squad_mp) * 100
-                    
                     squad_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{squad_name}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
-                
                 st.markdown(f"""<table class="rank-table">{squad_rows}</table>""", unsafe_allow_html=True)
             else:
                 st.info("Sin datos de escuadrones.")
-                
         else:
             st.info(f"Sin datos en el sector {uni_label}.")
             if st.button("🔄 Refrescar Señal"):
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (FIXED TITLE & ICON) ---
+    # --- TAB 3: HABILIDADES (FIXED TITLE) ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -489,7 +485,7 @@ else:
                 costo = hab["costo"]
                 nivel_req = hab["nivel_req"]
                 desc = hab["descripcion"]
-                icon_url = hab.get("icon_url") # URL del icono si existe
+                icon_url = hab.get("icon_url")
                 
                 desbloqueada = nivel_num >= nivel_req
                 puede_pagar = ap >= costo
@@ -499,10 +495,9 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # Logica para mostrar icono pequeño si existe
                     icon_html = f'<img src="{icon_url}" style="width:24px; height:24px; margin-right:10px; object-fit:contain;">' if icon_url else ''
                     
-                    # HTML APLANADO CON TÍTULO CYAN Y DIV
+                    # FIX HTML APLANADO CON TITULO CYAN NEON
                     card_html = f"""<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><div style="display:flex; align-items:center;">{icon_html}<div style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#00e5ff; text-transform:uppercase; line-height:1.2;">{nombre}</div></div><div class="skill-cost" style="white-space:nowrap;">⚡ {costo} AP</div></div><p style="color:#b0bec5; font-size:0.9em; margin:0; line-height:1.4;">{desc}</p></div>"""
                     st.markdown(card_html, unsafe_allow_html=True)
                     
