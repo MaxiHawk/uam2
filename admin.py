@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 import pandas as pd
 import time
+from datetime import datetime
+import pytz # Para la hora de Chile
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -47,6 +49,9 @@ st.markdown("""
         }
         .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
         .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
+        
+        /* Botón de Refresco */
+        .refresh-btn { margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -111,16 +116,14 @@ def get_pending_requests(debug_mode=False):
         data = res.json()["results"]
         if debug_mode:
             st.write("--- DEBUG: DATOS CRUDOS DE NOTION ---")
-            st.json(data) # Muestra el JSON puro para ver errores de nombres
+            st.json(data)
             
         for r in data:
             props = r["properties"]
             try:
-                # Verificar Checkbox (Manejo robusto de False/None)
                 is_processed = props.get("Procesado", {}).get("checkbox", False)
                 
                 if not is_processed:
-                    # Extracción segura usando .get()
                     title_obj = props.get("Remitente", {}).get("title", [])
                     remitente = title_obj[0]["text"]["content"] if title_obj else "Desconocido"
                     
@@ -137,7 +140,6 @@ def get_pending_requests(debug_mode=False):
                         "tipo": tipo
                     })
             except Exception as e:
-                if debug_mode: st.error(f"Error parseando fila: {e}")
                 pass
     elif debug_mode:
         st.error(f"Error de conexión Notion: {res.status_code} - {res.text}")
@@ -163,10 +165,25 @@ def update_player_ap_by_name(player_name, cost):
         return update_stat(player_id, "AP", new_ap)
     return False
 
-def mark_request_processed(page_id):
+# --- NUEVA FUNCIÓN DE CIERRE DE TICKET ---
+def finalize_request(page_id, status_label, observation_text=""):
     url = f"https://api.notion.com/v1/pages/{page_id}"
-    data = {"properties": {"Procesado": {"checkbox": True}}}
-    requests.patch(url, headers=headers, json=data)
+    
+    # Obtener hora Chile
+    chile_tz = pytz.timezone('America/Santiago')
+    now_iso = datetime.now(chile_tz).isoformat()
+    
+    data = {
+        "properties": {
+            "Procesado": {"checkbox": True},
+            "Status": {"select": {"name": status_label}},
+            "Fecha respuesta": {"date": {"start": now_iso}},
+            "Observaciones": {"rich_text": [{"text": {"content": observation_text}}]}
+        }
+    }
+    
+    res = requests.patch(url, headers=headers, json=data)
+    return res.status_code == 200
 
 # --- LOGIN SYSTEM ---
 if "admin_logged_in" not in st.session_state:
@@ -208,7 +225,6 @@ with st.sidebar:
     st.divider()
     st.metric("Aspirantes Activos", len(df_filtered))
     
-    # DEBUG TOGGLE
     debug_mode = st.checkbox("🛠️ Modo Diagnóstico")
     
     if st.button("Cerrar Sesión"):
@@ -220,24 +236,25 @@ tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES DE CA
 
 # ================= TAB 1: SOLICITUDES =================
 with tab_req:
-    st.markdown("### 📡 TRANSMISIONES ENTRANTES")
-    
-    # Pasamos el debug_mode para ver si Notion responde algo raro
+    # --- BOTÓN DE RECARGA (SIN PERDER SESIÓN) ---
+    c_title, c_refresh = st.columns([4, 1])
+    with c_title:
+        st.markdown("### 📡 TRANSMISIONES ENTRANTES")
+    with c_refresh:
+        if st.button("🔄 ACTUALIZAR BANDEJA"):
+            st.rerun()
+
     reqs = get_pending_requests(debug_mode)
     
     if not reqs:
         st.success("✅ Bandeja de entrada vacía, Comandante.")
-        if debug_mode:
-            st.info("Si hay datos en Notion pero no aquí, revisa que la columna 'Procesado' no esté marcada.")
     else:
         for r in reqs:
-            # Determinamos si es Habilidad o Mensaje basado en la propiedad TIPO
             is_skill = (r['tipo'] == "Poder")
             
             costo = 0
             skill_name = "Acción"
             
-            # Intentamos parsear el mensaje si es una habilidad
             if is_skill:
                 try:
                     if "Costo:" in r['mensaje']:
@@ -248,7 +265,6 @@ with tab_req:
                         skill_name = "Habilidad (Ver mensaje)"
                 except: pass
             
-            # Limpieza del nombre (por si acaso viene con prefijos)
             player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
 
             with st.container():
@@ -267,28 +283,42 @@ with tab_req:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                c_yes, c_no = st.columns([1, 4])
+                # --- ÁREA DE ACCIÓN CON OBSERVACIONES ---
+                c_obs, c_acts = st.columns([3, 2])
                 
-                if is_skill:
-                    # AP ACTION
-                    if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
-                        ok = update_player_ap_by_name(player_name, costo)
-                        if ok:
-                            mark_request_processed(r['id'])
-                            st.toast(f"Solicitud Aprobada")
-                            time.sleep(1); st.rerun()
-                        else: st.error("Error al actualizar AP. ¿Existe el jugador?")
+                with c_obs:
+                    obs_text = st.text_input("Observación (Opcional):", key=f"obs_{r['id']}", placeholder="Ej: Motivo de rechazo o respuesta...")
+                
+                with c_acts:
+                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) # Spacer
+                    c_yes, c_no = st.columns(2)
                     
-                    if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
-                        mark_request_processed(r['id'])
-                        st.toast("Solicitud Denegada")
-                        time.sleep(1); st.rerun()
-                else:
-                    # MESSAGE ACTION
-                    if c_yes.button(f"📥 ARCHIVAR", key=f"read_{r['id']}"):
-                        mark_request_processed(r['id'])
-                        st.toast("Mensaje Archivado")
-                        time.sleep(1); st.rerun()
+                    if is_skill:
+                        # ACCIONES PODER
+                        if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
+                            ok_ap = update_player_ap_by_name(player_name, costo)
+                            if ok_ap:
+                                finalize_request(r['id'], "Aprobado", obs_text)
+                                st.toast(f"Solicitud Aprobada")
+                                time.sleep(1); st.rerun()
+                            else: st.error("Error al descontar AP (¿Usuario existe?)")
+                        
+                        if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
+                            finalize_request(r['id'], "Rechazado", obs_text)
+                            st.toast("Solicitud Denegada")
+                            time.sleep(1); st.rerun()
+                    else:
+                        # ACCIONES MENSAJE
+                        if c_yes.button(f"📤 CONTESTADO", key=f"reply_{r['id']}"):
+                            finalize_request(r['id'], "Respuesta", obs_text)
+                            st.toast("Marcado como Contestado")
+                            time.sleep(1); st.rerun()
+                        
+                        if c_no.button(f"📥 ARCHIVAR", key=f"arch_{r['id']}"):
+                            # Archivar sin status especifico o como 'Leído' si prefieres
+                            finalize_request(r['id'], "Respuesta", obs_text) 
+                            st.toast("Archivado")
+                            time.sleep(1); st.rerun()
 
 # ================= TAB 2: OPERACIONES =================
 with tab_ops:
