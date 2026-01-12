@@ -130,8 +130,13 @@ def get_pending_requests():
     return reqs
 
 def update_stat(player_id, stat_name, new_value):
+    # --- FIX: CONVERSIÓN EXPLÍCITA A INT ---
+    # Pandas usa numpy.int64 que no es serializable por JSON.
+    # Forzamos la conversión a int nativo de Python.
+    val = int(new_value) 
+    
     url = f"https://api.notion.com/v1/pages/{player_id}"
-    data = {"properties": {stat_name: {"number": new_value}}}
+    data = {"properties": {stat_name: {"number": val}}}
     res = requests.patch(url, headers=headers, json=data)
     return res.status_code == 200
 
@@ -186,10 +191,11 @@ with st.sidebar:
     
     # Aplicar Filtros
     df_filtered = df_players.copy()
-    if sel_uni != "Todas":
-        df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
-    if sel_gen != "Todas":
-        df_filtered = df_filtered[df_filtered["Generación"] == sel_gen]
+    if not df_players.empty:
+        if sel_uni != "Todas":
+            df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
+        if sel_gen != "Todas":
+            df_filtered = df_filtered[df_filtered["Generación"] == sel_gen]
         
     st.divider()
     st.metric("Aspirantes Activos", len(df_filtered))
