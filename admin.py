@@ -45,7 +45,6 @@ st.markdown("""
         .req-detail { color: #b0bec5; font-size: 0.9em; margin-bottom: 10px; }
         .stButton>button { border-radius: 4px; font-weight: bold; text-transform: uppercase; width: 100%; }
         
-        /* KPI BOXES GRANDE */
         .kpi-box {
             background: rgba(0, 229, 255, 0.05); border: 1px solid #004d66;
             padding: 15px; text-align: center; border-radius: 10px;
@@ -53,7 +52,6 @@ st.markdown("""
         .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
         .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
 
-        /* KPI MINI */
         .kpi-mini {
             background: rgba(0, 0, 0, 0.3); border: 1px solid #1c2e3e;
             padding: 8px; text-align: center; border-radius: 6px; margin-bottom: 10px;
@@ -117,7 +115,17 @@ def get_players():
 
 def get_pending_requests(debug_mode=False):
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    payload = {"page_size": 100} 
+    
+    # --- FIX: ORDENAR POR FECHA DE CREACIÓN DESCENDENTE ---
+    payload = {
+        "page_size": 100,
+        "sorts": [
+            {
+                "timestamp": "created_time",
+                "direction": "descending"
+            }
+        ]
+    }
     
     res = requests.post(url, headers=headers, json=payload) 
     reqs = []
@@ -251,11 +259,8 @@ with tab_req:
 
     reqs = get_pending_requests(debug_mode)
     
-    # 1. FILTRO DE SOLICITUDES SEGÚN FILTROS DEL SIDEBAR
-    # Creamos una lista de nombres válidos basada en el df_filtered actual
+    # 1. FILTRO DE SOLICITUDES
     valid_aspirantes = df_filtered["Aspirante"].tolist()
-    
-    # Filtramos las solicitudes para mostrar solo las de aspirantes visibles
     reqs_filtered = [r for r in reqs if r['remitente'] in valid_aspirantes]
     
     if not reqs_filtered:
@@ -280,21 +285,19 @@ with tab_req:
 
             # --- BUSCAR DATOS DEL JUGADOR PARA VISUALIZACIÓN ---
             player_stats = df_players[df_players["Aspirante"] == player_name]
-            
-            # Valores por defecto si no se encuentran (aunque el filtro debería evitar esto)
             curr_mp, curr_ap, curr_vp, p_gen = 0, 0, 0, "??"
             
             if not player_stats.empty:
                 p_data = player_stats.iloc[0]
                 curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
-                p_gen = p_data["Generación"] # Extraer Generación
+                p_gen = p_data["Generación"]
 
             with st.container():
                 card_class = "req-card" if is_skill else "req-card-msg"
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
                 title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
                 
-                # --- CABECERA (Con Año agregado) ---
+                # --- CABECERA ---
                 st.markdown(f"""
                 <div class="{card_class}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
