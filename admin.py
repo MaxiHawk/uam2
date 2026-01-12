@@ -40,7 +40,8 @@ st.markdown("""
             background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid #00e5ff;
             padding: 15px; border-radius: 8px; margin-bottom: 10px;
         }
-        .req-player { font-family: 'Orbitron'; font-size: 1.1em; color: #FFD700; font-weight: bold; }
+        .req-player { font-family: 'Orbitron'; font-size: 1.1em; color: #FFD700; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .req-gen-tag { font-family: 'Roboto'; font-size: 0.7em; color: #8899a6; border: 1px solid #333; padding: 2px 6px; border-radius: 4px; }
         .req-detail { color: #b0bec5; font-size: 0.9em; margin-bottom: 10px; }
         .stButton>button { border-radius: 4px; font-weight: bold; text-transform: uppercase; width: 100%; }
         
@@ -52,7 +53,7 @@ st.markdown("""
         .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
         .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
 
-        /* KPI MINI (Para las solicitudes) */
+        /* KPI MINI */
         .kpi-mini {
             background: rgba(0, 0, 0, 0.3); border: 1px solid #1c2e3e;
             padding: 8px; text-align: center; border-radius: 6px; margin-bottom: 10px;
@@ -176,7 +177,6 @@ def update_player_ap_by_name(player_name, cost):
 
 def finalize_request(page_id, status_label, observation_text=""):
     url = f"https://api.notion.com/v1/pages/{page_id}"
-    
     chile_tz = pytz.timezone('America/Santiago')
     now_iso = datetime.now(chile_tz).isoformat()
     
@@ -188,7 +188,6 @@ def finalize_request(page_id, status_label, observation_text=""):
             "Observaciones": {"rich_text": [{"text": {"content": observation_text}}]}
         }
     }
-    
     res = requests.patch(url, headers=headers, json=data)
     return res.status_code == 200
 
@@ -252,10 +251,17 @@ with tab_req:
 
     reqs = get_pending_requests(debug_mode)
     
-    if not reqs:
-        st.success("✅ Bandeja de entrada vacía, Comandante.")
+    # 1. FILTRO DE SOLICITUDES SEGÚN FILTROS DEL SIDEBAR
+    # Creamos una lista de nombres válidos basada en el df_filtered actual
+    valid_aspirantes = df_filtered["Aspirante"].tolist()
+    
+    # Filtramos las solicitudes para mostrar solo las de aspirantes visibles
+    reqs_filtered = [r for r in reqs if r['remitente'] in valid_aspirantes]
+    
+    if not reqs_filtered:
+        st.success("✅ Bandeja de entrada vacía (para los filtros seleccionados).")
     else:
-        for r in reqs:
+        for r in reqs_filtered:
             is_skill = (r['tipo'] == "Poder")
             costo = 0
             skill_name = "Acción"
@@ -272,16 +278,29 @@ with tab_req:
             
             player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
 
+            # --- BUSCAR DATOS DEL JUGADOR PARA VISUALIZACIÓN ---
+            player_stats = df_players[df_players["Aspirante"] == player_name]
+            
+            # Valores por defecto si no se encuentran (aunque el filtro debería evitar esto)
+            curr_mp, curr_ap, curr_vp, p_gen = 0, 0, 0, "??"
+            
+            if not player_stats.empty:
+                p_data = player_stats.iloc[0]
+                curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
+                p_gen = p_data["Generación"] # Extraer Generación
+
             with st.container():
                 card_class = "req-card" if is_skill else "req-card-msg"
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
                 title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
                 
-                # --- CABECERA DE LA TARJETA ---
+                # --- CABECERA (Con Año agregado) ---
                 st.markdown(f"""
                 <div class="{card_class}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <div class="req-player">{player_name}</div>
+                        <div class="req-player">
+                            {player_name} <span class="req-gen-tag">{p_gen}</span>
+                        </div>
                         <div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div>
                     </div>
                     <div class="req-detail">{title_text}</div>
@@ -289,22 +308,14 @@ with tab_req:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # --- STATS DEL JUGADOR (INTELIGENCIA TÁCTICA) ---
-                # Buscamos al jugador en el dataframe global
-                player_stats = df_players[df_players["Aspirante"] == player_name]
+                # --- STATS MINIATURA ---
                 if not player_stats.empty:
-                    p_data = player_stats.iloc[0]
-                    curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
-                    
-                    # Mostrar Stats en Miniatura
                     k1, k2, k3 = st.columns(3)
                     k1.markdown(f"<div class='kpi-mini' style='border-color:#FFD700;'><div class='kpi-mini-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-mini-lbl'>MP Actual</div></div>", unsafe_allow_html=True)
                     k2.markdown(f"<div class='kpi-mini' style='border-color:#00e5ff;'><div class='kpi-mini-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-mini-lbl'>AP Actual</div></div>", unsafe_allow_html=True)
                     k3.markdown(f"<div class='kpi-mini' style='border-color:#ff4b4b;'><div class='kpi-mini-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-mini-lbl'>VP Actual</div></div>", unsafe_allow_html=True)
-                else:
-                    st.warning(f"⚠️ Alerta: No se encuentran datos para el agente '{player_name}'. Verifique nombre en Notion.")
 
-                # --- ÁREA DE ACCIÓN ---
+                # --- ACCIONES ---
                 c_obs, c_acts = st.columns([3, 2])
                 
                 with c_obs:
