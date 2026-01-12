@@ -201,15 +201,13 @@ def cargar_habilidades_rol(rol_jugador):
         return habilidades
     except: return []
 
-# --- FUNCIÓN UNIFICADA DE MENSAJERÍA (Para Habilidades y Mensajes Generales) ---
+# --- FUNCIÓN UNIFICADA DE MENSAJERÍA ---
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
     
-    # Formato del mensaje para que el Admin lo entienda
     if tipo == "HABILIDAD":
         texto_final = f"Desea activar: '{titulo_msg}' (Costo: {cuerpo_msg} AP)"
     else:
-        # Mensaje general
         texto_final = f"MENSAJE: {titulo_msg} - {cuerpo_msg}"
 
     nuevo_mensaje = {
@@ -217,11 +215,15 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         "properties": {
             "Remitente": {"title": [{"text": {"content": f"SOLICITUD: {jugador_nombre}"}}]},
             "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
-            # Importante: Inicializamos Procesado en False
-            "Procesado": {"checkbox": False} 
+            "Procesado": {"checkbox": False} # ¡NECESITAS ESTA COLUMNA EN NOTION!
         }
     }
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
+    
+    # DEBUG: Si falla, mostramos por qué (solo para desarrollo)
+    if res.status_code != 200:
+        st.error(f"Error Notion: {res.text}")
+        
     return res.status_code == 200
 
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
@@ -359,28 +361,6 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # --- SIDEBAR: ENLACE AL COMANDO ---
-    with st.sidebar:
-        st.header("📨 ENLACE AL COMANDO")
-        with st.form("comms_form"):
-            st.caption("Envía reportes, dudas o solicitudes especiales al alto mando.")
-            msg_subject = st.text_input("Asunto:")
-            msg_body = st.text_area("Mensaje:")
-            
-            if st.form_submit_button("TRANSMITIR"):
-                if msg_subject and msg_body:
-                    ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
-                    if ok:
-                        st.success("✅ Transmisión Enviada")
-                    else:
-                        st.error("Error de señal")
-                else:
-                    st.warning("Faltan datos")
-        
-        st.divider()
-        if st.button("🔴 CERRAR SESIÓN"):
-            cerrar_sesion()
-
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -420,7 +400,8 @@ else:
     # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
+    # --- PESTAÑAS (INCLUYENDO COMUNICACIONES) ---
+    tab_perfil, tab_ranking, tab_habilidades, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📡 COMUNICACIONES"])
     
     # --- TAB 1: PERFIL ---
     with tab_perfil:
@@ -483,6 +464,7 @@ else:
             </div>
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
+        st.button("DESCONECTAR", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING ---
     with tab_ranking:
@@ -562,8 +544,29 @@ else:
                                     if exito:
                                         st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
                                         st.balloons()
-                                    else: st.error("Error de enlace.")
+                                    else: 
+                                        st.error("Error de enlace. Verifica la base de Solicitudes.")
                                 else: st.toast("❌ Energía Insuficiente", icon="⚠️")
                         else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
+
+    # --- TAB 4: COMUNICACIONES (NUEVO FORMULARIO) ---
+    with tab_comms:
+        st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
+        st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
+        
+        with st.form("comms_form_tab"):
+            msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
+            msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
+            
+            if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
+                if msg_subject and msg_body:
+                    ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
+                    if ok:
+                        st.success("✅ Transmisión Enviada y recibida en la Central.")
+                        st.balloons()
+                    else:
+                        st.error("❌ Error de señal. Verifica que la base de datos de Solicitudes tenga las columnas 'Procesado' (Checkbox) y 'Remitente' (Title).")
+                else:
+                    st.warning("⚠️ Debes llenar Asunto y Mensaje.")
