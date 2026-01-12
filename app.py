@@ -179,7 +179,6 @@ def cargar_habilidades_rol(rol_jugador):
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
     
-    # Lógica de mensaje limpio
     if tipo == "HABILIDAD":
         texto_final = f"{titulo_msg} | Costo: {cuerpo_msg}"
         tipo_select = "Poder"
@@ -190,10 +189,10 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     nuevo_mensaje = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
         "properties": {
-            "Remitente": {"title": [{"text": {"content": jugador_nombre}}]}, # Solo el nombre
+            "Remitente": {"title": [{"text": {"content": jugador_nombre}}]}, 
             "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
             "Procesado": {"checkbox": False},
-            "Tipo": {"select": {"name": tipo_select}} # Asigna la propiedad Tipo
+            "Tipo": {"select": {"name": tipo_select}}
         }
     }
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
@@ -519,9 +518,8 @@ else:
                                     exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
                                     if exito:
                                         st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
-                                        st.balloons()
                                     else: 
-                                        st.error("Error de enlace. Verifica columnas: Remitente(Title), Mensaje(Text), Procesado(CheckBox), Tipo(Select)")
+                                        st.error("Error de enlace. Verifica la base de Solicitudes.")
                                 else: st.toast("❌ Energía Insuficiente", icon="⚠️")
                         else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
@@ -532,7 +530,8 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        with st.form("comms_form_tab"):
+        # --- FIX: CLEAR ON SUBMIT ---
+        with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
             
@@ -541,8 +540,7 @@ else:
                     ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                     if ok:
                         st.success("✅ Transmisión Enviada y recibida en la Central.")
-                        st.balloons()
                     else:
-                        st.error("❌ Error de señal. Verifica las columnas en Notion (Tipo, Remitente, etc).")
+                        st.error("❌ Error de señal. Verifica que la base de datos de Solicitudes tenga las columnas 'Procesado' (Checkbox) y 'Remitente' (Title).")
                 else:
                     st.warning("⚠️ Debes llenar Asunto y Mensaje.")
