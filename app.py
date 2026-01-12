@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import base64
 import textwrap
-import time # Necesario para el auto-logout
+import time 
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -23,8 +23,7 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-# TIEMPO DE INACTIVIDAD (En segundos)
-# 900 segundos = 15 minutos
+# TIEMPO DE INACTIVIDAD (15 mins)
 SESSION_TIMEOUT = 900 
 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
@@ -109,14 +108,12 @@ st.markdown("""
 if "last_active" not in st.session_state:
     st.session_state.last_active = time.time()
 
-# Verificar inactividad (solo si hay un jugador logueado)
 if st.session_state.get("jugador") is not None:
     if time.time() - st.session_state.last_active > SESSION_TIMEOUT:
         st.session_state.jugador = None
         st.session_state.clear()
         st.rerun()
     else:
-        # Actualizar tiempo de última actividad
         st.session_state.last_active = time.time()
 
 # --- ESTADO DE SESIÓN ---
@@ -546,17 +543,19 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        # FIX: clear_on_submit=True
+        # --- FIX: SPINNER + DELAY PARA UX "PESADA" ---
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
             
             if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
                 if msg_subject and msg_body:
-                    ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
-                    if ok:
-                        st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
-                    else:
-                        st.error("❌ Error de señal. Verifica las columnas en Notion.")
+                    with st.spinner("Estableciendo enlace encriptado con la base..."):
+                        time.sleep(1.5) # Pausa dramática para que se sienta el envío
+                        ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
+                        if ok:
+                            st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
+                        else:
+                            st.error("❌ Error de señal. Verifica las columnas en Notion.")
                 else:
                     st.warning("⚠️ Debes llenar Asunto y Mensaje.")
