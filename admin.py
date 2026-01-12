@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import time
 from datetime import datetime
-import pytz # Para la hora de Chile
+import pytz
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -43,14 +43,23 @@ st.markdown("""
         .req-player { font-family: 'Orbitron'; font-size: 1.1em; color: #FFD700; font-weight: bold; }
         .req-detail { color: #b0bec5; font-size: 0.9em; margin-bottom: 10px; }
         .stButton>button { border-radius: 4px; font-weight: bold; text-transform: uppercase; width: 100%; }
+        
+        /* KPI BOXES GRANDE */
         .kpi-box {
             background: rgba(0, 229, 255, 0.05); border: 1px solid #004d66;
             padding: 15px; text-align: center; border-radius: 10px;
         }
         .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
         .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* KPI MINI (Para las solicitudes) */
+        .kpi-mini {
+            background: rgba(0, 0, 0, 0.3); border: 1px solid #1c2e3e;
+            padding: 8px; text-align: center; border-radius: 6px; margin-bottom: 10px;
+        }
+        .kpi-mini-val { font-family: 'Orbitron'; font-size: 1.2em; font-weight: bold; color: white; }
+        .kpi-mini-lbl { font-size: 0.6em; color: #aaa; letter-spacing: 1px; }
         
-        /* Botón de Refresco */
         .refresh-btn { margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
@@ -165,11 +174,9 @@ def update_player_ap_by_name(player_name, cost):
         return update_stat(player_id, "AP", new_ap)
     return False
 
-# --- NUEVA FUNCIÓN DE CIERRE DE TICKET ---
 def finalize_request(page_id, status_label, observation_text=""):
     url = f"https://api.notion.com/v1/pages/{page_id}"
     
-    # Obtener hora Chile
     chile_tz = pytz.timezone('America/Santiago')
     now_iso = datetime.now(chile_tz).isoformat()
     
@@ -236,7 +243,6 @@ tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES DE CA
 
 # ================= TAB 1: SOLICITUDES =================
 with tab_req:
-    # --- BOTÓN DE RECARGA (SIN PERDER SESIÓN) ---
     c_title, c_refresh = st.columns([4, 1])
     with c_title:
         st.markdown("### 📡 TRANSMISIONES ENTRANTES")
@@ -251,7 +257,6 @@ with tab_req:
     else:
         for r in reqs:
             is_skill = (r['tipo'] == "Poder")
-            
             costo = 0
             skill_name = "Acción"
             
@@ -272,6 +277,7 @@ with tab_req:
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
                 title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
                 
+                # --- CABECERA DE LA TARJETA ---
                 st.markdown(f"""
                 <div class="{card_class}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -283,39 +289,51 @@ with tab_req:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # --- ÁREA DE ACCIÓN CON OBSERVACIONES ---
+                # --- STATS DEL JUGADOR (INTELIGENCIA TÁCTICA) ---
+                # Buscamos al jugador en el dataframe global
+                player_stats = df_players[df_players["Aspirante"] == player_name]
+                if not player_stats.empty:
+                    p_data = player_stats.iloc[0]
+                    curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
+                    
+                    # Mostrar Stats en Miniatura
+                    k1, k2, k3 = st.columns(3)
+                    k1.markdown(f"<div class='kpi-mini' style='border-color:#FFD700;'><div class='kpi-mini-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-mini-lbl'>MP Actual</div></div>", unsafe_allow_html=True)
+                    k2.markdown(f"<div class='kpi-mini' style='border-color:#00e5ff;'><div class='kpi-mini-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-mini-lbl'>AP Actual</div></div>", unsafe_allow_html=True)
+                    k3.markdown(f"<div class='kpi-mini' style='border-color:#ff4b4b;'><div class='kpi-mini-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-mini-lbl'>VP Actual</div></div>", unsafe_allow_html=True)
+                else:
+                    st.warning(f"⚠️ Alerta: No se encuentran datos para el agente '{player_name}'. Verifique nombre en Notion.")
+
+                # --- ÁREA DE ACCIÓN ---
                 c_obs, c_acts = st.columns([3, 2])
                 
                 with c_obs:
-                    obs_text = st.text_input("Observación (Opcional):", key=f"obs_{r['id']}", placeholder="Ej: Motivo de rechazo o respuesta...")
+                    obs_text = st.text_input("Observación:", key=f"obs_{r['id']}", placeholder="Respuesta o motivo...")
                 
                 with c_acts:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) # Spacer
+                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                     c_yes, c_no = st.columns(2)
                     
                     if is_skill:
-                        # ACCIONES PODER
                         if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
                             ok_ap = update_player_ap_by_name(player_name, costo)
                             if ok_ap:
                                 finalize_request(r['id'], "Aprobado", obs_text)
                                 st.toast(f"Solicitud Aprobada")
                                 time.sleep(1); st.rerun()
-                            else: st.error("Error al descontar AP (¿Usuario existe?)")
+                            else: st.error("Error al descontar AP")
                         
                         if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
                             finalize_request(r['id'], "Rechazado", obs_text)
                             st.toast("Solicitud Denegada")
                             time.sleep(1); st.rerun()
                     else:
-                        # ACCIONES MENSAJE
                         if c_yes.button(f"📤 CONTESTADO", key=f"reply_{r['id']}"):
                             finalize_request(r['id'], "Respuesta", obs_text)
-                            st.toast("Marcado como Contestado")
+                            st.toast("Contestado")
                             time.sleep(1); st.rerun()
                         
                         if c_no.button(f"📥 ARCHIVAR", key=f"arch_{r['id']}"):
-                            # Archivar sin status especifico o como 'Leído' si prefieres
                             finalize_request(r['id'], "Respuesta", obs_text) 
                             st.toast("Archivado")
                             time.sleep(1); st.rerun()
