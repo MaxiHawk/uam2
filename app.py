@@ -203,7 +203,7 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
 
-    # Datos de contexto (si existen)
+    # Datos de contexto
     uni = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
     ano = st.session_state.ano_actual if st.session_state.ano_actual else "Sin Año"
 
@@ -214,7 +214,8 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
             "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
             "Procesado": {"checkbox": False},
             "Tipo": {"select": {"name": tipo_select}},
-            # --- NUEVOS CAMPOS DE CONTEXTO ---
+            # --- FIX: AGREGAR STATUS PENDIENTE Y CONTEXTO ---
+            "Status": {"select": {"name": "Pendiente"}},
             "Universidad": {"select": {"name": uni}},
             "Año": {"select": {"name": ano}}
         }
@@ -535,7 +536,7 @@ else:
                         if desbloqueada:
                             if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
                                 if puede_pagar:
-                                    # UX: SPINNER DE TRANSICIÓN PARA PODERES
+                                    # UX: SPINNER
                                     with st.spinner("Conjurando habilidad..."):
                                         time.sleep(1.5)
                                         exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
@@ -553,7 +554,7 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        # FIX: SPINNER + DELAY PARA UX "PESADA" + CLEAN
+        # FIX: SPINNER + DELAY + CLEAN
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
@@ -561,7 +562,7 @@ else:
             if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
                 if msg_subject and msg_body:
                     with st.spinner("Estableciendo enlace encriptado con la base..."):
-                        time.sleep(1.5) # Pausa dramática
+                        time.sleep(1.5) 
                         ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                         if ok:
                             st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
