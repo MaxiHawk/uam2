@@ -30,7 +30,6 @@ st.markdown("""
         h1, h2, h3 { font-family: 'Orbitron', sans-serif; color: #00e5ff; }
         .stApp { background-color: #050810; color: #e0f7fa; }
         
-        /* TARJETAS DE SOLICITUD */
         .req-card {
             background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid #FFD700;
             padding: 15px; border-radius: 8px; margin-bottom: 10px;
@@ -41,22 +40,13 @@ st.markdown("""
         }
         .req-player { font-family: 'Orbitron'; font-size: 1.1em; color: #FFD700; font-weight: bold; }
         .req-detail { color: #b0bec5; font-size: 0.9em; margin-bottom: 10px; }
-        
-        /* BOTONES DE ACCIÓN */
         .stButton>button { border-radius: 4px; font-weight: bold; text-transform: uppercase; width: 100%; }
-        
-        /* KPI BOXES */
         .kpi-box {
             background: rgba(0, 229, 255, 0.05); border: 1px solid #004d66;
             padding: 15px; text-align: center; border-radius: 10px;
         }
         .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
         .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
-        
-        /* CONTROL PANEL */
-        .control-panel {
-            background: #0a141f; padding: 20px; border-radius: 12px; border: 1px solid #1c2e3e; margin-bottom: 20px;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -216,7 +206,6 @@ with tab_req:
             skill_name = ""
             is_skill_req = False
             
-            # Análisis Inteligente del Mensaje
             if "Costo:" in r['mensaje'] and "activar:" in r['mensaje']:
                 is_skill_req = True
                 try:
@@ -227,7 +216,6 @@ with tab_req:
             player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
 
             with st.container():
-                # Estilo Diferente si es Mensaje General (Azul) o Compra (Dorado)
                 card_class = "req-card" if is_skill_req else "req-card-msg"
                 cost_text = f"⚡ -{costo} AP" if is_skill_req else "💬 MENSAJE GENERAL"
                 title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill_req else "📩 Nueva Comunicación"
@@ -246,7 +234,6 @@ with tab_req:
                 c_yes, c_no = st.columns(2)
                 
                 if is_skill_req:
-                    # Botones para Habilidad (Cobrar AP)
                     if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
                         ok = update_player_ap_by_name(player_name, costo)
                         if ok:
@@ -266,60 +253,54 @@ with tab_req:
                         st.toast("Mensaje Archivado")
                         time.sleep(1); st.rerun()
 
-# ================= TAB 2: OPERACIONES (MODIFICAR PUNTOS) =================
+# ================= TAB 2: OPERACIONES =================
 with tab_ops:
     st.markdown("### ⚡ GESTIÓN TÁCTICA DE ASPIRANTES")
-    
     if df_filtered.empty:
         st.warning("No hay aspirantes visibles con los filtros actuales.")
     else:
         aspirante_list = df_filtered["Aspirante"].tolist()
         selected_aspirante_name = st.selectbox("Seleccionar Aspirante para Modificación:", aspirante_list)
-        
         player_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
         pid = player_data["id"]
-        curr_mp = player_data["MP"]
-        curr_ap = player_data["AP"]
-        curr_vp = player_data["VP"]
         
         st.markdown("---")
-        
         c_mp, c_ap, c_vp = st.columns(3)
         
         with c_mp:
-            st.markdown(f"<div class='kpi-box' style='border-color:#FFD700;'><div class='kpi-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-label'>MasterPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#FFD700;'><div class='kpi-val' style='color:#FFD700;'>{player_data['MP']}</div><div class='kpi-label'>MasterPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_mp = st.number_input("Cantidad MP", min_value=0, value=10, key="n_mp")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar MP"):
-                update_stat(pid, "MP", curr_mp + mod_mp)
+                update_stat(pid, "MP", player_data['MP'] + mod_mp)
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar MP"):
-                update_stat(pid, "MP", max(0, curr_mp - mod_mp))
+                update_stat(pid, "MP", max(0, player_data['MP'] - mod_mp))
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_ap:
-            st.markdown(f"<div class='kpi-box' style='border-color:#00e5ff;'><div class='kpi-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-label'>AngioPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#00e5ff;'><div class='kpi-val' style='color:#00e5ff;'>{player_data['AP']}</div><div class='kpi-label'>AngioPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_ap = st.number_input("Cantidad AP", min_value=0, value=5, key="n_ap")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar AP"):
-                update_stat(pid, "AP", curr_ap + mod_ap)
+                update_stat(pid, "AP", player_data['AP'] + mod_ap)
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar AP"):
-                update_stat(pid, "AP", max(0, curr_ap - mod_ap))
+                update_stat(pid, "AP", max(0, player_data['AP'] - mod_ap))
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_vp:
-            st.markdown(f"<div class='kpi-box' style='border-color:#ff4b4b;'><div class='kpi-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-label'>VitaPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#ff4b4b;'><div class='kpi-val' style='color:#ff4b4b;'>{player_data['VP']}%</div><div class='kpi-label'>VitaPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_vp = st.number_input("Cantidad VP %", min_value=0, value=10, key="n_vp")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sanar VP"):
-                update_stat(pid, "VP", min(100, curr_vp + mod_vp))
+                update_stat(pid, "VP", min(100, player_data['VP'] + mod_vp))
                 st.toast("Aspirante Sanado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Dañar VP"):
-                update_stat(pid, "VP", max(0, curr_vp - mod_vp))
+                update_stat(pid, "VP", max(0, player_data['VP'] - mod_vp))
                 st.toast("Daño Aplicado"); time.sleep(0.5); st.rerun()
 
 # ================= TAB 3: NÓMINA =================
