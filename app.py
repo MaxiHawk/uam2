@@ -33,7 +33,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON ---
+# --- CSS: ESTÉTICA BLUE NEON (EPIC HUD EDITION) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
@@ -46,35 +46,94 @@ st.markdown("""
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
         /* BOTONES & TABS */
-        .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; }
+        .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* ESTILOS ESPECÍFICOS PARA TABLAS HTML */
-        .custom-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
-        .custom-row { background: rgba(10, 20, 30, 0.6); }
-        .custom-cell { padding: 15px; border-top: 1px solid #004d66; border-bottom: 1px solid #004d66; color: white; vertical-align: middle; }
-        .custom-cell-first { border-left: 1px solid #004d66; border-top-left-radius: 10px; border-bottom-left-radius: 10px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; text-align: center; width: 50px; }
-        .custom-cell-last { border-right: 1px solid #004d66; border-top-right-radius: 10px; border-bottom-right-radius: 10px; width: 40%; }
-        
-        /* BARRA DE PROGRESO */
-        .bar-bg { background: #1c2e3e; height: 8px; border-radius: 4px; overflow: hidden; width: 100%; margin-right: 10px; }
-        .bar-fill { height: 100%; background-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
-        
-        /* HUD BOXES */
-        .hud-wrapper { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 30px; }
-        .hud-box { 
-            background: rgba(8, 28, 48, 0.6); border: 1px solid #005f73; border-radius: 12px;
-            padding: 15px 5px; text-align: center; flex: 1; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        /* TARJETA DE PERFIL PRO */
+        .profile-container {
+            background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
+            border: 1px solid #004d66;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 40px; /* Espacio para que la cabeza salga */
+            margin-bottom: 30px;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            text-align: center;
         }
-        .hud-icon { width: 50px; height: 50px; object-fit: contain; margin-bottom: 8px; filter: drop-shadow(0 0 5px rgba(0,229,255,0.6)); }
-        
-        /* SKILL CARDS */
-        .skill-card { 
-            background-color: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; 
-            padding: 20px; margin-bottom: 15px; position: relative; overflow: hidden;
+        .profile-avatar-wrapper {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            padding: 5px;
+            background: #050810; /* Match body bg */
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+            z-index: 10;
         }
-        .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.1); }
+        .profile-avatar {
+            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+        }
+        .profile-content {
+            margin-top: 80px; /* Espacio para no tapar con el avatar */
+        }
+        .profile-name {
+            font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff;
+            text-transform: uppercase; letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+            margin-bottom: 5px;
+        }
+        .profile-role { color: #4dd0e1; font-size: 1.1em; letter-spacing: 1px; margin-bottom: 15px; }
+        .level-badge {
+            background: rgba(0, 229, 255, 0.15); border: 1px solid #00e5ff;
+            padding: 8px 20px; border-radius: 30px;
+            display: inline-block; font-family: 'Orbitron'; font-weight: bold; font-size: 0.9em; color: #e0f7fa;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+        
+        /* HUD BOXES (EPIC NUMBERS) */
+        .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .hud-card {
+            background: rgba(10, 25, 40, 0.7);
+            border: 1px solid #1c2e3e;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .hud-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
+        .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
+        
+        .epic-number {
+            font-family: 'Orbitron';
+            font-size: 2.8em; /* GIGANTE */
+            font-weight: 900;
+            line-height: 1;
+            margin: 5px 0;
+            text-shadow: 0 0 20px currentColor; /* Glow del mismo color */
+        }
+        .hud-label {
+            font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold;
+        }
+
+        /* CUSTOM RANKING TABLE */
+        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); border-radius: 8px; }
+        .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
+        .rank-cell:first-child { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 40px; text-align: center; }
+        .rank-cell:last-child { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
+        .bar-bg { background: #0f1520; height: 6px; border-radius: 3px; width: 100%; margin-right: 10px; position: relative; }
+        .bar-fill { height: 100%; background-color: #FFD700; border-radius: 3px; box-shadow: 0 0 8px #FFD700; }
+
+        /* SKILLS */
+        .skill-card { background: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -106,7 +165,7 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- FUNCIONES LÓGICAS ---
+# --- FUNCIONES LÓGICAS (MISMAS QUE ANTES) ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -202,7 +261,6 @@ def cargar_ranking_filtrado(uni, ano):
             
             df = pd.DataFrame(lista)
             if not df.empty:
-                # FIX RANKING: Solo ordenamos, no tocamos el índice aquí para evitar líos
                 df = df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
             return df
     except: return pd.DataFrame()
@@ -327,7 +385,7 @@ else:
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL ---
+    # --- TAB 1: PERFIL (PRO CARD) ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -345,42 +403,59 @@ else:
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        badge_html = ""
+        # LOGO DE SQUAD INTEGRADO
+        squad_html = ""
         if b64_badge:
-            # FIX: Estilo en línea para insignia escuadrón (Evita tamaño gigante)
-            badge_html = f"""<div style="margin-top:20px;"><img src="data:image/png;base64,{b64_badge}" style="width:80px; height:80px; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,229,255,0.6));"><div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div></div>"""
+            squad_html = f"""
+            <div style="margin-top:20px; border-top:1px solid #1c2e3e; padding-top:15px;">
+                <img src="data:image/png;base64,{b64_badge}" style="width:60px; filter:drop-shadow(0 0 8px rgba(0,229,255,0.5));">
+                <div style="color:#4dd0e1; font-size:0.8em; letter-spacing:2px; font-weight:bold; margin-top:5px;">{skuad.upper()}</div>
+            </div>
+            """
         
-        # FIX: Estilos en línea para avatar (Evita cuadrado gigante)
         profile_html = textwrap.dedent(f"""
-            <div class="profile-card">
-                <div style="display:inline-block; margin-bottom:15px;">
-                    {'<img src="' + avatar_url + '" style="width:130px; height:130px; border-radius:50%; object-fit:cover; border:3px solid #00e5ff; box-shadow:0 0 20px rgba(0,229,255,0.5);">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+            <div class="profile-container">
+                <div class="profile-avatar-wrapper">
+                    {'<img src="' + avatar_url + '" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'}
                 </div>
-                <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
-                <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
-                <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
-                    NIVEL {nivel_num}: {nombre_rango.upper()}
+                <div class="profile-content">
+                    <div class="profile-name">{st.session_state.nombre}</div>
+                    <div class="profile-role">{rol}</div>
+                    <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
+                    {squad_html}
                 </div>
-                {badge_html}
             </div>
         """)
         st.markdown(profile_html, unsafe_allow_html=True)
         
+        # HUD ÉPICO (BIG NUMBERS)
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
         hud_html = textwrap.dedent(f"""
-            <div class="hud-wrapper">
-                <div class="hud-box"><img src="data:image/png;base64,{b64_mp}" class="hud-icon"><div class="metric-value" style="color:#FFD700;">{mp}</div><div class="metric-label">MasterPoints</div></div>
-                <div class="hud-box"><img src="data:image/png;base64,{b64_ap}" class="hud-icon"><div class="metric-value" style="color:#00e5ff;">{ap}</div><div class="metric-label">AngioPoints</div></div>
-                <div class="hud-box"><img src="data:image/png;base64,{b64_vp}" class="hud-icon"><div class="metric-value" style="color:#ff4b4b;">{vp}%</div><div class="metric-label">VitaPoints</div></div>
+            <div class="hud-grid">
+                <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
+                    <img src="data:image/png;base64,{b64_mp}" class="hud-icon">
+                    <div class="epic-number" style="color:#FFD700;">{mp}</div>
+                    <div class="hud-label">MasterPoints</div>
+                </div>
+                <div class="hud-card" style="border-bottom: 3px solid #00e5ff;">
+                    <img src="data:image/png;base64,{b64_ap}" class="hud-icon">
+                    <div class="epic-number" style="color:#00e5ff;">{ap}</div>
+                    <div class="hud-label">AngioPoints</div>
+                </div>
+                <div class="hud-card" style="border-bottom: 3px solid #ff4b4b;">
+                    <img src="data:image/png;base64,{b64_vp}" class="hud-icon">
+                    <div class="epic-number" style="color:#ff4b4b;">{vp}%</div>
+                    <div class="hud-label">VitaPoints</div>
+                </div>
             </div>
         """)
         st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (FIXED INDEX LOGIC) ---
+    # --- TAB 2: RANKING ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
@@ -388,9 +463,8 @@ else:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
             
             table_rows = ""
-            # FIX: usamos enumerate para contar desde 0 y le sumamos 1 visualmente
             for i, (index, row) in enumerate(df.head(10).iterrows()):
-                rank = i + 1  # 0+1 = 1, 1+1 = 2, etc.
+                rank = i + 1
                 name = row["Aspirante"]
                 squad = row["Escuadrón"]
                 points = row["MasterPoints"]
@@ -428,7 +502,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (INLINE STYLE TITLE) ---
+    # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -449,7 +523,6 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # FIX: Estilos en línea para el título
                     card_html = textwrap.dedent(f"""
                         <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
