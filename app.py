@@ -50,24 +50,20 @@ st.markdown("""
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* TARJETA DE PERFIL PRO (AVATAR MÁS GRANDE) */
+        /* TARJETA DE PERFIL PRO */
         .profile-container {
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
             border: 1px solid #004d66; border-radius: 20px; padding: 20px;
-            margin-top: 70px; /* Ajustado para avatar más grande */
-            margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            margin-top: 60px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
             text-align: center;
         }
         .profile-avatar-wrapper {
-            position: absolute; 
-            top: -70px; /* Ajustado para que sobresalga correctamente */
-            left: 50%; transform: translateX(-50%);
-            width: 160px; height: 160px; /* AUMENTADO DE 140px A 160px */
-            border-radius: 50%; padding: 5px;
+            position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+            width: 160px; height: 160px; border-radius: 50%; padding: 5px;
             background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10;
         }
         .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-        .profile-content { margin-top: 90px; /* Ajustado */ }
+        .profile-content { margin-top: 90px; }
         .profile-name {
             font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff;
             text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 229, 255, 0.8); margin-bottom: 5px;
@@ -89,7 +85,7 @@ st.markdown("""
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
         .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-        /* CUSTOM RANKING TABLE (USADO PARA AMBOS RANKINGS) */
+        /* CUSTOM RANKING TABLE */
         .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; width: 100%; }
         .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
         .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
@@ -153,16 +149,35 @@ def cargar_habilidades_rol(rol_jugador):
             for item in res.json()["results"]:
                 props = item["properties"]
                 try:
+                    # Título de la Habilidad
                     nombre = props["Habilidad"]["title"][0]["text"]["content"]
-                    costo = props["Costo AP"]["number"]
+                    
+                    # Búsqueda robusta del Costo (por si cambia el nombre en Notion)
+                    costo = 0
+                    if "Costo AP" in props: costo = props["Costo AP"]["number"]
+                    elif "Costo" in props: costo = props["Costo"]["number"]
+                    elif "Coste" in props: costo = props["Coste"]["number"]
+                    
                     nivel_req = props["Nivel Requerido"]["number"]
+                    
+                    # Descripción
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
+                    
+                    # Intento de cargar Icono desde Notion (Columna 'Icono' tipo File)
+                    icon_url = None
+                    if "Icono" in props:
+                        files = props["Icono"].get("files", [])
+                        if files:
+                            icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+
                     habilidades.append({
                         "id": item["id"], "nombre": nombre, "costo": costo,
-                        "nivel_req": nivel_req, "descripcion": descripcion
+                        "nivel_req": nivel_req, "descripcion": descripcion, "icon_url": icon_url
                     })
-                except: pass
+                except Exception as e:
+                    # Si falla una habilidad, la saltamos pero no rompemos todo
+                    pass
         return habilidades
     except: return []
 
@@ -369,12 +384,10 @@ else:
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # HTML DEL ESCUADRÓN (Aplanado)
         squad_html = ""
         if b64_badge:
             squad_html = f"""<div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;"><div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div><img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,229,255,0.6));"><div style="color:#4dd0e1; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div></div>"""
         
-        # HTML DEL PERFIL (Aplanado) con Avatar más grande
         avatar_div = f'<img src="{avatar_url}" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'
         
         profile_html = f"""
@@ -418,13 +431,13 @@ else:
         st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (HTML TABLE UNIFICADA) ---
+    # --- TAB 2: RANKING ---
     with tab_ranking:
-        # 1. TOP ASPIRANTES
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
+            
             table_rows = ""
             for i, (index, row) in enumerate(df.head(10).iterrows()):
                 rank = i + 1
@@ -432,15 +445,16 @@ else:
                 squad = row["Escuadrón"]
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
+                
                 table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
-            st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
-        else:
-            st.info(f"Sin datos de aspirantes en {uni_label}.")
-
-        # 2. TOP ESCUADRONES (NUEVA TABLA HTML)
-        st.markdown("### 🛡️ TOP ESCUADRONES")
-        if df is not None and not df.empty:
+            
+            full_table = f"""<table class="rank-table">{table_rows}</table>"""
+            st.markdown(full_table, unsafe_allow_html=True)
+            
+            st.markdown("### 🛡️ TOP ESCUADRONES")
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
+            
+            # --- MISMA ESTRUCTURA DE TABLA PARA ESCUADRONES ---
             if not df_squads.empty:
                 max_squad_mp = int(df_squads["MasterPoints"].max()) if df_squads["MasterPoints"].max() > 0 else 1
                 squad_rows = ""
@@ -449,19 +463,22 @@ else:
                     squad_name = row["Escuadrón"]
                     points = row["MasterPoints"]
                     pct = (points / max_squad_mp) * 100
-                    # Usamos la misma estructura de fila que aspirantes, simplificando la celda central
-                    squad_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell" style="vertical-align:middle;"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{squad_name}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
+                    
+                    squad_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{squad_name}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
+                
                 st.markdown(f"""<table class="rank-table">{squad_rows}</table>""", unsafe_allow_html=True)
             else:
                 st.info("Sin datos de escuadrones.")
-        
-        if st.button("🔄 Refrescar Señal"):
-            st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
-            st.rerun()
+                
+        else:
+            st.info(f"Sin datos en el sector {uni_label}.")
+            if st.button("🔄 Refrescar Señal"):
+                st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
+                st.rerun()
 
-    # --- TAB 3: HABILIDADES ---
+    # --- TAB 3: HABILIDADES (FIXED TITLE & ICON) ---
     with tab_habilidades:
-        st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
+        st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
         habilidades = st.session_state.habilidades_data
         if not habilidades:
@@ -472,6 +489,8 @@ else:
                 costo = hab["costo"]
                 nivel_req = hab["nivel_req"]
                 desc = hab["descripcion"]
+                icon_url = hab.get("icon_url") # URL del icono si existe
+                
                 desbloqueada = nivel_num >= nivel_req
                 puede_pagar = ap >= costo
                 
@@ -480,8 +499,11 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # HTML APLANADO
-                    card_html = f"""<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span><span class="skill-cost">⚡ {costo} AP</span></div><p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p></div>"""
+                    # Logica para mostrar icono pequeño si existe
+                    icon_html = f'<img src="{icon_url}" style="width:24px; height:24px; margin-right:10px; object-fit:contain;">' if icon_url else ''
+                    
+                    # HTML APLANADO CON TÍTULO CYAN Y DIV
+                    card_html = f"""<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><div style="display:flex; align-items:center;">{icon_html}<div style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#00e5ff; text-transform:uppercase; line-height:1.2;">{nombre}</div></div><div class="skill-cost" style="white-space:nowrap;">⚡ {costo} AP</div></div><p style="color:#b0bec5; font-size:0.9em; margin:0; line-height:1.4;">{desc}</p></div>"""
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     c_btn, _ = st.columns([1, 2])
