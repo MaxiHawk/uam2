@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import time
 from datetime import datetime
-import pytz
+import pytz # Vital para la hora de Chile
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -144,14 +144,14 @@ def get_pending_requests(debug_mode=False):
                     tipo_obj = props.get("Tipo", {}).get("select")
                     tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
                     
-                    # --- EXTRAER CONTEXTO PARA FILTRADO ---
+                    # Contexto
                     uni_obj = props.get("Universidad", {}).get("select")
-                    uni = uni_obj["name"] if uni_obj else "Sin Asignar"
+                    uni = uni_obj["name"] if uni_obj else None
                     
                     ano_obj = props.get("Año", {}).get("select")
-                    ano = ano_obj["name"] if ano_obj else "Sin Año"
+                    ano = ano_obj["name"] if ano_obj else None
                     
-                    created_time = r["created_time"] # Fecha creación ISO
+                    created_time = r["created_time"]
                     
                     reqs.append({
                         "id": r["id"], 
@@ -264,12 +264,19 @@ with tab_req:
 
     reqs = get_pending_requests(debug_mode)
     
-    # --- FILTRO INTELIGENTE BASADO EN DATOS DE LA SOLICITUD ---
+    # 1. FILTRO DE SOLICITUDES
     reqs_filtered = []
     for r in reqs:
-        pass_uni = (sel_uni == "Todas") or (r['universidad'] == sel_uni)
-        pass_gen = (sel_gen == "Todas") or (r['año'] == sel_gen)
+        req_uni = r.get('universidad')
+        req_ano = r.get('año')
         
+        pass_uni = (sel_uni == "Todas") or (req_uni == sel_uni)
+        pass_gen = (sel_gen == "Todas") or (req_ano == sel_gen)
+        
+        if req_uni is None or req_ano is None:
+            pass_uni = True
+            pass_gen = True
+
         if pass_uni and pass_gen:
             reqs_filtered.append(r)
     
@@ -292,37 +299,39 @@ with tab_req:
                 except: pass
             
             player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
-
-            # --- BUSCAR DATOS DEL JUGADOR PARA VISUALIZACIÓN ---
-            player_stats = df_players[df_players["Aspirante"] == player_name]
-            curr_mp, curr_ap, curr_vp, p_gen = 0, 0, 0, "??"
+            req_gen_label = r.get('año') if r.get('año') else "??"
             
+            # --- FIX: CONVERTIR FECHA A SANTIAGO (GMT-3) ---
+            try:
+                utc_dt = datetime.fromisoformat(r['created'].replace('Z', '+00:00'))
+                chile_tz = pytz.timezone('America/Santiago')
+                chile_dt = utc_dt.astimezone(chile_tz)
+                req_date_str = chile_dt.strftime("%d/%m %H:%M")
+            except: 
+                req_date_str = "Hoy"
+
+            # --- BUSCAR STATS ACTUALES ---
+            player_stats = df_players[df_players["Aspirante"] == player_name]
+            curr_mp, curr_ap, curr_vp = 0, 0, 0
             if not player_stats.empty:
                 p_data = player_stats.iloc[0]
                 curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
-                p_gen = p_data["Generación"]
-
-            # Parsear Fecha ISO a formato legible
-            try:
-                dt_obj = datetime.fromisoformat(r['created'].replace('Z', '+00:00'))
-                date_str = dt_obj.strftime("%d/%m %H:%M")
-            except: date_str = "Hoy"
 
             with st.container():
                 card_class = "req-card" if is_skill else "req-card-msg"
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
                 title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
                 
-                # --- CABECERA ---
+                # CABECERA
                 st.markdown(f"""
                 <div class="{card_class}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <div class="req-player">
-                            {player_name} <span class="req-gen-tag">{p_gen}</span>
+                            {player_name} <span class="req-gen-tag">{req_gen_label}</span>
                         </div>
                         <div style="text-align:right;">
                             <div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div>
-                            <div style="color:#666; font-size:0.7em;">{date_str}</div>
+                            <div style="color:#666; font-size:0.7em;">{req_date_str}</div>
                         </div>
                     </div>
                     <div class="req-detail">{title_text}</div>
@@ -330,14 +339,14 @@ with tab_req:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # --- STATS MINIATURA ---
+                # STATS MINIATURA
                 if not player_stats.empty:
                     k1, k2, k3 = st.columns(3)
                     k1.markdown(f"<div class='kpi-mini' style='border-color:#FFD700;'><div class='kpi-mini-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-mini-lbl'>MP Actual</div></div>", unsafe_allow_html=True)
                     k2.markdown(f"<div class='kpi-mini' style='border-color:#00e5ff;'><div class='kpi-mini-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-mini-lbl'>AP Actual</div></div>", unsafe_allow_html=True)
                     k3.markdown(f"<div class='kpi-mini' style='border-color:#ff4b4b;'><div class='kpi-mini-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-mini-lbl'>VP Actual</div></div>", unsafe_allow_html=True)
 
-                # --- ACCIONES ---
+                # ACCIONES
                 c_obs, c_acts = st.columns([3, 2])
                 
                 with c_obs:
