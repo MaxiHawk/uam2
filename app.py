@@ -33,7 +33,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON ---
+# --- CSS: ESTÉTICA BLUE NEON (RESPONSIVE) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
@@ -50,43 +50,50 @@ st.markdown("""
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* TARJETA DE PERFIL PRO */
+        /* --- ESTILOS RESPONSIVE (CELULAR VS PC) --- */
+        
+        /* 1. PERFIL */
         .profile-container {
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
             border: 1px solid #004d66; border-radius: 20px; padding: 20px;
-            margin-top: 60px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
             text-align: center;
         }
         .profile-avatar-wrapper {
-            position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: -70px; left: 50%; transform: translateX(-50%);
             width: 160px; height: 160px; border-radius: 50%; padding: 5px;
             background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10;
         }
         .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
         .profile-content { margin-top: 90px; }
-        .profile-name {
-            font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff;
-            text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 229, 255, 0.8); margin-bottom: 5px;
-        }
-        .profile-role { color: #4dd0e1; font-size: 1em; letter-spacing: 1px; margin-bottom: 15px; font-weight: 300; }
-        .level-badge {
-            background: rgba(0, 229, 255, 0.15); border: 1px solid #00e5ff; padding: 8px 20px; border-radius: 30px;
-            display: inline-block; font-family: 'Orbitron'; font-weight: bold; font-size: 0.9em; color: #e0f7fa; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
-        }
+        .profile-name { font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
+        .profile-role { color: #4dd0e1; font-size: 1em; margin-bottom: 15px; }
         
-        /* HUD BOXES */
+        /* 2. HUD GRID (PUNTOS) */
         .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
         .hud-card {
             background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px;
-            padding: 15px; text-align: center; transition: transform 0.3s; position: relative; overflow: hidden;
+            padding: 15px; text-align: center; position: relative; overflow: hidden;
         }
-        .hud-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
         .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
         .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-        /* CUSTOM RANKING TABLE */
-        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; width: 100%; }
+        /* 3. SKILL CARDS */
+        .skill-card-container {
+            display: flex; align-items: stretch; min-height: 120px;
+            background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
+            margin-bottom: 15px; overflow: hidden; transition: 0.3s;
+        }
+        .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }
+        .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
+        .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
+        .skill-cost-col { width: 100px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
+        .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; }
+        .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }
+        
+        /* 4. RANKING TABLE */
+        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
         .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
         .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
         .rank-cell-rank { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 50px; text-align: center; }
@@ -94,32 +101,34 @@ st.markdown("""
         .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
         .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
-        /* SKILL CARDS (BANNER LATERAL) */
-        .skill-card-container {
-            display: flex; align-items: stretch; min-height: 120px;
-            background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
-            margin-bottom: 15px; overflow: hidden; transition: 0.3s;
+        /* ========================================= */
+        /* === MEDIA QUERIES (MODO MÓVIL) === */
+        /* ========================================= */
+        @media (max-width: 768px) {
+            /* Perfil Compacto */
+            .profile-container { margin-top: 50px; }
+            .profile-avatar-wrapper { width: 130px; height: 130px; top: -65px; }
+            .profile-name { font-size: 1.8em; }
+            
+            /* HUD (Puntos) Ajustado para no romperse */
+            .hud-grid { gap: 5px; }
+            .hud-card { padding: 8px 2px; }
+            .hud-icon { width: 30px; height: 30px; margin-bottom: 2px; }
+            .epic-number { font-size: 1.6em; margin: 2px 0; } /* Fuente más chica para que quepa */
+            .hud-label { font-size: 0.55em; letter-spacing: 1px; }
+            
+            /* Habilidades Compactas */
+            .skill-card-container { min-height: 100px; }
+            .skill-banner-col { width: 60px; } /* Banner más delgado */
+            .skill-content-col { padding: 10px; }
+            .skill-cost-col { width: 70px; padding: 5px; } /* Columna costo más delgada */
+            .skill-cost-icon { width: 25px; height: 25px; }
+            .skill-cost-val { font-size: 1.4em; }
+            
+            /* Ranking Compacto */
+            .rank-cell { padding: 8px 5px; font-size: 0.9em; }
+            .rank-cell-rank { width: 30px; font-size: 1em; }
         }
-        .skill-card-container:hover { border-color: #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.15); }
-        
-        .skill-banner-col {
-            width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e;
-        }
-        .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
-        .skill-banner-placeholder { font-size: 3em; color: #1c2e3e; opacity: 0.5; }
-        
-        .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
-        .skill-title { font-family:'Orbitron', sans-serif; font-size:1.3em; font-weight:900; color:#fff; text-transform:uppercase; line-height:1.1; margin-bottom: 8px; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        .skill-desc { color:#b0bec5; font-size:0.9em; margin:0; line-height:1.4; }
-        
-        .skill-cost-col {
-            width: 100px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px;
-        }
-        /* COSTO COHERENTE Y GRANDE */
-        .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; filter: drop-shadow(0 0 8px #00e5ff); }
-        .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; text-shadow: 0 0 10px #00e5ff; }
-        .skill-cost-label { font-family: 'Orbitron'; font-size: 0.8em; color: #00e5ff; font-weight: bold; letter-spacing: 2px; margin-top: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -182,6 +191,7 @@ def cargar_habilidades_rol(rol_jugador):
                     elif "Coste" in props: costo = props["Coste"]["number"]
                     
                     nivel_req = props["Nivel Requerido"]["number"]
+                    
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     
@@ -488,7 +498,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (EPIC BANNER STYLE) ---
+    # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
