@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import os
 import base64
+import textwrap # <--- LA CLAVE PARA ARREGLAR EL HTML
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -51,13 +52,22 @@ st.markdown("""
         /* ESTILOS ESPECÍFICOS PARA TABLAS HTML */
         .custom-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
         .custom-row { background: rgba(10, 20, 30, 0.6); }
-        .custom-cell { padding: 15px; border-top: 1px solid #004d66; border-bottom: 1px solid #004d66; color: white; }
+        .custom-cell { padding: 15px; border-top: 1px solid #004d66; border-bottom: 1px solid #004d66; color: white; vertical-align: middle; }
         .custom-cell-first { border-left: 1px solid #004d66; border-top-left-radius: 10px; border-bottom-left-radius: 10px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; text-align: center; width: 50px; }
         .custom-cell-last { border-right: 1px solid #004d66; border-top-right-radius: 10px; border-bottom-right-radius: 10px; width: 40%; }
         
         /* BARRA DE PROGRESO */
         .bar-bg { background: #1c2e3e; height: 8px; border-radius: 4px; overflow: hidden; width: 100%; margin-right: 10px; }
         .bar-fill { height: 100%; background-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
+        
+        /* HUD BOXES */
+        .hud-wrapper { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 30px; }
+        .hud-box { 
+            background: rgba(8, 28, 48, 0.6); border: 1px solid #005f73; border-radius: 12px;
+            padding: 15px 5px; text-align: center; flex: 1; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .hud-icon { width: 50px; height: 50px; object-fit: contain; margin-bottom: 8px; filter: drop-shadow(0 0 5px rgba(0,229,255,0.6)); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -79,10 +89,8 @@ def get_img_as_base64(file_path):
     return base64.b64encode(data).decode()
 
 def find_squad_image(squad_name):
-    """Busca la imagen del escuadrón probando varias combinaciones."""
     if not squad_name: return None
     clean_name = squad_name.lower().strip().replace(" ", "_")
-    # Busca en assets/ y root, con _team y sin _team
     candidates = [
         f"assets/{clean_name}_team.png", f"assets/{clean_name}.png", f"assets/{clean_name}.jpg",
         f"{clean_name}_team.png", f"{clean_name}.png"
@@ -293,16 +301,22 @@ else:
         if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
-        st.markdown(f"""
+        
+        # FIX HTML DEDENT
+        header_html = textwrap.dedent(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
                 <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
-                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">{uni_label.upper()}</div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">
+                    {uni_label.upper()}
+                </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
                     <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
+        """)
+        st.markdown(header_html, unsafe_allow_html=True)
+
     st.markdown("<br><br>", unsafe_allow_html=True)
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
@@ -326,47 +340,50 @@ else:
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # HTML DEL PERFIL LIMPIO (Sin indentaciones raras)
-        badge_div = ""
+        badge_html = ""
         if b64_badge:
-            badge_div = f"""<div style="margin-top:20px;"><img src="data:image/png;base64,{b64_badge}" class="squad-badge"><div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div></div>"""
+            badge_html = f"""<div style="margin-top:20px;"><img src="data:image/png;base64,{b64_badge}" class="squad-badge"><div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div></div>"""
         
-        html_card = f"""
-        <div class="profile-card">
-            <div class="avatar-container">
-                {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+        # FIX HTML DEDENT
+        profile_html = textwrap.dedent(f"""
+            <div class="profile-card">
+                <div class="avatar-container">
+                    {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+                </div>
+                <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
+                <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
+                <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
+                    NIVEL {nivel_num}: {nombre_rango.upper()}
+                </div>
+                {badge_html}
             </div>
-            <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
-            <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
-            <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
-            {badge_div}
-        </div>
-        """
-        st.markdown(html_card, unsafe_allow_html=True)
+        """)
+        st.markdown(profile_html, unsafe_allow_html=True)
         
         # HUD
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
-        st.markdown(f"""
-        <div class="hud-container">
-            <div class="metric-box"><img src="data:image/png;base64,{b64_mp}" class="metric-icon-img"><div class="metric-value" style="color:#FFD700;">{mp}</div><div class="metric-label">MasterPoints</div></div>
-            <div class="metric-box"><img src="data:image/png;base64,{b64_ap}" class="metric-icon-img"><div class="metric-value" style="color:#00e5ff;">{ap}</div><div class="metric-label">AngioPoints</div></div>
-            <div class="metric-box"><img src="data:image/png;base64,{b64_vp}" class="metric-icon-img"><div class="metric-value" style="color:#ff4b4b;">{vp}%</div><div class="metric-label">VitaPoints</div></div>
-        </div>
-        """, unsafe_allow_html=True)
+        
+        # FIX HTML DEDENT
+        hud_html = textwrap.dedent(f"""
+            <div class="hud-wrapper">
+                <div class="hud-box"><img src="data:image/png;base64,{b64_mp}" class="hud-icon"><div class="metric-value" style="color:#FFD700;">{mp}</div><div class="metric-label">MasterPoints</div></div>
+                <div class="hud-box"><img src="data:image/png;base64,{b64_ap}" class="hud-icon"><div class="metric-value" style="color:#00e5ff;">{ap}</div><div class="metric-label">AngioPoints</div></div>
+                <div class="hud-box"><img src="data:image/png;base64,{b64_vp}" class="hud-icon"><div class="metric-value" style="color:#ff4b4b;">{vp}%</div><div class="metric-label">VitaPoints</div></div>
+            </div>
+        """)
+        st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (HTML PURO PARA CONTROL TOTAL) ---
+    # --- TAB 2: RANKING (FIX HTML TABLE DEDENT) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
-            # Construimos la tabla HTML a mano
-            table_html = """
-            <table class="custom-table">
-            """
+            
+            table_rows = ""
             for index, row in df.head(10).iterrows():
                 rank = index + 1
                 name = row["Aspirante"]
@@ -374,7 +391,7 @@ else:
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
                 
-                table_html += f"""
+                table_rows += f"""
                 <tr class="custom-row">
                     <td class="custom-cell custom-cell-first">{rank}</td>
                     <td class="custom-cell">
@@ -389,8 +406,14 @@ else:
                     </td>
                 </tr>
                 """
-            table_html += "</table>"
-            st.markdown(table_html, unsafe_allow_html=True)
+            
+            # FIX HTML DEDENT
+            full_table = textwrap.dedent(f"""
+                <table class="custom-table">
+                    {table_rows}
+                </table>
+            """)
+            st.markdown(full_table, unsafe_allow_html=True)
             
             st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
@@ -401,7 +424,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (FIXED TITLE STYLE) ---
+    # --- TAB 3: HABILIDADES (FIX HTML DEDENT) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -422,16 +445,16 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # Usamos estilo en línea (style="") para asegurar que el título sea BLANCO
-                    card_html = f"""
-                    <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span>
-                            <span class="skill-cost">⚡ {costo} AP</span>
+                    # FIX HTML DEDENT
+                    card_html = textwrap.dedent(f"""
+                        <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span>
+                                <span class="skill-cost">⚡ {costo} AP</span>
+                            </div>
+                            <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
                         </div>
-                        <p style="color:#b0bec5; font-size:0.9em; margin:0;">{desc}</p>
-                    </div>
-                    """
+                    """)
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     c_btn, _ = st.columns([1, 2])
