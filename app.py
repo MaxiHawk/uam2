@@ -33,7 +33,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON (EPIC HUD EDITION) ---
+# --- CSS: ESTÉTICA BLUE NEON ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
@@ -53,84 +53,47 @@ st.markdown("""
         /* TARJETA DE PERFIL PRO */
         .profile-container {
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
-            border: 1px solid #004d66;
-            border-radius: 20px;
-            padding: 20px;
-            margin-top: 40px; /* Espacio para que la cabeza salga */
-            margin-bottom: 30px;
-            position: relative;
-            box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            border: 1px solid #004d66; border-radius: 20px; padding: 20px;
+            margin-top: 60px; /* Más espacio arriba */
+            margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
             text-align: center;
         }
         .profile-avatar-wrapper {
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            padding: 5px;
-            background: #050810; /* Match body bg */
-            border: 2px solid #00e5ff;
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
-            z-index: 10;
+            position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+            width: 140px; height: 140px; border-radius: 50%; padding: 5px;
+            background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.6); z-index: 10;
         }
-        .profile-avatar {
-            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-        }
-        .profile-content {
-            margin-top: 80px; /* Espacio para no tapar con el avatar */
-        }
+        .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .profile-content { margin-top: 80px; }
         .profile-name {
             font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff;
-            text-transform: uppercase; letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
-            margin-bottom: 5px;
+            text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 229, 255, 0.8); margin-bottom: 5px;
         }
-        .profile-role { color: #4dd0e1; font-size: 1.1em; letter-spacing: 1px; margin-bottom: 15px; }
+        .profile-role { color: #4dd0e1; font-size: 1em; letter-spacing: 1px; margin-bottom: 15px; font-weight: 300; }
         .level-badge {
-            background: rgba(0, 229, 255, 0.15); border: 1px solid #00e5ff;
-            padding: 8px 20px; border-radius: 30px;
-            display: inline-block; font-family: 'Orbitron'; font-weight: bold; font-size: 0.9em; color: #e0f7fa;
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+            background: rgba(0, 229, 255, 0.15); border: 1px solid #00e5ff; padding: 8px 20px; border-radius: 30px;
+            display: inline-block; font-family: 'Orbitron'; font-weight: bold; font-size: 0.9em; color: #e0f7fa; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
         }
         
-        /* HUD BOXES (EPIC NUMBERS) */
+        /* HUD BOXES */
         .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
         .hud-card {
-            background: rgba(10, 25, 40, 0.7);
-            border: 1px solid #1c2e3e;
-            border-radius: 15px;
-            padding: 15px;
-            text-align: center;
-            transition: transform 0.3s;
-            position: relative;
-            overflow: hidden;
+            background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px;
+            padding: 15px; text-align: center; transition: transform 0.3s; position: relative; overflow: hidden;
         }
         .hud-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
         .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
-        
-        .epic-number {
-            font-family: 'Orbitron';
-            font-size: 2.8em; /* GIGANTE */
-            font-weight: 900;
-            line-height: 1;
-            margin: 5px 0;
-            text-shadow: 0 0 20px currentColor; /* Glow del mismo color */
-        }
-        .hud-label {
-            font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold;
-        }
+        .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
+        .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-        /* CUSTOM RANKING TABLE */
-        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
-        .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); border-radius: 8px; }
+        /* CUSTOM RANKING TABLE (HTML) */
+        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; width: 100%; }
+        .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
         .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
-        .rank-cell:first-child { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 40px; text-align: center; }
-        .rank-cell:last-child { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
-        .bar-bg { background: #0f1520; height: 6px; border-radius: 3px; width: 100%; margin-right: 10px; position: relative; }
-        .bar-fill { height: 100%; background-color: #FFD700; border-radius: 3px; box-shadow: 0 0 8px #FFD700; }
+        .rank-cell-rank { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 50px; text-align: center; }
+        .rank-cell-last { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
+        .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
         /* SKILLS */
         .skill-card { background: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
@@ -165,7 +128,7 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- FUNCIONES LÓGICAS (MISMAS QUE ANTES) ---
+# --- FUNCIONES LÓGICAS ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -385,7 +348,7 @@ else:
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL (PRO CARD) ---
+    # --- TAB 1: PERFIL (PRO CARD UPDATED) ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -403,16 +366,22 @@ else:
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # LOGO DE SQUAD INTEGRADO
         squad_html = ""
         if b64_badge:
+            # SQUAD BADGE MÁS GRANDE Y CON TEXTO ÉPICO
             squad_html = f"""
-            <div style="margin-top:20px; border-top:1px solid #1c2e3e; padding-top:15px;">
-                <img src="data:image/png;base64,{b64_badge}" style="width:60px; filter:drop-shadow(0 0 8px rgba(0,229,255,0.5));">
-                <div style="color:#4dd0e1; font-size:0.8em; letter-spacing:2px; font-weight:bold; margin-top:5px;">{skuad.upper()}</div>
+            <div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;">
+                <div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">
+                    PERTENECIENTE AL ESCUADRÓN
+                </div>
+                <img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,229,255,0.6));">
+                <div style="color:#4dd0e1; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">
+                    {skuad.upper()}
+                </div>
             </div>
             """
         
+        # PERFIL CON ROL ACTUALIZADO
         profile_html = textwrap.dedent(f"""
             <div class="profile-container">
                 <div class="profile-avatar-wrapper">
@@ -420,7 +389,7 @@ else:
                 </div>
                 <div class="profile-content">
                     <div class="profile-name">{st.session_state.nombre}</div>
-                    <div class="profile-role">{rol}</div>
+                    <div class="profile-role">Perteneciente a la orden de los {rol}</div>
                     <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
                     {squad_html}
                 </div>
@@ -428,7 +397,7 @@ else:
         """)
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # HUD ÉPICO (BIG NUMBERS)
+        # HUD ÉPICO
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
@@ -455,13 +424,14 @@ else:
         st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING ---
+    # --- TAB 2: RANKING (HTML PURO + BARRAS AMARILLAS) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
             
+            # Generador de Tabla HTML
             table_rows = ""
             for i, (index, row) in enumerate(df.head(10).iterrows()):
                 rank = i + 1
@@ -471,23 +441,23 @@ else:
                 pct = (points / max_mp) * 100
                 
                 table_rows += f"""
-                <tr class="custom-row">
-                    <td class="custom-cell custom-cell-first">{rank}</td>
-                    <td class="custom-cell">
+                <tr class="rank-row">
+                    <td class="rank-cell rank-cell-rank">{rank}</td>
+                    <td class="rank-cell">
                         <div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div>
-                        <div style="color:#aaa; font-size:0.9em;">{squad}</div>
+                        <div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div>
                     </td>
-                    <td class="custom-cell custom-cell-last">
-                        <div style="display:flex; align-items:center;">
+                    <td class="rank-cell rank-cell-last">
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div>
                             <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div>
-                            <span style="font-family:'Orbitron'; color:#FFD700; font-weight:bold;">{points}</span>
                         </div>
                     </td>
                 </tr>
                 """
             
             full_table = textwrap.dedent(f"""
-                <table class="custom-table">
+                <table class="rank-table">
                     {table_rows}
                 </table>
             """)
@@ -502,7 +472,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES ---
+    # --- TAB 3: HABILIDADES (HTML) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
