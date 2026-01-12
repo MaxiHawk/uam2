@@ -1,14 +1,9 @@
 import streamlit as st
-
-# --- CONFIGURACIÓN DE PÁGINA (DEBE IR PRIMERO) ---
-st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
-
 import requests
 import pandas as pd
 import os
 import base64
 import textwrap
-import hashlib  # Para seguridad de contraseñas (opcional)
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -16,16 +11,18 @@ try:
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
     DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
-except KeyError as e:
-    st.error(f"⚠️ Error: Falta configurar el secreto {e} en Streamlit Cloud.")
+except FileNotFoundError:
+    st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
 
 # --- CONFIGURACIÓN GLOBAL ---
 headers = {
-    "Authorization": f"Bearer {NOTION_TOKEN}",
+    "Authorization": "Bearer " + NOTION_TOKEN,
     "Content-Type": "application/json",
     "Notion-Version": "2022-06-28"
 }
+
+st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
 # --- DICCIONARIO DE NIVELES ---
 NOMBRES_NIVELES = {
@@ -38,165 +35,136 @@ NOMBRES_NIVELES = {
 
 # --- CSS: ESTÉTICA BLUE NEON ---
 st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
+        
+        /* GENERAL */
+        h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
+        html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
+        .block-container { padding-top: 1rem !important; }
+        #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
+        [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
+        
+        /* BOTONES & TABS */
+        .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
+        .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
+        
+        /* TARJETA DE PERFIL PRO (AVATAR MÁS GRANDE) */
+        .profile-container {
+            background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
+            border: 1px solid #004d66; border-radius: 20px; padding: 20px;
+            margin-top: 70px; /* Ajustado para avatar más grande */
+            margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            text-align: center;
+        }
+        .profile-avatar-wrapper {
+            position: absolute; 
+            top: -70px; /* Ajustado para que sobresalga correctamente */
+            left: 50%; transform: translateX(-50%);
+            width: 160px; height: 160px; /* AUMENTADO DE 140px A 160px */
+            border-radius: 50%; padding: 5px;
+            background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10;
+        }
+        .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .profile-content { margin-top: 90px; /* Ajustado */ }
+        .profile-name {
+            font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff;
+            text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 229, 255, 0.8); margin-bottom: 5px;
+        }
+        .profile-role { color: #4dd0e1; font-size: 1em; letter-spacing: 1px; margin-bottom: 15px; font-weight: 300; }
+        .level-badge {
+            background: rgba(0, 229, 255, 0.15); border: 1px solid #00e5ff; padding: 8px 20px; border-radius: 30px;
+            display: inline-block; font-family: 'Orbitron'; font-weight: bold; font-size: 0.9em; color: #e0f7fa; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+        
+        /* HUD BOXES */
+        .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .hud-card {
+            background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px;
+            padding: 15px; text-align: center; transition: transform 0.3s; position: relative; overflow: hidden;
+        }
+        .hud-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
+        .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
+        .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
+        .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-/* GENERAL */
-h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
-html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
-.block-container { padding-top: 1rem !important; }
-#MainMenu, header, footer, .stAppDeployButton { display: none !important; }
-[data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
+        /* CUSTOM RANKING TABLE (USADO PARA AMBOS RANKINGS) */
+        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; width: 100%; }
+        .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
+        .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
+        .rank-cell-rank { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 50px; text-align: center; }
+        .rank-cell-last { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
+        .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
-/* BOTONES & TABS */
-.stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
-.stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
-.stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
-
-/* TARJETA DE PERFIL PRO */
-.profile-container {
-    background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
-    border: 1px solid #004d66; border-radius: 20px; padding: 20px;
-    margin-top: 60px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
-    text-align: center;
-}
-.profile-avatar-wrapper {
-    position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
-    width: 140px; height: 140px; border-radius: 50%; padding: 5px;
-    background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.6); z-index: 10;
-}
-.profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-.profile-content { margin-top: 80px; }
-.profile-name {
-    font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff;
-    text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 229, 255, 0.8); margin-bottom: 5px;
-}
-.profile-role { color: #4dd0e1; font-size: 1em; letter-spacing: 1px; margin-bottom: 15px; font-weight: 300; }
-.level-badge {
-    background: rgba(0, 229, 255, 0.15); border: 1px solid #00e5ff; padding: 8px 20px; border-radius: 30px;
-    display: inline-block; font-family: 'Orbitron'; font-weight: bold; font-size: 0.9em; color: #e0f7fa; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
-}
-
-/* HUD BOXES */
-.hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-.hud-card {
-    background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px;
-    padding: 15px; text-align: center; transition: transform 0.3s; position: relative; overflow: hidden;
-}
-.hud-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
-.hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
-.epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
-.hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
-
-/* CUSTOM RANKING TABLE */
-.rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
-.rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
-.rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
-.rank-cell-rank { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 50px; text-align: center; }
-.rank-cell-last { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
-.bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
-.bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
-
-/* SKILLS */
-.skill-card { background: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
-</style>
+        /* SKILLS */
+        .skill-card { background: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
+    </style>
 """, unsafe_allow_html=True)
 
 # --- ESTADO DE SESIÓN ---
-if "jugador" not in st.session_state:
-    st.session_state.jugador = None
-if "team_stats" not in st.session_state:
-    st.session_state.team_stats = 0
-if "squad_name" not in st.session_state:
-    st.session_state.squad_name = None
-if "login_error" not in st.session_state:
-    st.session_state.login_error = None
-if "ranking_data" not in st.session_state:
-    st.session_state.ranking_data = None
-if "habilidades_data" not in st.session_state:
-    st.session_state.habilidades_data = []
-if "uni_actual" not in st.session_state:
-    st.session_state.uni_actual = None
-if "ano_actual" not in st.session_state:
-    st.session_state.ano_actual = None
-if "estado_uam" not in st.session_state:
-    st.session_state.estado_uam = None
+if "jugador" not in st.session_state: st.session_state.jugador = None
+if "team_stats" not in st.session_state: st.session_state.team_stats = 0
+if "squad_name" not in st.session_state: st.session_state.squad_name = None
+if "login_error" not in st.session_state: st.session_state.login_error = None
+if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
+if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
+if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
+if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
+if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 
 # --- HELPERS ---
 def get_img_as_base64(file_path):
-    if not file_path or not os.path.exists(file_path):
-        return ""
-    with open(file_path, "rb") as f:
-        data = f.read()
+    if not os.path.exists(file_path): return ""
+    with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
 def find_squad_image(squad_name):
-    if not squad_name:
-        return None
+    if not squad_name: return None
     clean_name = squad_name.lower().strip().replace(" ", "_")
     candidates = [
-        f"assets/{clean_name}_team.png",
-        f"assets/{clean_name}.png",
-        f"assets/{clean_name}.jpg",
-        f"{clean_name}_team.png",
-        f"{clean_name}.png"
+        f"assets/{clean_name}_team.png", f"assets/{clean_name}.png", f"assets/{clean_name}.jpg",
+        f"{clean_name}_team.png", f"{clean_name}.png"
     ]
     for path in candidates:
-        if os.path.exists(path):
-            return path
+        if os.path.exists(path): return path
     return None
 
 # --- FUNCIONES LÓGICAS ---
 def calcular_nivel_usuario(mp):
-    if mp <= 50:
-        return 1
-    elif mp <= 150:
-        return 2
-    elif mp <= 300:
-        return 3
-    elif mp <= 500:
-        return 4
-    else:
-        return 5
+    if mp <= 50: return 1
+    elif mp <= 150: return 2
+    elif mp <= 300: return 3
+    elif mp <= 500: return 4
+    else: return 5
 
-@st.cache_data(ttl=300)
 def cargar_habilidades_rol(rol_jugador):
-    if not rol_jugador:
-        return []
+    if not rol_jugador: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
     payload = {
         "filter": {"property": "Rol", "select": {"equals": rol_jugador}},
         "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
     }
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=10)
+        res = requests.post(url, headers=headers, json=payload)
         habilidades = []
         if res.status_code == 200:
-            for item in res.json().get("results", []):
-                props = item.get("properties", {})
+            for item in res.json()["results"]:
+                props = item["properties"]
                 try:
-                    nombre_list = props.get("Habilidad", {}).get("title", [])
-                    nombre = nombre_list[0]["text"]["content"] if nombre_list else "Sin nombre"
-                    costo = props.get("Costo AP", {}).get("number") or 0
-                    nivel_req = props.get("Nivel Requerido", {}).get("number") or 1
+                    nombre = props["Habilidad"]["title"][0]["text"]["content"]
+                    costo = props["Costo AP"]["number"]
+                    nivel_req = props["Nivel Requerido"]["number"]
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     habilidades.append({
-                        "id": item["id"],
-                        "nombre": nombre,
-                        "costo": costo,
-                        "nivel_req": nivel_req,
-                        "descripcion": descripcion
+                        "id": item["id"], "nombre": nombre, "costo": costo,
+                        "nivel_req": nivel_req, "descripcion": descripcion
                     })
-                except (KeyError, IndexError) as e:
-                    continue
-            return habilidades
-        else:
-            st.warning(f"Error al cargar habilidades: {res.status_code}")
-            return []
-    except requests.exceptions.RequestException as e:
-        st.warning(f"Error de conexión: {e}")
-        return []
+                except: pass
+        return habilidades
+    except: return []
 
 def solicitar_activacion_habilidad(nombre_habilidad, costo, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
@@ -207,15 +175,11 @@ def solicitar_activacion_habilidad(nombre_habilidad, costo, jugador_nombre):
             "Mensaje": {"rich_text": [{"text": {"content": f"Desea activar: '{nombre_habilidad}' (Costo: {costo} AP). Contexto: {st.session_state.uni_actual} {st.session_state.ano_actual}"}}]}
         }
     }
-    try:
-        res = requests.post(url, headers=headers, json=nuevo_mensaje, timeout=10)
-        return res.status_code == 200
-    except requests.exceptions.RequestException:
-        return False
+    res = requests.post(url, headers=headers, json=nuevo_mensaje)
+    return res.status_code == 200
 
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
-    if not nombre_escuadron or not uni or not ano:
-        return 0
+    if not nombre_escuadron or not uni or not ano: return 0
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     payload = {
         "filter": {
@@ -227,100 +191,69 @@ def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
         }
     }
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=10)
+        res = requests.post(url, headers=headers, json=payload)
         total_mp = 0
         if res.status_code == 200:
-            for miembro in res.json().get("results", []):
-                try:
-                    val = miembro["properties"]["MP"]["number"]
-                    total_mp += val if val else 0
-                except (KeyError, TypeError):
-                    pass
+            for miembro in res.json()["results"]:
+                try: val = miembro["properties"]["MP"]["number"]; total_mp += val if val else 0
+                except: pass
         return total_mp
-    except requests.exceptions.RequestException:
-        return 0
+    except: return 0
 
-@st.cache_data(ttl=300)
 def cargar_ranking_filtrado(uni, ano):
-    if not uni or not ano:
-        return pd.DataFrame()
+    if not uni or not ano: return pd.DataFrame()
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    
-    all_results = []
-    has_more = True
-    next_cursor = None
-    
-    while has_more:
-        payload = {
-            "filter": {
-                "and": [
-                    {"property": "Universidad", "select": {"equals": uni}},
-                    {"property": "Año", "select": {"equals": ano}}
-                ]
-            },
-            "page_size": 100
+    payload = {
+        "filter": {
+            "and": [
+                {"property": "Universidad", "select": {"equals": uni}},
+                {"property": "Año", "select": {"equals": ano}}
+            ]
         }
-        if next_cursor:
-            payload["start_cursor"] = next_cursor
-        
-        try:
-            res = requests.post(url, headers=headers, json=payload, timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                all_results.extend(data.get("results", []))
-                has_more = data.get("has_more", False)
-                next_cursor = data.get("next_cursor")
-            else:
-                has_more = False
-        except requests.exceptions.RequestException:
-            has_more = False
-    
-    lista = []
-    for p in all_results:
-        props = p.get("properties", {})
-        try:
-            nombre_list = props.get("Jugador", {}).get("title", [])
-            nombre = nombre_list[0]["text"]["content"] if nombre_list else "Sin nombre"
-            mp = props.get("MP", {}).get("number") or 0
-            esc_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-            escuadron = esc_obj[0]["text"]["content"] if esc_obj else "Sin Escuadrón"
-            lista.append({"Aspirante": nombre, "Escuadrón": escuadron, "MasterPoints": mp})
-        except (KeyError, IndexError):
-            continue
-    
-    df = pd.DataFrame(lista)
-    if not df.empty:
-        df = df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
-    return df
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            lista = []
+            for p in res.json()["results"]:
+                props = p["properties"]
+                try:
+                    nombre = props["Jugador"]["title"][0]["text"]["content"]
+                    mp = props["MP"]["number"] or 0
+                    esc_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
+                    escuadron = esc_obj[0]["text"]["content"] if esc_obj else "Sin Escuadrón"
+                    lista.append({"Aspirante": nombre, "Escuadrón": escuadron, "MasterPoints": mp})
+                except: pass
+            
+            df = pd.DataFrame(lista)
+            if not df.empty:
+                df = df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
+            return df
+    except: return pd.DataFrame()
+    return pd.DataFrame()
 
 # --- LOGIN ---
 def validar_login():
     usuario = st.session_state.input_user.strip()
     clave = st.session_state.input_pass.strip()
-    
     if not usuario or not clave:
         st.session_state.login_error = "⚠️ Ingresa usuario y contraseña."
         return
-    
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
-    
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=10)
+        res = requests.post(url, headers=headers, json=payload)
         if res.status_code == 200:
             data = res.json()
-            if len(data.get("results", [])) > 0:
+            if len(data["results"]) > 0:
                 props = data["results"][0]["properties"]
                 try:
                     c_obj = props.get("Clave", {}).get("rich_text", [])
                     c_real = c_obj[0]["text"]["content"] if c_obj else ""
-                    
                     if clave == c_real:
                         st.session_state.jugador = props
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
-                        
-                        # Cargar datos de contexto
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -328,51 +261,28 @@ def validar_login():
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
                             estado_data = props.get("Estado UAM", {}).get("select")
                             st.session_state.estado_uam = estado_data["name"] if estado_data else "Desconocido"
-                        except (KeyError, TypeError):
-                            st.session_state.uni_actual = None
-                            st.session_state.ano_actual = None
+                        except: 
+                            st.session_state.uni_actual = None; st.session_state.ano_actual = None
                             st.session_state.estado_uam = "Desconocido"
-                        
-                        # Cargar escuadrón
                         sq_name = "Sin Escuadrón"
                         try:
                             sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-                            if sq_obj:
-                                sq_name = sq_obj[0]["text"]["content"]
-                        except (KeyError, IndexError):
-                            pass
+                            if sq_obj: sq_name = sq_obj[0]["text"]["content"]
+                        except: pass
                         st.session_state.squad_name = sq_name
-                        
-                        # Cargar estadísticas
-                        st.session_state.team_stats = obtener_puntaje_equipo_filtrado(
-                            sq_name, 
-                            st.session_state.uni_actual, 
-                            st.session_state.ano_actual
-                        )
-                        st.session_state.ranking_data = cargar_ranking_filtrado(
-                            st.session_state.uni_actual, 
-                            st.session_state.ano_actual
-                        )
-                        
-                        # Cargar habilidades por rol
+                        st.session_state.team_stats = obtener_puntaje_equipo_filtrado(sq_name, st.session_state.uni_actual, st.session_state.ano_actual)
+                        st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                         try:
                             rol_data = props.get("Rol", {}).get("select")
                             rol_usuario = rol_data["name"] if rol_data else None
-                        except (KeyError, TypeError):
-                            rol_usuario = None
-                        
+                        except: rol_usuario = None
                         if rol_usuario:
                             st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
-                    else:
-                        st.session_state.login_error = "❌ CLAVE INCORRECTA"
-                except Exception as e:
-                    st.session_state.login_error = f"Error Credenciales: {e}"
-            else:
-                st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
-        else:
-            st.session_state.login_error = f"⚠️ Error de conexión: {res.status_code}"
-    except requests.exceptions.RequestException as e:
-        st.session_state.login_error = f"Error técnico: {e}"
+                    else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
+                except Exception as e: st.session_state.login_error = f"Error Credenciales: {e}"
+            else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
+        else: st.session_state.login_error = "⚠️ Error de conexión"
+    except Exception as e: st.session_state.login_error = f"Error técnico: {e}"
 
 def cerrar_sesion():
     st.session_state.jugador = None
@@ -381,41 +291,28 @@ def cerrar_sesion():
     st.session_state.uni_actual = None
     st.session_state.ano_actual = None
     st.session_state.estado_uam = None
-    # Limpiar cache al cerrar sesión
-    cargar_ranking_filtrado.clear()
-    cargar_habilidades_rol.clear()
 
 # ================= UI PRINCIPAL =================
 
 if not st.session_state.jugador:
-    # PANTALLA DE LOGIN
-    if os.path.exists("assets/cover.png"):
-        st.image("assets/cover.png", use_container_width=True)
-    
+    if os.path.exists("assets/cover.png"): st.image("assets/cover.png", use_container_width=True)
     with st.container():
         c_l, c_r = st.columns([1.2, 3.8])
         with c_l:
-            if os.path.exists("assets/logo.png"):
-                st.image("assets/logo.png", width=110)
-            else:
-                st.markdown("🛡️")
+            if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=110)
+            else: st.markdown("🛡️")
         with c_r:
             st.markdown("<h3 style='margin-bottom:0;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
             st.caption("PLATAFORMA COMPUTADORA CENTRAL")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    with st.form("login_form"):
-        st.markdown("##### 🔐 IDENTIFICACIÓN REQUERIDA")
-        st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
-        st.text_input("Password:", type="password", key="input_pass")
-        st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
-    
-    if st.session_state.login_error:
-        st.error(st.session_state.login_error)
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            st.markdown("##### 🔐 IDENTIFICACIÓN REQUERIDA")
+            st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
+            st.text_input("Password:", type="password", key="input_pass")
+            st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
+    if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # DASHBOARD PRINCIPAL
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -425,79 +322,59 @@ else:
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
     
-    # Color según estado
     status_color = "#00e5ff"
-    if estado_label == "Finalizado":
-        status_color = "#ff4b4b"
-    elif estado_label == "Sin empezar":
-        status_color = "#FFD700"
-    
+    if estado_label == "Finalizado": status_color = "#ff4b4b"
+    elif estado_label == "Sin empezar": status_color = "#FFD700"
+
     # Header
     c_head1, c_head2 = st.columns([1.2, 4.8])
-    with c_head1:
-        if os.path.exists("assets/logo.png"):
-            st.image("assets/logo.png", width=100)
+    with c_head1: 
+        if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
-        st.markdown(
-            f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>",
-            unsafe_allow_html=True
-        )
-    
-    header_html = f"""
-    <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
-        <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
-        <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">{uni_label.upper()}</div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
-            <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
-        </div>
-    </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        
+        header_html = textwrap.dedent(f"""
+            <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
+                <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">
+                    {uni_label.upper()}
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
+                    <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
+                </div>
+            </div>
+        """).replace('\n', '')
+        st.markdown(header_html, unsafe_allow_html=True)
+
     st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    # Tabs principales
+
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL ---
+    # --- TAB 1: PERFIL (CLEAN FLATTENED HTML) ---
     with tab_perfil:
         avatar_url = None
         try:
             f_list = p.get("Avatar", {}).get("files", [])
             if f_list:
-                if "file" in f_list[0]:
-                    avatar_url = f_list[0]["file"]["url"]
-                elif "external" in f_list[0]:
-                    avatar_url = f_list[0]["external"]["url"]
-        except (KeyError, IndexError):
-            pass
-        
-        try:
-            rol = p.get("Rol", {}).get("select", {}).get("name", "Sin Rol")
-        except (KeyError, TypeError):
-            rol = "Sin Rol"
-        
+                if "file" in f_list[0]: avatar_url = f_list[0]["file"]["url"]
+                elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
+        except: pass
+        try: rol = p.get("Rol", {}).get("select")["name"]
+        except: rol = "Sin Rol"
         skuad = st.session_state.squad_name
+        
         img_path = find_squad_image(skuad)
         b64_badge = get_img_as_base64(img_path) if img_path else ""
+        try: vp = int(p.get("VP", {}).get("number", 1))
+        except: vp = 0
         
-        try:
-            vp = int(p.get("VP", {}).get("number", 0) or 0)
-        except (ValueError, TypeError):
-            vp = 0
-        
-        # HTML del escuadrón
+        # HTML DEL ESCUADRÓN (Aplanado)
         squad_html = ""
         if b64_badge:
-            squad_html = f"""
-            <div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;">
-                <div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div>
-                <img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,229,255,0.6));">
-                <div style="color:#4dd0e1; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div>
-            </div>
-            """
+            squad_html = f"""<div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;"><div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div><img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,229,255,0.6));"><div style="color:#4dd0e1; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div></div>"""
         
-        # HTML del perfil
+        # HTML DEL PERFIL (Aplanado) con Avatar más grande
         avatar_div = f'<img src="{avatar_url}" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'
         
         profile_html = f"""
@@ -510,91 +387,83 @@ else:
                 {squad_html}
             </div>
         </div>
-        """
+        """.replace('\n', '')
+        
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # HUD de estadísticas
+        # HUD ÉPICO
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
-        hud_html = f"""
-        <div class="hud-grid">
-            <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
-                <img src="data:image/png;base64,{b64_mp}" class="hud-icon">
-                <div class="epic-number" style="color:#FFD700;">{mp}</div>
-                <div class="hud-label">MasterPoints</div>
+        hud_html = textwrap.dedent(f"""
+            <div class="hud-grid">
+                <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
+                    <img src="data:image/png;base64,{b64_mp}" class="hud-icon">
+                    <div class="epic-number" style="color:#FFD700;">{mp}</div>
+                    <div class="hud-label">MasterPoints</div>
+                </div>
+                <div class="hud-card" style="border-bottom: 3px solid #00e5ff;">
+                    <img src="data:image/png;base64,{b64_ap}" class="hud-icon">
+                    <div class="epic-number" style="color:#00e5ff;">{ap}</div>
+                    <div class="hud-label">AngioPoints</div>
+                </div>
+                <div class="hud-card" style="border-bottom: 3px solid #ff4b4b;">
+                    <img src="data:image/png;base64,{b64_vp}" class="hud-icon">
+                    <div class="epic-number" style="color:#ff4b4b;">{vp}%</div>
+                    <div class="hud-label">VitaPoints</div>
+                </div>
             </div>
-            <div class="hud-card" style="border-bottom: 3px solid #00e5ff;">
-                <img src="data:image/png;base64,{b64_ap}" class="hud-icon">
-                <div class="epic-number" style="color:#00e5ff;">{ap}</div>
-                <div class="hud-label">AngioPoints</div>
-            </div>
-            <div class="hud-card" style="border-bottom: 3px solid #ff4b4b;">
-                <img src="data:image/png;base64,{b64_vp}" class="hud-icon">
-                <div class="epic-number" style="color:#ff4b4b;">{vp}%</div>
-                <div class="hud-label">VitaPoints</div>
-            </div>
-        </div>
-        """
+        """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
-    
-    # --- TAB 2: RANKING ---
+
+    # --- TAB 2: RANKING (HTML TABLE UNIFICADA) ---
     with tab_ranking:
-        st.markdown("### ⚔️ TOP ASPIRANTES")
+        # 1. TOP ASPIRANTES
+        st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
-        
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
-            
             table_rows = ""
-            for i, row in df.head(10).iterrows():
+            for i, (index, row) in enumerate(df.head(10).iterrows()):
                 rank = i + 1
                 name = row["Aspirante"]
                 squad = row["Escuadrón"]
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
-                
-                table_rows += f"""
-                <tr class="rank-row">
-                    <td class="rank-cell rank-cell-rank">{rank}</td>
-                    <td class="rank-cell">
-                        <div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div>
-                        <div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div>
-                    </td>
-                    <td class="rank-cell rank-cell-last">
-                        <div style="display:flex; flex-direction:column; gap:5px;">
-                            <div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div>
-                            <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div>
-                        </div>
-                    </td>
-                </tr>
-                """
-            
-            full_table = f'<table class="rank-table">{table_rows}</table>'
-            st.markdown(full_table, unsafe_allow_html=True)
-            
-            st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
-            df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
-            st.bar_chart(df_squads, x="Escuadrón", y="MasterPoints", color="#FFD700")
+                table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
+            st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
         else:
-            st.info(f"Sin datos en el sector {uni_label}.")
+            st.info(f"Sin datos de aspirantes en {uni_label}.")
+
+        # 2. TOP ESCUADRONES (NUEVA TABLA HTML)
+        st.markdown("### 🛡️ TOP ESCUADRONES")
+        if df is not None and not df.empty:
+            df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
+            if not df_squads.empty:
+                max_squad_mp = int(df_squads["MasterPoints"].max()) if df_squads["MasterPoints"].max() > 0 else 1
+                squad_rows = ""
+                for i, (index, row) in enumerate(df_squads.iterrows()):
+                    rank = i + 1
+                    squad_name = row["Escuadrón"]
+                    points = row["MasterPoints"]
+                    pct = (points / max_squad_mp) * 100
+                    # Usamos la misma estructura de fila que aspirantes, simplificando la celda central
+                    squad_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell" style="vertical-align:middle;"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{squad_name}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
+                st.markdown(f"""<table class="rank-table">{squad_rows}</table>""", unsafe_allow_html=True)
+            else:
+                st.info("Sin datos de escuadrones.")
         
         if st.button("🔄 Refrescar Señal"):
-            cargar_ranking_filtrado.clear()
-            st.session_state.ranking_data = cargar_ranking_filtrado(
-                st.session_state.uni_actual, 
-                st.session_state.ano_actual
-            )
+            st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
             st.rerun()
-    
+
     # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
         habilidades = st.session_state.habilidades_data
-        
         if not habilidades:
             st.info("Sin datos en el Grimorio.")
         else:
@@ -606,34 +475,26 @@ else:
                 desbloqueada = nivel_num >= nivel_req
                 puede_pagar = ap >= costo
                 
-                border_color = "#00e5ff" if desbloqueada else "#1c2630"
-                opacity = "1" if desbloqueada else "0.5"
-                grayscale = "" if desbloqueada else "filter: grayscale(100%);"
-                
-                card_html = f"""
-                <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span>
-                        <span class="skill-cost">⚡ {costo} AP</span>
-                    </div>
-                    <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
-                </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
-                
-                c_btn, _ = st.columns([1, 2])
-                with c_btn:
-                    if desbloqueada:
-                        if st.button("ACTIVAR", key=f"btn_{hab['id']}"):
-                            if puede_pagar:
-                                exito = solicitar_activacion_habilidad(nombre, costo, st.session_state.nombre)
-                                if exito:
-                                    st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
-                                    st.balloons()
-                                else:
-                                    st.error("Error de enlace.")
-                            else:
-                                st.toast("❌ Energía Insuficiente", icon="⚠️")
-                    else:
-                        nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
-                        st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
+                with st.container():
+                    border_color = "#00e5ff" if desbloqueada else "#1c2630"
+                    opacity = "1" if desbloqueada else "0.5"
+                    grayscale = "" if desbloqueada else "filter: grayscale(100%);"
+                    
+                    # HTML APLANADO
+                    card_html = f"""<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span><span class="skill-cost">⚡ {costo} AP</span></div><p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p></div>"""
+                    st.markdown(card_html, unsafe_allow_html=True)
+                    
+                    c_btn, _ = st.columns([1, 2])
+                    with c_btn:
+                        if desbloqueada:
+                            if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
+                                if puede_pagar:
+                                    exito = solicitar_activacion_habilidad(nombre, costo, st.session_state.nombre)
+                                    if exito:
+                                        st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
+                                        st.balloons()
+                                    else: st.error("Error de enlace.")
+                                else: st.toast("❌ Energía Insuficiente", icon="⚠️")
+                        else:
+                            nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
+                            st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
