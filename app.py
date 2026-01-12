@@ -54,11 +54,11 @@ st.markdown("""
         .profile-container {
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
             border: 1px solid #004d66; border-radius: 20px; padding: 20px;
-            margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            margin-top: 60px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
             text-align: center;
         }
         .profile-avatar-wrapper {
-            position: absolute; top: -70px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
             width: 160px; height: 160px; border-radius: 50%; padding: 5px;
             background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10;
         }
@@ -94,31 +94,32 @@ st.markdown("""
         .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
         .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
-        /* NUEVO DISEÑO DE SKILL CARDS (BANNER LATERAL) */
+        /* SKILL CARDS (BANNER LATERAL) */
         .skill-card-container {
-            display: flex; align-items: stretch; min-height: 110px;
+            display: flex; align-items: stretch; min-height: 120px;
             background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
             margin-bottom: 15px; overflow: hidden; transition: 0.3s;
         }
-        .skill-card-container:hover { border-color: #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); }
+        .skill-card-container:hover { border-color: #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.15); }
         
         .skill-banner-col {
-            width: 120px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e;
+            width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e;
         }
         .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
         .skill-banner-placeholder { font-size: 3em; color: #1c2e3e; opacity: 0.5; }
         
         .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
-        .skill-title { font-family:'Orbitron', sans-serif; font-size:1.2em; font-weight:bold; color:#00e5ff; text-transform:uppercase; line-height:1.1; margin-bottom: 6px; }
-        .skill-desc { color:#b0bec5; font-size:0.9em; margin:0; line-height:1.3; }
+        .skill-title { font-family:'Orbitron', sans-serif; font-size:1.3em; font-weight:900; color:#fff; text-transform:uppercase; line-height:1.1; margin-bottom: 8px; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .skill-desc { color:#b0bec5; font-size:0.9em; margin:0; line-height:1.4; }
         
         .skill-cost-col {
-            width: 90px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e;
+            width: 100px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e;
             display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px;
         }
-        .skill-cost-icon { width: 32px; height: 32px; margin-bottom: 5px; filter: drop-shadow(0 0 5px #00e5ff); }
-        .skill-cost-val { font-family: 'Orbitron'; font-size: 1.4em; font-weight: bold; color: #00e5ff; }
-        .skill-cost-label { font-size: 0.7em; color: #4dd0e1; letter-spacing: 1px; }
+        /* COSTO COHERENTE Y GRANDE */
+        .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; filter: drop-shadow(0 0 8px #00e5ff); }
+        .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; text-shadow: 0 0 10px #00e5ff; }
+        .skill-cost-label { font-family: 'Orbitron'; font-size: 0.8em; color: #00e5ff; font-weight: bold; letter-spacing: 2px; margin-top: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -181,7 +182,6 @@ def cargar_habilidades_rol(rol_jugador):
                     elif "Coste" in props: costo = props["Coste"]["number"]
                     
                     nivel_req = props["Nivel Requerido"]["number"]
-                    
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     
@@ -382,7 +382,7 @@ else:
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
-    # PREPARAR ASSETS PARA EL BUCLE DE HABILIDADES
+    # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
@@ -488,7 +488,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (EPIC BANNER LAYOUT) ---
+    # --- TAB 3: HABILIDADES (EPIC BANNER STYLE) ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -511,27 +511,13 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # Banner de imagen a la izquierda (Usa icono de notion o placeholder)
                     banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
                     
-                    # Icono de AP para el costo (Usa el asset local en base64)
+                    # Usa el asset local en base64 para el costo
                     ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
 
-                    # ESTRUCTURA FLEXBOX EPICA (Aplanada)
-                    card_html = f"""
-                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
-                        <div class="skill-banner-col">{banner_html}</div>
-                        <div class="skill-content-col">
-                            <div class="skill-title">{nombre}</div>
-                            <p class="skill-desc">{desc}</p>
-                        </div>
-                        <div class="skill-cost-col">
-                            {ap_icon_html}
-                            <div class="skill-cost-val">{costo}</div>
-                            <div class="skill-cost-label">AP</div>
-                        </div>
-                    </div>
-                    """.replace('\n', '')
+                    # HTML APLANADO
+                    card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{desc}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
                     
                     st.markdown(card_html, unsafe_allow_html=True)
                     
