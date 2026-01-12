@@ -105,27 +105,20 @@ st.markdown("""
         /* === MEDIA QUERIES (MODO MÓVIL) === */
         /* ========================================= */
         @media (max-width: 768px) {
-            /* Perfil Compacto */
             .profile-container { margin-top: 50px; }
             .profile-avatar-wrapper { width: 130px; height: 130px; top: -65px; }
             .profile-name { font-size: 1.8em; }
-            
-            /* HUD (Puntos) Ajustado para no romperse */
             .hud-grid { gap: 5px; }
             .hud-card { padding: 8px 2px; }
             .hud-icon { width: 30px; height: 30px; margin-bottom: 2px; }
-            .epic-number { font-size: 1.6em; margin: 2px 0; } /* Fuente más chica para que quepa */
+            .epic-number { font-size: 1.6em; margin: 2px 0; }
             .hud-label { font-size: 0.55em; letter-spacing: 1px; }
-            
-            /* Habilidades Compactas */
             .skill-card-container { min-height: 100px; }
-            .skill-banner-col { width: 60px; } /* Banner más delgado */
+            .skill-banner-col { width: 60px; }
             .skill-content-col { padding: 10px; }
-            .skill-cost-col { width: 70px; padding: 5px; } /* Columna costo más delgada */
+            .skill-cost-col { width: 70px; padding: 5px; }
             .skill-cost-icon { width: 25px; height: 25px; }
             .skill-cost-val { font-size: 1.4em; }
-            
-            /* Ranking Compacto */
             .rank-cell { padding: 8px 5px; font-size: 0.9em; }
             .rank-cell-rank { width: 30px; font-size: 1em; }
         }
@@ -191,7 +184,6 @@ def cargar_habilidades_rol(rol_jugador):
                     elif "Coste" in props: costo = props["Coste"]["number"]
                     
                     nivel_req = props["Nivel Requerido"]["number"]
-                    
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     
@@ -209,13 +201,24 @@ def cargar_habilidades_rol(rol_jugador):
         return habilidades
     except: return []
 
-def solicitar_activacion_habilidad(nombre_habilidad, costo, jugador_nombre):
+# --- FUNCIÓN UNIFICADA DE MENSAJERÍA (Para Habilidades y Mensajes Generales) ---
+def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
+    
+    # Formato del mensaje para que el Admin lo entienda
+    if tipo == "HABILIDAD":
+        texto_final = f"Desea activar: '{titulo_msg}' (Costo: {cuerpo_msg} AP)"
+    else:
+        # Mensaje general
+        texto_final = f"MENSAJE: {titulo_msg} - {cuerpo_msg}"
+
     nuevo_mensaje = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
         "properties": {
             "Remitente": {"title": [{"text": {"content": f"SOLICITUD: {jugador_nombre}"}}]},
-            "Mensaje": {"rich_text": [{"text": {"content": f"Desea activar: '{nombre_habilidad}' (Costo: {costo} AP). Contexto: {st.session_state.uni_actual} {st.session_state.ano_actual}"}}]}
+            "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
+            # Importante: Inicializamos Procesado en False
+            "Procesado": {"checkbox": False} 
         }
     }
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
@@ -356,6 +359,28 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
+    # --- SIDEBAR: ENLACE AL COMANDO ---
+    with st.sidebar:
+        st.header("📨 ENLACE AL COMANDO")
+        with st.form("comms_form"):
+            st.caption("Envía reportes, dudas o solicitudes especiales al alto mando.")
+            msg_subject = st.text_input("Asunto:")
+            msg_body = st.text_area("Mensaje:")
+            
+            if st.form_submit_button("TRANSMITIR"):
+                if msg_subject and msg_body:
+                    ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
+                    if ok:
+                        st.success("✅ Transmisión Enviada")
+                    else:
+                        st.error("Error de señal")
+                else:
+                    st.warning("Faltan datos")
+        
+        st.divider()
+        if st.button("🔴 CERRAR SESIÓN"):
+            cerrar_sesion()
+
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -458,7 +483,6 @@ else:
             </div>
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
-        st.button("DESCONECTAR", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING ---
     with tab_ranking:
@@ -523,10 +547,8 @@ else:
                     
                     banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
                     
-                    # Usa el asset local en base64 para el costo
                     ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
 
-                    # HTML APLANADO
                     card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{desc}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
                     
                     st.markdown(card_html, unsafe_allow_html=True)
@@ -536,7 +558,7 @@ else:
                         if desbloqueada:
                             if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
                                 if puede_pagar:
-                                    exito = solicitar_activacion_habilidad(nombre, costo, st.session_state.nombre)
+                                    exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
                                     if exito:
                                         st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
                                         st.balloons()
