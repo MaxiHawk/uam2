@@ -99,39 +99,40 @@ def get_players():
     return pd.DataFrame(players)
 
 def get_pending_requests():
+    # ESTRATEGIA ROBUSTA: Traer todo y filtrar en Python
+    # Esto evita problemas si la casilla está "Vacía" en lugar de "Falso"
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    payload = {
-        "filter": {
-            "property": "Procesado",
-            "checkbox": {
-                "equals": False
-            }
-        }
-    }
+    payload = {"page_size": 100} # Traemos las últimas 100 solicitudes
+    
     res = requests.post(url, headers=headers, json=payload) 
     reqs = []
+    
     if res.status_code == 200:
         for r in res.json()["results"]:
             props = r["properties"]
             try:
-                title_list = props["Remitente"]["title"]
-                remitente = title_list[0]["text"]["content"] if title_list else "Desconocido"
+                # Verificar si está procesado (Checkbox)
+                is_processed = props.get("Procesado", {}).get("checkbox", False)
                 
-                msg_list = props["Mensaje"]["rich_text"]
-                mensaje = msg_list[0]["text"]["content"] if msg_list else ""
-                
-                # Leer la propiedad TIPO (Select)
-                tipo_obj = props.get("Tipo", {}).get("select")
-                tipo = tipo_obj["name"] if tipo_obj else "Mensaje" # Default a mensaje si no hay tipo
-                
-                reqs.append({
-                    "id": r["id"], 
-                    "remitente": remitente, 
-                    "mensaje": mensaje,
-                    "tipo": tipo
-                })
+                # Si NO está procesado, lo agregamos a la lista
+                if not is_processed:
+                    title_list = props["Remitente"]["title"]
+                    remitente = title_list[0]["text"]["content"] if title_list else "Desconocido"
+                    
+                    msg_list = props["Mensaje"]["rich_text"]
+                    mensaje = msg_list[0]["text"]["content"] if msg_list else ""
+                    
+                    # Leer la propiedad TIPO
+                    tipo_obj = props.get("Tipo", {}).get("select")
+                    tipo = tipo_obj["name"] if tipo_obj else "Mensaje" 
+                    
+                    reqs.append({
+                        "id": r["id"], 
+                        "remitente": remitente, 
+                        "mensaje": mensaje,
+                        "tipo": tipo
+                    })
             except Exception as e: 
-                # Si falla algo, lo mostramos para debug
                 pass
     return reqs
 
@@ -181,7 +182,7 @@ df_players = get_players()
 
 # --- SIDEBAR (FILTROS) ---
 with st.sidebar:
-    st.title("🎛️ FILTROS DE MISIÓN")
+    st.title("🎛️ PANEL DE CONTROL VALERIUS")
     
     uni_opts = ["Todas"] + list(df_players["Universidad"].unique()) if not df_players.empty else ["Todas"]
     gen_opts = ["Todas"] + list(df_players["Generación"].unique()) if not df_players.empty else ["Todas"]
@@ -260,7 +261,7 @@ with tab_req:
                     # Botón Mensaje (Solo Archivar)
                     if c_yes.button(f"📥 ARCHIVAR", key=f"read_{r['id']}"):
                         mark_request_processed(r['id'])
-                        st.toast("Archivado")
+                        st.toast("Mensaje Archivado")
                         time.sleep(1); st.rerun()
 
 # ================= TAB 2: OPERACIONES (MODIFICAR PUNTOS) =================
