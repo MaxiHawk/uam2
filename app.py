@@ -38,53 +38,31 @@ st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
-        /* GENERAL */
         h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
         .block-container { padding-top: 1rem !important; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
-        /* BOTONES & TABS */
         .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* --- ESTILOS RESPONSIVE (CELULAR VS PC) --- */
-        
-        /* 1. PERFIL */
-        .profile-container {
-            background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
-            border: 1px solid #004d66; border-radius: 20px; padding: 20px;
-            margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
-            text-align: center;
-        }
-        .profile-avatar-wrapper {
-            position: absolute; top: -70px; left: 50%; transform: translateX(-50%);
-            width: 160px; height: 160px; border-radius: 50%; padding: 5px;
-            background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10;
-        }
+        /* ESTILOS RESPONSIVE */
+        .profile-container { background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center; }
+        .profile-avatar-wrapper { position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; border-radius: 50%; padding: 5px; background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10; }
         .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
         .profile-content { margin-top: 90px; }
         .profile-name { font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
         .profile-role { color: #4dd0e1; font-size: 1em; margin-bottom: 15px; }
         
-        /* 2. HUD GRID (PUNTOS) */
         .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-        .hud-card {
-            background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px;
-            padding: 15px; text-align: center; position: relative; overflow: hidden;
-        }
+        .hud-card { background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }
         .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
         .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-        /* 3. SKILL CARDS */
-        .skill-card-container {
-            display: flex; align-items: stretch; min-height: 120px;
-            background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
-            margin-bottom: 15px; overflow: hidden; transition: 0.3s;
-        }
+        .skill-card-container { display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; }
         .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }
         .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
         .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
@@ -92,7 +70,6 @@ st.markdown("""
         .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; }
         .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }
         
-        /* 4. RANKING TABLE */
         .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
         .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
         .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
@@ -101,9 +78,6 @@ st.markdown("""
         .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
         .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
-        /* ========================================= */
-        /* === MEDIA QUERIES (MODO MÓVIL) === */
-        /* ========================================= */
         @media (max-width: 768px) {
             .profile-container { margin-top: 50px; }
             .profile-avatar-wrapper { width: 130px; height: 130px; top: -65px; }
@@ -205,22 +179,25 @@ def cargar_habilidades_rol(rol_jugador):
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
     
+    # Lógica de mensaje limpio
     if tipo == "HABILIDAD":
-        texto_final = f"Desea activar: '{titulo_msg}' (Costo: {cuerpo_msg} AP)"
+        texto_final = f"{titulo_msg} | Costo: {cuerpo_msg}"
+        tipo_select = "Poder"
     else:
-        texto_final = f"MENSAJE: {titulo_msg} - {cuerpo_msg}"
+        texto_final = f"{titulo_msg} - {cuerpo_msg}"
+        tipo_select = "Mensaje"
 
     nuevo_mensaje = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
         "properties": {
-            "Remitente": {"title": [{"text": {"content": f"SOLICITUD: {jugador_nombre}"}}]},
+            "Remitente": {"title": [{"text": {"content": jugador_nombre}}]}, # Solo el nombre
             "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
-            "Procesado": {"checkbox": False} # ¡NECESITAS ESTA COLUMNA EN NOTION!
+            "Procesado": {"checkbox": False},
+            "Tipo": {"select": {"name": tipo_select}} # Asigna la propiedad Tipo
         }
     }
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
     
-    # DEBUG: Si falla, mostramos por qué (solo para desarrollo)
     if res.status_code != 200:
         st.error(f"Error Notion: {res.text}")
         
@@ -400,7 +377,6 @@ else:
     # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    # --- PESTAÑAS (INCLUYENDO COMUNICACIONES) ---
     tab_perfil, tab_ranking, tab_habilidades, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📡 COMUNICACIONES"])
     
     # --- TAB 1: PERFIL ---
@@ -545,13 +521,13 @@ else:
                                         st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
                                         st.balloons()
                                     else: 
-                                        st.error("Error de enlace. Verifica la base de Solicitudes.")
+                                        st.error("Error de enlace. Verifica columnas: Remitente(Title), Mensaje(Text), Procesado(CheckBox), Tipo(Select)")
                                 else: st.toast("❌ Energía Insuficiente", icon="⚠️")
                         else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
 
-    # --- TAB 4: COMUNICACIONES (NUEVO FORMULARIO) ---
+    # --- TAB 4: COMUNICACIONES ---
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
@@ -567,6 +543,6 @@ else:
                         st.success("✅ Transmisión Enviada y recibida en la Central.")
                         st.balloons()
                     else:
-                        st.error("❌ Error de señal. Verifica que la base de datos de Solicitudes tenga las columnas 'Procesado' (Checkbox) y 'Remitente' (Title).")
+                        st.error("❌ Error de señal. Verifica las columnas en Notion (Tipo, Remitente, etc).")
                 else:
                     st.warning("⚠️ Debes llenar Asunto y Mensaje.")
