@@ -340,14 +340,14 @@ else:
                     <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
                 </div>
             </div>
-        """)
+        """).replace('\n', '')
         st.markdown(header_html, unsafe_allow_html=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL (CLEAN HTML) ---
+    # --- TAB 1: PERFIL (CLEAN FLATTENED HTML) ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -365,31 +365,26 @@ else:
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # HTML LIMPIO Y SIN ESPACIOS EXCESIVOS PARA EVITAR ERRORES
+        # HTML DEL ESCUADRÓN (Aplanado)
+        squad_html = ""
         if b64_badge:
-            squad_html = textwrap.dedent(f"""
-                <div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;">
-                    <div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div>
-                    <img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,229,255,0.6));">
-                    <div style="color:#4dd0e1; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div>
-                </div>
-            """)
-        else:
-            squad_html = ""
+            squad_html = f"""<div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;"><div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div><img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,229,255,0.6));"><div style="color:#4dd0e1; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div></div>"""
         
-        profile_html = textwrap.dedent(f"""
-            <div class="profile-container">
-                <div class="profile-avatar-wrapper">
-                    {'<img src="' + avatar_url + '" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'}
-                </div>
-                <div class="profile-content">
-                    <div class="profile-name">{st.session_state.nombre}</div>
-                    <div class="profile-role">Perteneciente a la orden de los {rol}</div>
-                    <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
-                    {squad_html}
-                </div>
+        # HTML DEL PERFIL (Aplanado)
+        avatar_div = f'<img src="{avatar_url}" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'
+        
+        profile_html = f"""
+        <div class="profile-container">
+            <div class="profile-avatar-wrapper">{avatar_div}</div>
+            <div class="profile-content">
+                <div class="profile-name">{st.session_state.nombre}</div>
+                <div class="profile-role">Perteneciente a la orden de los {rol}</div>
+                <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
+                {squad_html}
             </div>
-        """)
+        </div>
+        """.replace('\n', '')
+        
         st.markdown(profile_html, unsafe_allow_html=True)
         
         # HUD ÉPICO
@@ -415,7 +410,7 @@ else:
                     <div class="hud-label">VitaPoints</div>
                 </div>
             </div>
-        """)
+        """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
@@ -434,27 +429,9 @@ else:
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
                 
-                table_rows += f"""
-                <tr class="rank-row">
-                    <td class="rank-cell rank-cell-rank">{rank}</td>
-                    <td class="rank-cell">
-                        <div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div>
-                        <div style="color:#aaa; font-size:0.9em;">{squad}</div>
-                    </td>
-                    <td class="rank-cell rank-cell-last">
-                        <div style="display:flex; flex-direction:column; gap:5px;">
-                            <div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div>
-                            <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div>
-                        </div>
-                    </td>
-                </tr>
-                """
+                table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
             
-            full_table = textwrap.dedent(f"""
-                <table class="rank-table">
-                    {table_rows}
-                </table>
-            """)
+            full_table = f"""<table class="rank-table">{table_rows}</table>"""
             st.markdown(full_table, unsafe_allow_html=True)
             
             st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
@@ -488,15 +465,8 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    card_html = textwrap.dedent(f"""
-                        <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                <span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span>
-                                <span class="skill-cost">⚡ {costo} AP</span>
-                            </div>
-                            <p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p>
-                        </div>
-                    """)
+                    # HTML APLANADO
+                    card_html = f"""<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span><span class="skill-cost">⚡ {costo} AP</span></div><p style="color:#b0bec5; font-size:0.85em; margin:0;">{desc}</p></div>"""
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     c_btn, _ = st.columns([1, 2])
