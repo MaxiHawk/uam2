@@ -22,7 +22,7 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-# --- CSS TÁCTICO (DARK MODE) ---
+# --- CSS TÁCTICO ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
@@ -68,7 +68,9 @@ def get_players():
             for p in data["results"]:
                 props = p["properties"]
                 try:
-                    name = props["Jugador"]["title"][0]["text"]["content"]
+                    name_list = props.get("Jugador", {}).get("title", [])
+                    name = name_list[0]["text"]["content"] if name_list else "Sin Nombre"
+                    
                     mp = props.get("MP", {}).get("number", 0)
                     ap = props.get("AP", {}).get("number", 0)
                     vp = props.get("VP", {}).get("number", 0)
@@ -98,33 +100,35 @@ def get_players():
             
     return pd.DataFrame(players)
 
-def get_pending_requests():
-    # ESTRATEGIA ROBUSTA: Traer todo y filtrar en Python
-    # Esto evita problemas si la casilla está "Vacía" en lugar de "Falso"
+def get_pending_requests(debug_mode=False):
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    payload = {"page_size": 100} # Traemos las últimas 100 solicitudes
+    payload = {"page_size": 100} 
     
     res = requests.post(url, headers=headers, json=payload) 
     reqs = []
     
     if res.status_code == 200:
-        for r in res.json()["results"]:
+        data = res.json()["results"]
+        if debug_mode:
+            st.write("--- DEBUG: DATOS CRUDOS DE NOTION ---")
+            st.json(data) # Muestra el JSON puro para ver errores de nombres
+            
+        for r in data:
             props = r["properties"]
             try:
-                # Verificar si está procesado (Checkbox)
+                # Verificar Checkbox (Manejo robusto de False/None)
                 is_processed = props.get("Procesado", {}).get("checkbox", False)
                 
-                # Si NO está procesado, lo agregamos a la lista
                 if not is_processed:
-                    title_list = props["Remitente"]["title"]
-                    remitente = title_list[0]["text"]["content"] if title_list else "Desconocido"
+                    # Extracción segura usando .get()
+                    title_obj = props.get("Remitente", {}).get("title", [])
+                    remitente = title_obj[0]["text"]["content"] if title_obj else "Desconocido"
                     
-                    msg_list = props["Mensaje"]["rich_text"]
-                    mensaje = msg_list[0]["text"]["content"] if msg_list else ""
+                    msg_obj = props.get("Mensaje", {}).get("rich_text", [])
+                    mensaje = msg_obj[0]["text"]["content"] if msg_obj else ""
                     
-                    # Leer la propiedad TIPO
                     tipo_obj = props.get("Tipo", {}).get("select")
-                    tipo = tipo_obj["name"] if tipo_obj else "Mensaje" 
+                    tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
                     
                     reqs.append({
                         "id": r["id"], 
@@ -132,8 +136,12 @@ def get_pending_requests():
                         "mensaje": mensaje,
                         "tipo": tipo
                     })
-            except Exception as e: 
+            except Exception as e:
+                if debug_mode: st.error(f"Error parseando fila: {e}")
                 pass
+    elif debug_mode:
+        st.error(f"Error de conexión Notion: {res.status_code} - {res.text}")
+        
     return reqs
 
 def update_stat(player_id, stat_name, new_value):
@@ -200,6 +208,9 @@ with st.sidebar:
     st.divider()
     st.metric("Aspirantes Activos", len(df_filtered))
     
+    # DEBUG TOGGLE
+    debug_mode = st.checkbox("🛠️ Modo Diagnóstico")
+    
     if st.button("Cerrar Sesión"):
         st.session_state.admin_logged_in = False
         st.rerun()
@@ -210,33 +221,48 @@ tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES DE CA
 # ================= TAB 1: SOLICITUDES =================
 with tab_req:
     st.markdown("### 📡 TRANSMISIONES ENTRANTES")
-    reqs = get_pending_requests()
+    
+    # Pasamos el debug_mode para ver si Notion responde algo raro
+    reqs = get_pending_requests(debug_mode)
     
     if not reqs:
         st.success("✅ Bandeja de entrada vacía, Comandante.")
+        if debug_mode:
+            st.info("Si hay datos en Notion pero no aquí, revisa que la columna 'Procesado' no esté marcada.")
     else:
         for r in reqs:
-            # Detectar Tipo por la propiedad de Notion o contenido
-            is_skill = (r.get("tipo") == "Poder")
+            # Determinamos si es Habilidad o Mensaje basado en la propiedad TIPO
+            is_skill = (r['tipo'] == "Poder")
             
-            # Intentar extraer costo si es poder
             costo = 0
+            skill_name = "Acción"
+            
+            # Intentamos parsear el mensaje si es una habilidad
             if is_skill:
                 try:
                     if "Costo:" in r['mensaje']:
                         costo = int(r['mensaje'].split("Costo:")[1].strip())
+                    if "|" in r['mensaje']:
+                        skill_name = r['mensaje'].split("|")[0].strip()
+                    else:
+                        skill_name = "Habilidad (Ver mensaje)"
                 except: pass
             
+            # Limpieza del nombre (por si acaso viene con prefijos)
+            player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
+
             with st.container():
                 card_class = "req-card" if is_skill else "req-card-msg"
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
+                title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
                 
                 st.markdown(f"""
                 <div class="{card_class}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <div class="req-player">{r['remitente']}</div>
+                        <div class="req-player">{player_name}</div>
                         <div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div>
                     </div>
+                    <div class="req-detail">{title_text}</div>
                     <div style="font-size:0.95em; color:#e0f7fa;">{r['mensaje']}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -244,30 +270,29 @@ with tab_req:
                 c_yes, c_no = st.columns([1, 4])
                 
                 if is_skill:
-                    # Botones Poder (Aprobar descuenta AP)
+                    # AP ACTION
                     if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
-                        ok = update_player_ap_by_name(r['remitente'], costo)
+                        ok = update_player_ap_by_name(player_name, costo)
                         if ok:
                             mark_request_processed(r['id'])
                             st.toast(f"Solicitud Aprobada")
                             time.sleep(1); st.rerun()
-                        else: st.error("Error al actualizar AP.")
+                        else: st.error("Error al actualizar AP. ¿Existe el jugador?")
                     
-                    if c_no.button(f"❌ DENEGAR", key=f"den_{r['id']}"):
+                    if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
                         mark_request_processed(r['id'])
                         st.toast("Solicitud Denegada")
                         time.sleep(1); st.rerun()
                 else:
-                    # Botón Mensaje (Solo Archivar)
+                    # MESSAGE ACTION
                     if c_yes.button(f"📥 ARCHIVAR", key=f"read_{r['id']}"):
                         mark_request_processed(r['id'])
                         st.toast("Mensaje Archivado")
                         time.sleep(1); st.rerun()
 
-# ================= TAB 2: OPERACIONES (MODIFICAR PUNTOS) =================
+# ================= TAB 2: OPERACIONES =================
 with tab_ops:
     st.markdown("### ⚡ GESTIÓN TÁCTICA DE ASPIRANTES")
-    
     if df_filtered.empty:
         st.warning("No hay aspirantes visibles con los filtros actuales.")
     else:
@@ -276,48 +301,44 @@ with tab_ops:
         
         player_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
         pid = player_data["id"]
-        curr_mp = player_data["MP"]
-        curr_ap = player_data["AP"]
-        curr_vp = player_data["VP"]
         
         st.markdown("---")
-        
         c_mp, c_ap, c_vp = st.columns(3)
         
         with c_mp:
-            st.markdown(f"<div class='kpi-box' style='border-color:#FFD700;'><div class='kpi-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-label'>MasterPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#FFD700;'><div class='kpi-val' style='color:#FFD700;'>{player_data['MP']}</div><div class='kpi-label'>MasterPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_mp = st.number_input("Cantidad MP", min_value=0, value=10, key="n_mp")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar MP"):
-                update_stat(pid, "MP", curr_mp + mod_mp)
+                update_stat(pid, "MP", player_data['MP'] + mod_mp)
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar MP"):
-                update_stat(pid, "MP", max(0, curr_mp - mod_mp))
+                update_stat(pid, "MP", max(0, player_data['MP'] - mod_mp))
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_ap:
-            st.markdown(f"<div class='kpi-box' style='border-color:#00e5ff;'><div class='kpi-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-label'>AngioPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#00e5ff;'><div class='kpi-val' style='color:#00e5ff;'>{player_data['AP']}</div><div class='kpi-label'>AngioPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_ap = st.number_input("Cantidad AP", min_value=0, value=5, key="n_ap")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar AP"):
-                update_stat(pid, "AP", curr_ap + mod_ap)
+                update_stat(pid, "AP", player_data['AP'] + mod_ap)
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar AP"):
-                update_stat(pid, "AP", max(0, curr_ap - mod_ap))
+                update_stat(pid, "AP", max(0, player_data['AP'] - mod_ap))
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_vp:
-            st.markdown(f"<div class='kpi-box' style='border-color:#ff4b4b;'><div class='kpi-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-label'>VitaPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#ff4b4b;'><div class='kpi-val' style='color:#ff4b4b;'>{player_data['VP']}%</div><div class='kpi-label'>VitaPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_vp = st.number_input("Cantidad VP %", min_value=0, value=10, key="n_vp")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sanar VP"):
-                update_stat(pid, "VP", min(100, curr_vp + mod_vp))
+                update_stat(pid, "VP", min(100, player_data['VP'] + mod_vp))
                 st.toast("Aspirante Sanado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Dañar VP"):
-                update_stat(pid, "VP", max(0, curr_vp - mod_vp))
+                update_stat(pid, "VP", max(0, player_data['VP'] - mod_vp))
                 st.toast("Daño Aplicado"); time.sleep(0.5); st.rerun()
 
 # ================= TAB 3: NÓMINA =================
