@@ -116,10 +116,23 @@ def get_pending_requests():
             try:
                 title_list = props["Remitente"]["title"]
                 remitente = title_list[0]["text"]["content"] if title_list else "Desconocido"
+                
                 msg_list = props["Mensaje"]["rich_text"]
                 mensaje = msg_list[0]["text"]["content"] if msg_list else ""
-                reqs.append({"id": r["id"], "remitente": remitente, "mensaje": mensaje})
-            except: pass
+                
+                # Leer la propiedad TIPO (Select)
+                tipo_obj = props.get("Tipo", {}).get("select")
+                tipo = tipo_obj["name"] if tipo_obj else "Mensaje" # Default a mensaje si no hay tipo
+                
+                reqs.append({
+                    "id": r["id"], 
+                    "remitente": remitente, 
+                    "mensaje": mensaje,
+                    "tipo": tipo
+                })
+            except Exception as e: 
+                # Si falla algo, lo mostramos para debug
+                pass
     return reqs
 
 def update_stat(player_id, stat_name, new_value):
@@ -202,105 +215,108 @@ with tab_req:
         st.success("✅ Bandeja de entrada vacía, Comandante.")
     else:
         for r in reqs:
-            costo = 0
-            skill_name = ""
-            is_skill_req = False
+            # Detectar Tipo por la propiedad de Notion o contenido
+            is_skill = (r.get("tipo") == "Poder")
             
-            if "Costo:" in r['mensaje'] and "activar:" in r['mensaje']:
-                is_skill_req = True
+            # Intentar extraer costo si es poder
+            costo = 0
+            if is_skill:
                 try:
-                    costo = int(r['mensaje'].split("Costo:")[1].split("AP")[0].strip())
-                    skill_name = r['mensaje'].split("activar:")[1].split("(")[0].replace("'","").strip()
+                    if "Costo:" in r['mensaje']:
+                        costo = int(r['mensaje'].split("Costo:")[1].strip())
                 except: pass
             
-            player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
-
             with st.container():
-                card_class = "req-card" if is_skill_req else "req-card-msg"
-                cost_text = f"⚡ -{costo} AP" if is_skill_req else "💬 MENSAJE GENERAL"
-                title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill_req else "📩 Nueva Comunicación"
+                card_class = "req-card" if is_skill else "req-card-msg"
+                tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
                 
                 st.markdown(f"""
                 <div class="{card_class}">
-                    <div style="display:flex; justify-content:space-between;">
-                        <div class="req-player">{player_name}</div>
-                        <div style="color:{'#FFD700' if is_skill_req else '#00e5ff'}; font-weight:bold;">{cost_text}</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <div class="req-player">{r['remitente']}</div>
+                        <div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div>
                     </div>
-                    <div class="req-detail">{title_text}</div>
-                    <div style="font-size:0.9em; color:#fff; font-style:italic;">"{r['mensaje']}"</div>
+                    <div style="font-size:0.95em; color:#e0f7fa;">{r['mensaje']}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                c_yes, c_no = st.columns(2)
+                c_yes, c_no = st.columns([1, 4])
                 
-                if is_skill_req:
+                if is_skill:
+                    # Botones Poder (Aprobar descuenta AP)
                     if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
-                        ok = update_player_ap_by_name(player_name, costo)
+                        ok = update_player_ap_by_name(r['remitente'], costo)
                         if ok:
                             mark_request_processed(r['id'])
-                            st.toast(f"Solicitud de {player_name} Aprobada")
+                            st.toast(f"Solicitud Aprobada")
                             time.sleep(1); st.rerun()
                         else: st.error("Error al actualizar AP.")
                     
-                    if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
+                    if c_no.button(f"❌ DENEGAR", key=f"den_{r['id']}"):
                         mark_request_processed(r['id'])
                         st.toast("Solicitud Denegada")
                         time.sleep(1); st.rerun()
                 else:
-                    # Botón para Mensaje (Solo Archivar)
-                    if c_yes.button(f"📥 MARCAR COMO LEÍDO / ARCHIVAR", key=f"read_{r['id']}"):
+                    # Botón Mensaje (Solo Archivar)
+                    if c_yes.button(f"📥 ARCHIVAR", key=f"read_{r['id']}"):
                         mark_request_processed(r['id'])
-                        st.toast("Mensaje Archivado")
+                        st.toast("Archivado")
                         time.sleep(1); st.rerun()
 
-# ================= TAB 2: OPERACIONES =================
+# ================= TAB 2: OPERACIONES (MODIFICAR PUNTOS) =================
 with tab_ops:
     st.markdown("### ⚡ GESTIÓN TÁCTICA DE ASPIRANTES")
+    
     if df_filtered.empty:
         st.warning("No hay aspirantes visibles con los filtros actuales.")
     else:
         aspirante_list = df_filtered["Aspirante"].tolist()
         selected_aspirante_name = st.selectbox("Seleccionar Aspirante para Modificación:", aspirante_list)
+        
         player_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
         pid = player_data["id"]
+        curr_mp = player_data["MP"]
+        curr_ap = player_data["AP"]
+        curr_vp = player_data["VP"]
         
         st.markdown("---")
+        
         c_mp, c_ap, c_vp = st.columns(3)
         
         with c_mp:
-            st.markdown(f"<div class='kpi-box' style='border-color:#FFD700;'><div class='kpi-val' style='color:#FFD700;'>{player_data['MP']}</div><div class='kpi-label'>MasterPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#FFD700;'><div class='kpi-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-label'>MasterPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_mp = st.number_input("Cantidad MP", min_value=0, value=10, key="n_mp")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar MP"):
-                update_stat(pid, "MP", player_data['MP'] + mod_mp)
+                update_stat(pid, "MP", curr_mp + mod_mp)
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar MP"):
-                update_stat(pid, "MP", max(0, player_data['MP'] - mod_mp))
+                update_stat(pid, "MP", max(0, curr_mp - mod_mp))
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_ap:
-            st.markdown(f"<div class='kpi-box' style='border-color:#00e5ff;'><div class='kpi-val' style='color:#00e5ff;'>{player_data['AP']}</div><div class='kpi-label'>AngioPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#00e5ff;'><div class='kpi-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-label'>AngioPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_ap = st.number_input("Cantidad AP", min_value=0, value=5, key="n_ap")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar AP"):
-                update_stat(pid, "AP", player_data['AP'] + mod_ap)
+                update_stat(pid, "AP", curr_ap + mod_ap)
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar AP"):
-                update_stat(pid, "AP", max(0, player_data['AP'] - mod_ap))
+                update_stat(pid, "AP", max(0, curr_ap - mod_ap))
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_vp:
-            st.markdown(f"<div class='kpi-box' style='border-color:#ff4b4b;'><div class='kpi-val' style='color:#ff4b4b;'>{player_data['VP']}%</div><div class='kpi-label'>VitaPoints</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box' style='border-color:#ff4b4b;'><div class='kpi-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-label'>VitaPoints</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             mod_vp = st.number_input("Cantidad VP %", min_value=0, value=10, key="n_vp")
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sanar VP"):
-                update_stat(pid, "VP", min(100, player_data['VP'] + mod_vp))
+                update_stat(pid, "VP", min(100, curr_vp + mod_vp))
                 st.toast("Aspirante Sanado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Dañar VP"):
-                update_stat(pid, "VP", max(0, player_data['VP'] - mod_vp))
+                update_stat(pid, "VP", max(0, curr_vp - mod_vp))
                 st.toast("Daño Aplicado"); time.sleep(0.5); st.rerun()
 
 # ================= TAB 3: NÓMINA =================
