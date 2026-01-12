@@ -54,11 +54,11 @@ st.markdown("""
         .profile-container {
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98));
             border: 1px solid #004d66; border-radius: 20px; padding: 20px;
-            margin-top: 60px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
+            margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05);
             text-align: center;
         }
         .profile-avatar-wrapper {
-            position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: -70px; left: 50%; transform: translateX(-50%);
             width: 160px; height: 160px; border-radius: 50%; padding: 5px;
             background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10;
         }
@@ -94,8 +94,31 @@ st.markdown("""
         .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
         .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
-        /* SKILLS */
-        .skill-card { background: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
+        /* NUEVO DISEÑO DE SKILL CARDS (BANNER LATERAL) */
+        .skill-card-container {
+            display: flex; align-items: stretch; min-height: 110px;
+            background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
+            margin-bottom: 15px; overflow: hidden; transition: 0.3s;
+        }
+        .skill-card-container:hover { border-color: #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); }
+        
+        .skill-banner-col {
+            width: 120px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e;
+        }
+        .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
+        .skill-banner-placeholder { font-size: 3em; color: #1c2e3e; opacity: 0.5; }
+        
+        .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
+        .skill-title { font-family:'Orbitron', sans-serif; font-size:1.2em; font-weight:bold; color:#00e5ff; text-transform:uppercase; line-height:1.1; margin-bottom: 6px; }
+        .skill-desc { color:#b0bec5; font-size:0.9em; margin:0; line-height:1.3; }
+        
+        .skill-cost-col {
+            width: 90px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px;
+        }
+        .skill-cost-icon { width: 32px; height: 32px; margin-bottom: 5px; filter: drop-shadow(0 0 5px #00e5ff); }
+        .skill-cost-val { font-family: 'Orbitron'; font-size: 1.4em; font-weight: bold; color: #00e5ff; }
+        .skill-cost-label { font-size: 0.7em; color: #4dd0e1; letter-spacing: 1px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -149,15 +172,9 @@ def cargar_habilidades_rol(rol_jugador):
             for item in res.json()["results"]:
                 props = item["properties"]
                 try:
-                    # FIX: Extracción Robusta del Título (Plain Text Join)
-                    # Esto une todos los fragmentos de texto, evitando errores si tiene formato.
                     nombre_list = props.get("Habilidad", {}).get("title", [])
-                    if nombre_list:
-                        nombre = "".join([t.get("plain_text", "") for t in nombre_list])
-                    else:
-                        nombre = "Habilidad Sin Nombre"
+                    nombre = "".join([t.get("plain_text", "") for t in nombre_list]) if nombre_list else "Habilidad Sin Nombre"
 
-                    # Costo
                     costo = 0
                     if "Costo AP" in props: costo = props["Costo AP"]["number"]
                     elif "Costo" in props: costo = props["Costo"]["number"]
@@ -165,11 +182,9 @@ def cargar_habilidades_rol(rol_jugador):
                     
                     nivel_req = props["Nivel Requerido"]["number"]
                     
-                    # Descripción
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     
-                    # Icono (Columna 'Icono')
                     icon_url = None
                     if "Icono" in props:
                         files = props["Icono"].get("files", [])
@@ -180,8 +195,7 @@ def cargar_habilidades_rol(rol_jugador):
                         "id": item["id"], "nombre": nombre, "costo": costo,
                         "nivel_req": nivel_req, "descripcion": descripcion, "icon_url": icon_url
                     })
-                except Exception as e:
-                    pass
+                except Exception as e: pass
         return habilidades
     except: return []
 
@@ -368,9 +382,12 @@ else:
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
+    # PREPARAR ASSETS PARA EL BUCLE DE HABILIDADES
+    b64_ap = get_img_as_base64("assets/icon_ap.png")
+
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
     
-    # --- TAB 1: PERFIL (CLEAN FLATTENED HTML) ---
+    # --- TAB 1: PERFIL ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -409,7 +426,6 @@ else:
         st.markdown(profile_html, unsafe_allow_html=True)
         
         b64_mp = get_img_as_base64("assets/icon_mp.png")
-        b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
         hud_html = textwrap.dedent(f"""
@@ -472,7 +488,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (FIXED TITLE) ---
+    # --- TAB 3: HABILIDADES (EPIC BANNER LAYOUT) ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -495,10 +511,28 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    icon_html = f'<img src="{icon_url}" style="width:24px; height:24px; margin-right:10px; object-fit:contain;">' if icon_url else ''
+                    # Banner de imagen a la izquierda (Usa icono de notion o placeholder)
+                    banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
                     
-                    # FIX HTML APLANADO CON TITULO CYAN NEON
-                    card_html = f"""<div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><div style="display:flex; align-items:center;">{icon_html}<div style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#00e5ff; text-transform:uppercase; line-height:1.2;">{nombre}</div></div><div class="skill-cost" style="white-space:nowrap;">⚡ {costo} AP</div></div><p style="color:#b0bec5; font-size:0.9em; margin:0; line-height:1.4;">{desc}</p></div>"""
+                    # Icono de AP para el costo (Usa el asset local en base64)
+                    ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
+
+                    # ESTRUCTURA FLEXBOX EPICA (Aplanada)
+                    card_html = f"""
+                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
+                        <div class="skill-banner-col">{banner_html}</div>
+                        <div class="skill-content-col">
+                            <div class="skill-title">{nombre}</div>
+                            <p class="skill-desc">{desc}</p>
+                        </div>
+                        <div class="skill-cost-col">
+                            {ap_icon_html}
+                            <div class="skill-cost-val">{costo}</div>
+                            <div class="skill-cost-label">AP</div>
+                        </div>
+                    </div>
+                    """.replace('\n', '')
+                    
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     c_btn, _ = st.columns([1, 2])
