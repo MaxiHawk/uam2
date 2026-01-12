@@ -1,19 +1,20 @@
 import streamlit as st
 import requests
 import pandas as pd
-
-# --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Sumo Cartógrafo", page_icon="🗺️", layout="wide")
+import time
 
 # --- GESTIÓN DE SECRETOS ---
 try:
     NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
-    ADMIN_PASS = st.secrets.get("ADMIN_PASSWORD", "admin123") 
-except:
-    st.error("⚠️ Error Crítico: Faltan configurar los secretos en Streamlit Cloud.")
+    ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
+except FileNotFoundError:
+    st.error("⚠️ Error: Faltan secretos. Configura ADMIN_PASSWORD en secrets.toml")
     st.stop()
+
+# --- CONFIGURACIÓN ---
+st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 
 headers = {
     "Authorization": "Bearer " + NOTION_TOKEN,
@@ -21,241 +22,229 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-# --- ESTILOS CSS ---
+# --- CSS TÁCTICO (DARK MODE) ---
 st.markdown("""
     <style>
-        .stat-box { background-color: #262730; padding: 10px; border-radius: 5px; border: 1px solid #444; text-align: center; }
-        .req-card { background-color: #1E1E1E; border-left: 5px solid #FFD700; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
-        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        /* Resaltar filtros */
-        .stSelectbox label { color: #FFD700 !important; font-weight: bold; }
-        /* Título Principal */
-        h1 { color: #FFD700; font-family: 'sans-serif'; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
+        
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; color: #00e5ff; }
+        .stApp { background-color: #050810; color: #e0f7fa; }
+        
+        /* TARJETAS DE SOLICITUD */
+        .req-card {
+            background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid #FFD700;
+            padding: 15px; border-radius: 8px; margin-bottom: 10px;
+        }
+        .req-player { font-family: 'Orbitron'; font-size: 1.1em; color: #FFD700; font-weight: bold; }
+        .req-detail { color: #b0bec5; font-size: 0.9em; margin-bottom: 10px; }
+        
+        /* BOTONES DE ACCIÓN */
+        .stButton>button { border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        /* Aprobar (Verde Táctico) */
+        div[data-testid="column"] > div > div > div > button:first-child { 
+            border: 1px solid #00e676; color: #00e676; background: transparent; 
+        }
+        div[data-testid="column"] > div > div > div > button:first-child:hover { 
+            background: #00e676; color: black; 
+        }
+        
+        /* KPI BOXES */
+        .kpi-box {
+            background: rgba(0, 229, 255, 0.05); border: 1px solid #004d66;
+            padding: 15px; text-align: center; border-radius: 10px;
+        }
+        .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
+        .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIN DE SUMO CARTÓGRAFO ---
-if "admin_logged" not in st.session_state: st.session_state.admin_logged = False
+# --- FUNCIONES NOTION ---
 
-if not st.session_state.admin_logged:
-    c1, c2, c3 = st.columns([1,1,1])
-    with c2:
-        st.markdown("### 🗺️ Acceso Sumo Cartógrafo")
-        pwd = st.text_input("Clave Maestra:", type="password")
-        if st.button("Entrar"):
-            if pwd == ADMIN_PASS:
-                st.session_state.admin_logged = True
-                st.rerun()
-            else: st.error("❌ Acceso Denegado")
-    st.stop()
-
-# --- FUNCIONES DE NOTION ---
-def get_all_aspirantes():
-    """Descarga aspirantes incluyendo Universidad y Año"""
+def get_players():
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    res = requests.post(url, headers=headers, json={})
-    players = []
+    res = requests.post(url, headers=headers)
     if res.status_code == 200:
+        players = []
         for p in res.json()["results"]:
             props = p["properties"]
             try:
-                nombre = props["Jugador"]["title"][0]["text"]["content"]
-                
-                try: uni = props["Universidad"]["select"]["name"]
-                except: uni = "Sin Asignar"
-                
-                try: ano = props["Año"]["select"]["name"]
-                except: ano = "Sin Asignar"
-
-                players.append({
-                    "id": p["id"],
-                    "Nombre": nombre,
-                    "Universidad": uni,
-                    "Año": ano,
-                    "MP": props["MP"]["number"] or 0,
-                    "AP": props["AP"]["number"] or 0,
-                    "VP": props["VP"]["number"] or 0
-                })
+                name = props["Jugador"]["title"][0]["text"]["content"]
+                mp = props.get("MP", {}).get("number", 0)
+                ap = props.get("AP", {}).get("number", 0)
+                vp = props.get("VP", {}).get("number", 0)
+                squad_list = props.get("Nombre Escuadrón", {}).get("rich_text", [])
+                squad = squad_list[0]["text"]["content"] if squad_list else "Sin Escuadrón"
+                players.append({"id": p["id"], "Agente": name, "Escuadrón": squad, "MP": mp, "AP": ap, "VP": vp})
             except: pass
-    return pd.DataFrame(players).sort_values("Nombre")
+        return pd.DataFrame(players)
+    return pd.DataFrame()
 
-def update_notion_stat(page_id, prop, new_value):
+def get_pending_requests():
+    url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
+    # Filtrar solo donde "Estado" no sea "Completado" (asumiendo que tienes una prop Estado o checkbox)
+    # Por simplicidad, traeremos las últimas 50 y filtraremos visualmente o asumiremos que borras las hechas.
+    # Idealmente: Agregar propiedad "Estado" (Select: Pendiente, Aprobado, Rechazado) en Notion.
+    res = requests.post(url, headers=headers) 
+    reqs = []
+    if res.status_code == 200:
+        for r in res.json()["results"]:
+            props = r["properties"]
+            try:
+                # Asumiendo que usas un checkbox "Procesado" o similar. Si no, traemos todo.
+                procesado = props.get("Procesado", {}).get("checkbox", False)
+                if not procesado:
+                    title_list = props["Remitente"]["title"]
+                    remitente = title_list[0]["text"]["content"] if title_list else "Desconocido"
+                    msg_list = props["Mensaje"]["rich_text"]
+                    mensaje = msg_list[0]["text"]["content"] if msg_list else ""
+                    reqs.append({"id": r["id"], "remitente": remitente, "mensaje": mensaje})
+            except: pass
+    return reqs
+
+def update_player_ap(player_name, cost):
+    # 1. Buscar ID del jugador
+    url_query = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+    payload = {"filter": {"property": "Jugador", "title": {"equals": player_name}}}
+    res = requests.post(url_query, headers=headers, json=payload)
+    if res.status_code == 200 and res.json()["results"]:
+        player_page = res.json()["results"][0]
+        player_id = player_page["id"]
+        current_ap = player_page["properties"]["AP"]["number"]
+        
+        # 2. Restar AP
+        new_ap = max(0, current_ap - cost)
+        
+        # 3. Actualizar
+        url_patch = f"https://api.notion.com/v1/pages/{player_id}"
+        patch_data = {"properties": {"AP": {"number": new_ap}}}
+        requests.patch(url_patch, headers=headers, json=patch_data)
+        return True
+    return False
+
+def mark_request_processed(page_id):
     url = f"https://api.notion.com/v1/pages/{page_id}"
-    data = {"properties": {prop: {"number": int(new_value)}}}
+    # Necesitas crear una propiedad Checkbox llamada "Procesado" en la base de Solicitudes
+    data = {"properties": {"Procesado": {"checkbox": True}}}
     requests.patch(url, headers=headers, json=data)
 
-def delete_message(page_id):
-    url = f"https://api.notion.com/v1/pages/{page_id}"
-    requests.patch(url, headers=headers, json={"archived": True})
+# --- LOGIN SYSTEM ---
+if "admin_logged_in" not in st.session_state:
+    st.session_state.admin_logged_in = False
 
-# --- INTERFAZ PRINCIPAL ---
-st.title("🗺️ Interfaz Sumo Cartógrafo")
+if not st.session_state.admin_logged_in:
+    c1, c2, c3 = st.columns([1,2,1])
+    with c2:
+        st.markdown("<h2 style='text-align:center;'>🛡️ ACCESO CLASIFICADO</h2>", unsafe_allow_html=True)
+        pwd = st.text_input("Código de Acceso:", type="password")
+        if st.button("AUTENTICAR"):
+            if pwd == ADMIN_PASSWORD:
+                st.session_state.admin_logged_in = True
+                st.rerun()
+            else:
+                st.error("⛔ ACCESO DENEGADO")
+    st.stop()
 
-# Carga inicial de datos
-df_master = get_all_aspirantes()
+# --- DASHBOARD PRINCIPAL ---
 
-tab_aspirantes, tab_solicitudes = st.tabs(["👥 GESTIÓN ASPIRANTES", "📩 SOLICITUDES"])
+# Sidebar
+with st.sidebar:
+    st.title("🎛️ COMANDO")
+    menu = st.radio("Sistemas:", ["📡 Solicitudes", "👥 Lista de Agentes", "⚙️ Ajustes Globales"])
+    if st.button("Cerrar Sesión"):
+        st.session_state.admin_logged_in = False
+        st.rerun()
 
-# ==========================================
-# 1. GESTIÓN ASPIRANTES
-# ==========================================
-with tab_aspirantes:
-    if df_master.empty:
-        st.warning("No hay aspirantes en la base de datos.")
+# LÓGICA DE PESTAÑAS
+if menu == "📡 Solicitudes":
+    st.markdown("### 📡 TRANSMISIONES ENTRANTES (SOLICITUDES)")
+    st.info("ℹ️ Para que esto funcione automático, asegúrate de tener una propiedad 'checkbox' llamada **'Procesado'** en tu base de datos de Solicitudes en Notion.")
+    
+    reqs = get_pending_requests()
+    
+    if not reqs:
+        st.success("✅ Todo despejado, Comandante. No hay solicitudes pendientes.")
     else:
-        # --- BARRA DE FILTROS ---
-        with st.container():
-            st.markdown("#### 🔍 Filtros de Universo")
-            col_f1, col_f2 = st.columns(2)
-            
-            opciones_uni = ["Todos"] + sorted(df_master["Universidad"].unique().tolist())
-            opciones_ano = ["Todos"] + sorted(df_master["Año"].unique().tolist())
-            
-            with col_f1:
-                filtro_uni = st.selectbox("Filtrar Universidad:", opciones_uni)
-            with col_f2:
-                filtro_ano = st.selectbox("Filtrar Año:", opciones_ano)
-        
-        st.divider()
-
-        # --- APLICAR FILTROS ---
-        df_filtrado = df_master.copy()
-        if filtro_uni != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["Universidad"] == filtro_uni]
-        if filtro_ano != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["Año"] == filtro_ano]
-        
-        # --- SELECTOR DE ASPIRANTE ---
-        if not df_filtrado.empty:
-            st.markdown(f"**Mostrando {len(df_filtrado)} aspirantes:**")
-            alumno_selec = st.selectbox("Seleccionar Aspirante:", df_filtrado["Nombre"].tolist())
-            
-            # Datos del seleccionado
-            datos = df_filtrado[df_filtrado["Nombre"] == alumno_selec].iloc[0]
-            pid = datos["id"]
-            
-            st.caption(f"📍 {datos['Universidad']} | Generación {datos['Año']}")
-            
-            # --- MÉTRICAS ---
-            c1, c2, c3 = st.columns(3)
-            c1.metric("⭐ MasterPoints (MP)", int(datos["MP"]))
-            c2.metric("⚡ AngioPoints (AP)", int(datos["AP"]))
-            c3.metric("❤️ VitaPoints (VP)", f"{int(datos['VP'])}%")
-            
-            st.markdown("---")
-            
-            # --- PANEL DE ACCIONES ---
-            col_mp, col_ap, col_vp = st.columns(3)
-            
-            with col_mp:
-                st.markdown("#### ⭐ Ajustar MP")
-                if st.button("+10 MP (Participación)", key="mp10"):
-                    update_notion_stat(pid, "MP", datos["MP"] + 10)
-                    st.toast("✅ +10 MP Guardado")
-                    st.rerun()
-                if st.button("+50 MP (Gran Logro)", key="mp50"):
-                    update_notion_stat(pid, "MP", datos["MP"] + 50)
-                    st.toast("✅ +50 MP Guardado")
-                    st.rerun()
-                val_mp = st.number_input("Manual MP", value=int(datos["MP"]), step=1, key="n_mp")
-                if st.button("Guardar MP", key="s_mp"):
-                    update_notion_stat(pid, "MP", val_mp)
-                    st.rerun()
-
-            with col_ap:
-                st.markdown("#### ⚡ Ajustar AP")
-                if st.button("+5 AP (Bonus)", key="ap5"):
-                    update_notion_stat(pid, "AP", datos["AP"] + 5)
-                    st.toast("✅ +5 AP Guardado")
-                    st.rerun()
-                val_ap = st.number_input("Manual AP", value=int(datos["AP"]), step=1, key="n_ap")
-                if st.button("Guardar AP", key="s_ap"):
-                    update_notion_stat(pid, "AP", val_ap)
-                    st.rerun()
-
-            with col_vp:
-                st.markdown("#### ❤️ Ajustar VP")
-                if st.button("💔 -10 VP (Daño)", key="vp_minus"):
-                    nuevo_vp = max(0, int(datos["VP"]) - 10)
-                    update_notion_stat(pid, "VP", nuevo_vp)
-                    st.toast("⚠️ -10 VP Aplicado")
-                    st.rerun()
-                if st.button("❤️ Curar Total (100%)", key="vp_full"):
-                    update_notion_stat(pid, "VP", 100)
-                    st.toast("✅ Salud Restaurada")
-                    st.rerun()
-                val_vp = st.number_input("Manual VP (0-100)", value=int(datos["VP"]), step=1, key="n_vp")
-                if st.button("Guardar VP", key="s_vp"):
-                    update_notion_stat(pid, "VP", val_vp)
-                    st.rerun()
-        else:
-            st.info("No se encontraron aspirantes con estos filtros.")
-
-# ==========================================
-# 2. SOLICITUDES
-# ==========================================
-with tab_solicitudes:
-    st.markdown("### Buzón de Habilidades")
-    if st.button("🔄 Actualizar Buzón"): st.rerun()
-    
-    url_req = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    res_req = requests.post(url_req, headers=headers, json={})
-    
-    if res_req.status_code == 200:
-        msgs = res_req.json()["results"]
-        if not msgs: st.info("📭 No hay solicitudes pendientes.")
-        
-        for m in msgs:
+        for r in reqs:
+            # Intentar parsear el mensaje para sacar costo
+            # Formato esperado: "Desea activar: 'Nombre' (Costo: 5 AP)..."
+            costo = 0
+            skill_name = "Habilidad"
             try:
-                mid = m["id"]
-                props = m["properties"]
-                remitente = "Anónimo"
-                texto = "Sin contenido"
-                
-                if "Remitente" in props:
-                    t = props["Remitente"].get("title", [])
-                    if t: remitente = t[0]["text"]["content"]
-                
-                if "Mensaje" in props:
-                    r = props["Mensaje"].get("rich_text", [])
-                    if r: texto = r[0]["text"]["content"]
-                
-                with st.container():
-                    col_txt, col_act = st.columns([3, 1])
-                    with col_txt:
-                        st.markdown(f"""
-                        <div class="req-card">
-                            <strong>👤 {remitente}</strong><br>
-                            {texto}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col_act:
-                        es_compra = "Costo:" in texto
-                        costo = 0
-                        if es_compra:
-                            try:
-                                part = texto.split("Costo:")[1]
-                                costo = int(part.split("AP")[0].strip())
-                            except: pass
-                        
-                        if es_compra and costo > 0:
-                            if st.button(f"✅ Aprobar (-{costo})", key=f"ok_{mid}"):
-                                nombre_clean = remitente.replace("SOLICITUD: ", "").strip()
-                                jugador_row = df_master[df_master["Nombre"] == nombre_clean]
-                                
-                                if not jugador_row.empty:
-                                    pid_jugador = jugador_row.iloc[0]["id"]
-                                    ap_actual = jugador_row.iloc[0]["AP"]
-                                    if ap_actual >= costo:
-                                        update_notion_stat(pid_jugador, "AP", ap_actual - costo)
-                                        delete_message(mid)
-                                        st.success(f"Aprobado. Saldo: {ap_actual-costo}")
-                                        st.rerun()
-                                    else: st.error(f"❌ Saldo insuficiente ({ap_actual}).")
-                                else: st.error("Aspirante no encontrado.")
-                                    
-                        if st.button("🗑️ Borrar", key=f"del_{mid}"):
-                            delete_message(mid)
-                            st.rerun()
+                # Logica simple de extracción
+                if "Costo:" in r['mensaje']:
+                    part = r['mensaje'].split("Costo:")[1]
+                    costo_str = part.split("AP")[0].strip()
+                    costo = int(costo_str)
+                if "activar:" in r['mensaje']:
+                    skill_name = r['mensaje'].split("activar:")[1].split("(")[0].replace("'","").strip()
             except: pass
+            
+            # Limpiar nombre jugador (viene como "SOLICITUD: Nombre")
+            player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
+
+            with st.container():
+                c_card, c_act = st.columns([3, 1])
+                with c_card:
+                    st.markdown(f"""
+                    <div class="req-card">
+                        <div class="req-player">{player_name}</div>
+                        <div class="req-detail">Solicita: <strong>{skill_name}</strong></div>
+                        <div class="req-detail" style="color:#00e5ff;">Coste: ⚡ {costo} AP</div>
+                        <div style="font-size:0.8em; color:#666;">{r['mensaje']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with c_act:
+                    if st.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
+                        with st.spinner("Procesando enlace neural..."):
+                            # 1. Descontar AP
+                            ok = update_player_ap(player_name, costo)
+                            if ok:
+                                # 2. Marcar como procesado
+                                mark_request_processed(r['id'])
+                                st.success("Autorizado")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("Error al descontar AP")
+                    
+                    if st.button(f"❌ DENEGAR", key=f"den_{r['id']}"):
+                        mark_request_processed(r['id'])
+                        st.warning("Denegado")
+                        time.sleep(1)
+                        st.rerun()
+
+elif menu == "👥 Lista de Agentes":
+    st.markdown("### 👥 NÓMINA DE AGENTES ACTIVOS")
+    
+    df_players = get_players()
+    if not df_players.empty:
+        # Métricas Rápidas
+        k1, k2, k3 = st.columns(3)
+        k1.markdown(f"<div class='kpi-box'><div class='kpi-val'>{len(df_players)}</div><div class='kpi-label'>Total Agentes</div></div>", unsafe_allow_html=True)
+        k2.markdown(f"<div class='kpi-box'><div class='kpi-val'>{df_players['MP'].sum()}</div><div class='kpi-label'>Total MP Global</div></div>", unsafe_allow_html=True)
+        k3.markdown(f"<div class='kpi-box'><div class='kpi-val'>{int(df_players['VP'].mean())}%</div><div class='kpi-label'>Salud Promedio</div></div>", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Tabla interactiva (Solo lectura por ahora para evitar accidentes, pero ordenable)
+        st.dataframe(
+            df_players,
+            column_config={
+                "Agente": st.column_config.TextColumn("Agente", width="medium"),
+                "MP": st.column_config.ProgressColumn("MasterPoints", format="%d", min_value=0, max_value=1000),
+                "VP": st.column_config.NumberColumn("VitaPoints", format="%d%%"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        st.caption("⚠️ Para editar valores masivos, se recomienda usar Notion directamente por seguridad de la base de datos.")
+    else:
+        st.warning("No se encontraron agentes en la base de datos.")
+
+elif menu == "⚙️ Ajustes Globales":
+    st.markdown("### ⚙️ CONTROL DE MISIÓN")
+    st.info("Aquí podrás cambiar el estado del juego (En Curso / Finalizado) y gestionar variables globales. (Próximamente)")
+    
+    # Aquí podríamos agregar lógica para editar una base de datos de "Configuración" si creas una en Notion.
