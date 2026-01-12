@@ -115,16 +115,9 @@ def get_players():
 
 def get_pending_requests(debug_mode=False):
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    
-    # --- FIX: ORDENAR POR FECHA DE CREACIÓN DESCENDENTE ---
     payload = {
         "page_size": 100,
-        "sorts": [
-            {
-                "timestamp": "created_time",
-                "direction": "descending"
-            }
-        ]
+        "sorts": [{"timestamp": "created_time", "direction": "descending"}]
     }
     
     res = requests.post(url, headers=headers, json=payload) 
@@ -151,11 +144,23 @@ def get_pending_requests(debug_mode=False):
                     tipo_obj = props.get("Tipo", {}).get("select")
                     tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
                     
+                    # --- EXTRAER CONTEXTO PARA FILTRADO ---
+                    uni_obj = props.get("Universidad", {}).get("select")
+                    uni = uni_obj["name"] if uni_obj else "Sin Asignar"
+                    
+                    ano_obj = props.get("Año", {}).get("select")
+                    ano = ano_obj["name"] if ano_obj else "Sin Año"
+                    
+                    created_time = r["created_time"] # Fecha creación ISO
+                    
                     reqs.append({
                         "id": r["id"], 
                         "remitente": remitente, 
                         "mensaje": mensaje,
-                        "tipo": tipo
+                        "tipo": tipo,
+                        "universidad": uni,
+                        "año": ano,
+                        "created": created_time
                     })
             except Exception as e:
                 pass
@@ -259,9 +264,14 @@ with tab_req:
 
     reqs = get_pending_requests(debug_mode)
     
-    # 1. FILTRO DE SOLICITUDES
-    valid_aspirantes = df_filtered["Aspirante"].tolist()
-    reqs_filtered = [r for r in reqs if r['remitente'] in valid_aspirantes]
+    # --- FILTRO INTELIGENTE BASADO EN DATOS DE LA SOLICITUD ---
+    reqs_filtered = []
+    for r in reqs:
+        pass_uni = (sel_uni == "Todas") or (r['universidad'] == sel_uni)
+        pass_gen = (sel_gen == "Todas") or (r['año'] == sel_gen)
+        
+        if pass_uni and pass_gen:
+            reqs_filtered.append(r)
     
     if not reqs_filtered:
         st.success("✅ Bandeja de entrada vacía (para los filtros seleccionados).")
@@ -292,6 +302,12 @@ with tab_req:
                 curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
                 p_gen = p_data["Generación"]
 
+            # Parsear Fecha ISO a formato legible
+            try:
+                dt_obj = datetime.fromisoformat(r['created'].replace('Z', '+00:00'))
+                date_str = dt_obj.strftime("%d/%m %H:%M")
+            except: date_str = "Hoy"
+
             with st.container():
                 card_class = "req-card" if is_skill else "req-card-msg"
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
@@ -304,7 +320,10 @@ with tab_req:
                         <div class="req-player">
                             {player_name} <span class="req-gen-tag">{p_gen}</span>
                         </div>
-                        <div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div>
+                        <div style="text-align:right;">
+                            <div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div>
+                            <div style="color:#666; font-size:0.7em;">{date_str}</div>
+                        </div>
                     </div>
                     <div class="req-detail">{title_text}</div>
                     <div style="font-size:0.95em; color:#e0f7fa;">{r['mensaje']}</div>
