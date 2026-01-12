@@ -32,83 +32,32 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- CSS: ESTÉTICA BLUE NEON (FINAL FIX) ---
+# --- CSS: ESTÉTICA BLUE NEON ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
-        /* FUENTES Y FONDO */
+        /* GENERAL */
         h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
-        
-        /* LIMPIEZA INTERFAZ */
         .block-container { padding-top: 1rem !important; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
-        /* TARJETA DE PERFIL */
-        .profile-card {
-            background: linear-gradient(180deg, rgba(6, 22, 38, 0.9), rgba(4, 12, 20, 0.95));
-            border: 1px solid #004d66; border-top: 2px solid #00e5ff;
-            border-radius: 16px; padding: 30px 20px; text-align: center;
-            margin-bottom: 30px; box-shadow: 0 0 40px rgba(0, 229, 255, 0.05);
-        }
-        .avatar-img {
-            width: 130px; height: 130px; border-radius: 50%; object-fit: cover;
-            border: 3px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
-        }
-        .squad-badge {
-            width: 90px; height: 90px; object-fit: contain; margin-top: 20px;
-            filter: drop-shadow(0 0 10px rgba(0,229,255,0.5)); transition: transform 0.3s;
-        }
-        .squad-badge:hover { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(0,229,255,0.8)); }
-        
-        /* HUD METRICS */
-        .hud-container { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 30px; }
-        .metric-box {
-            background: rgba(8, 28, 48, 0.6); border: 1px solid #005f73; border-radius: 12px;
-            padding: 15px 5px; text-align: center; flex: 1; transition: all 0.3s ease;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .metric-box:hover { border-color: #00e5ff; background: rgba(8, 28, 48, 0.9); transform: translateY(-5px); }
-        .metric-icon-img { width: 50px; height: 50px; object-fit: contain; margin-bottom: 8px; filter: drop-shadow(0 0 5px rgba(0,229,255,0.6)); }
-        .metric-value { font-family: 'Orbitron'; font-size: 1.6rem; color: #fff; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
-        .metric-label { font-size: 0.75rem; color: #4dd0e1; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 5px; }
-
-        /* SKILL CARDS (FIX VISIBILIDAD) */
-        .skill-card { 
-            background-color: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; 
-            padding: 20px; margin-bottom: 15px; position: relative; overflow: hidden;
-        }
-        .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.1); }
-        .skill-title {
-            font-family: 'Orbitron', sans-serif !important; 
-            color: #FFFFFF !important; 
-            font-size: 1.3em !important; 
-            font-weight: 900 !important;
-            text-transform: uppercase;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            margin-bottom: 5px; display: block;
-        }
-        .skill-desc { color: #b0bec5; font-size: 0.9em; line-height: 1.4; }
-        .skill-cost { 
-            background: #002d38; color: #00e5ff; padding: 4px 12px; border-radius: 20px; 
-            border: 1px solid #006064; font-size: 0.8em; font-weight: bold; float: right;
-        }
-
-        /* CUSTOM RANKING TABLE (HTML) */
-        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
-        .rank-row { background: rgba(10, 20, 30, 0.6); border-radius: 8px; transition: transform 0.2s; }
-        .rank-row:hover { background: rgba(20, 40, 60, 0.8); transform: scale(1.01); }
-        .rank-cell { padding: 15px; color: #e0f7fa; border-top: 1px solid #004d66; border-bottom: 1px solid #004d66; }
-        .rank-cell:first-child { border-left: 1px solid #004d66; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; }
-        .rank-cell:last-child { border-right: 1px solid #004d66; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
-        .progress-bg { background: #1c2e3e; height: 10px; border-radius: 5px; overflow: hidden; width: 100%; }
-        .progress-fill { background-color: #FFD700; height: 100%; box-shadow: 0 0 10px #FFD700; }
-
         /* BOTONES & TABS */
         .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; }
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
+        
+        /* ESTILOS ESPECÍFICOS PARA TABLAS HTML */
+        .custom-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+        .custom-row { background: rgba(10, 20, 30, 0.6); }
+        .custom-cell { padding: 15px; border-top: 1px solid #004d66; border-bottom: 1px solid #004d66; color: white; }
+        .custom-cell-first { border-left: 1px solid #004d66; border-top-left-radius: 10px; border-bottom-left-radius: 10px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; text-align: center; width: 50px; }
+        .custom-cell-last { border-right: 1px solid #004d66; border-top-right-radius: 10px; border-bottom-right-radius: 10px; width: 40%; }
+        
+        /* BARRA DE PROGRESO */
+        .bar-bg { background: #1c2e3e; height: 8px; border-radius: 4px; overflow: hidden; width: 100%; margin-right: 10px; }
+        .bar-fill { height: 100%; background-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -123,33 +72,24 @@ if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 
-# --- HELPER: IMÁGENES A BASE64 ---
+# --- HELPERS ---
 def get_img_as_base64(file_path):
     if not os.path.exists(file_path): return ""
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- HELPER: BUSCADOR INTELIGENTE DE IMÁGENES ---
 def find_squad_image(squad_name):
-    """Busca la imagen del escuadrón probando varias combinaciones de nombre y ruta."""
+    """Busca la imagen del escuadrón probando varias combinaciones."""
     if not squad_name: return None
-    
-    # Normalizar nombre: "Alpha Team" -> "alpha_team"
     clean_name = squad_name.lower().strip().replace(" ", "_")
-    
-    # Lista de posibles rutas (Prioridad: assets/nombre_team.png -> assets/nombre.png -> root)
+    # Busca en assets/ y root, con _team y sin _team
     candidates = [
-        f"assets/{clean_name}_team.png", # egipcios_team.png (en carpeta assets)
-        f"assets/{clean_name}.png",      # egipcios.png (en carpeta assets)
-        f"{clean_name}_team.png",        # egipcios_team.png (en raíz)
-        f"{clean_name}.png"              # egipcios.png (en raíz)
+        f"assets/{clean_name}_team.png", f"assets/{clean_name}.png", f"assets/{clean_name}.jpg",
+        f"{clean_name}_team.png", f"{clean_name}.png"
     ]
-    
     for path in candidates:
-        if os.path.exists(path):
-            return path # Retorna la primera que encuentra
-            
-    return None # No encontró nada
+        if os.path.exists(path): return path
+    return None
 
 # --- FUNCIONES LÓGICAS ---
 def calcular_nivel_usuario(mp):
@@ -257,14 +197,11 @@ def cargar_ranking_filtrado(uni, ano):
 def validar_login():
     usuario = st.session_state.input_user.strip()
     clave = st.session_state.input_pass.strip()
-    
     if not usuario or not clave:
         st.session_state.login_error = "⚠️ Ingresa usuario y contraseña."
         return
-
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     payload = {"filter": {"property": "Jugador", "title": {"equals": usuario}}}
-    
     try:
         res = requests.post(url, headers=headers, json=payload)
         if res.status_code == 200:
@@ -274,12 +211,10 @@ def validar_login():
                 try:
                     c_obj = props.get("Clave", {}).get("rich_text", [])
                     c_real = c_obj[0]["text"]["content"] if c_obj else ""
-                    
                     if clave == c_real:
                         st.session_state.jugador = props
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
-                        
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -290,17 +225,14 @@ def validar_login():
                         except: 
                             st.session_state.uni_actual = None; st.session_state.ano_actual = None
                             st.session_state.estado_uam = "Desconocido"
-
                         sq_name = "Sin Escuadrón"
                         try:
                             sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
                             if sq_obj: sq_name = sq_obj[0]["text"]["content"]
                         except: pass
                         st.session_state.squad_name = sq_name
-                        
                         st.session_state.team_stats = obtener_puntaje_equipo_filtrado(sq_name, st.session_state.uni_actual, st.session_state.ano_actual)
                         st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
-                        
                         try:
                             rol_data = props.get("Rol", {}).get("select")
                             rol_usuario = rol_data["name"] if rol_data else None
@@ -324,68 +256,53 @@ def cerrar_sesion():
 # ================= UI PRINCIPAL =================
 
 if not st.session_state.jugador:
-    # --- PANTALLA LOGIN ---
-    if os.path.exists("assets/cover.png"):
-        st.image("assets/cover.png", use_container_width=True)
-    
+    if os.path.exists("assets/cover.png"): st.image("assets/cover.png", use_container_width=True)
     with st.container():
         c_l, c_r = st.columns([1.2, 3.8])
         with c_l:
-            if os.path.exists("assets/logo.png"):
-                st.image("assets/logo.png", width=110)
-            else:
-                st.markdown("🛡️")
+            if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=110)
+            else: st.markdown("🛡️")
         with c_r:
             st.markdown("<h3 style='margin-bottom:0;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
             st.caption("PLATAFORMA COMPUTADORA CENTRAL")
-        
         st.markdown("<br>", unsafe_allow_html=True)
-        
         with st.form("login_form"):
             st.markdown("##### 🔐 IDENTIFICACIÓN REQUERIDA")
             st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
             st.text_input("Password:", type="password", key="input_pass")
             st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
-    
-    if st.session_state.login_error:
-        st.error(st.session_state.login_error)
+    if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # --- DASHBOARD USUARIO ---
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
     nivel_num = calcular_nivel_usuario(mp)
     nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
-    
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
     
-    status_color = "#00e5ff" 
-    if estado_label == "Finalizado": status_color = "#ff4b4b" 
-    elif estado_label == "Sin empezar": status_color = "#FFD700" 
+    status_color = "#00e5ff"
+    if estado_label == "Finalizado": status_color = "#ff4b4b"
+    elif estado_label == "Sin empezar": status_color = "#FFD700"
 
-    # HEADER DASHBOARD
+    # Header
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
         if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
-        
         st.markdown(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
                 <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
-                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">
-                    {uni_label.upper()}
-                </div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); line-height: 1.1; margin-bottom: 8px;">{uni_label.upper()}</div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
                     <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
-
     st.markdown("<br><br>", unsafe_allow_html=True)
 
     tab_perfil, tab_ranking, tab_habilidades = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES"])
@@ -399,114 +316,80 @@ else:
                 if "file" in f_list[0]: avatar_url = f_list[0]["file"]["url"]
                 elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
         except: pass
-        
         try: rol = p.get("Rol", {}).get("select")["name"]
         except: rol = "Sin Rol"
-        
         skuad = st.session_state.squad_name
         
-        # --- BUSCADOR INTELIGENTE DE IMAGEN ESCUADRÓN ---
-        # Usa la función helper que busca en assets/ y root, con/sin _team
+        # BUSCAR IMAGEN SQUAD
         img_path = find_squad_image(skuad)
         b64_badge = get_img_as_base64(img_path) if img_path else ""
-        
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        badge_html_block = ""
+        # HTML DEL PERFIL LIMPIO (Sin indentaciones raras)
+        badge_div = ""
         if b64_badge:
-            badge_html_block = f"""
-            <div style="margin-top:20px;">
-                <img src="data:image/png;base64,{b64_badge}" class="squad-badge" title="{skuad}">
-                <div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div>
+            badge_div = f"""<div style="margin-top:20px;"><img src="data:image/png;base64,{b64_badge}" class="squad-badge"><div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div></div>"""
+        
+        html_card = f"""
+        <div class="profile-card">
+            <div class="avatar-container">
+                {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
             </div>
-            """
+            <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
+            <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
+            <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
+            {badge_div}
+        </div>
+        """
+        st.markdown(html_card, unsafe_allow_html=True)
         
-        profile_html = f"""
-<div class="profile-card">
-    <div class="avatar-container">
-        {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
-    </div>
-    <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
-    <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
-    <div style="background: rgba(0,229,255,0.1); display:inline-block; padding: 5px 15px; border-radius: 20px; border:1px solid #00bcd4; color:#00e5ff; letter-spacing:2px; font-weight:bold;">
-        NIVEL {nivel_num}: {nombre_rango.upper()}
-    </div>
-    {badge_html_block}
-</div>
-"""
-        st.markdown(profile_html, unsafe_allow_html=True)
-        
-        # DEBUG VISUAL (Solo si hay escuadrón pero no encontró imagen)
-        if skuad and not b64_badge:
-            with st.expander("🔧 Diagnóstico de Imágenes"):
-                clean = skuad.lower().strip().replace(" ", "_")
-                st.warning(f"No encontré la imagen para **{skuad}**.")
-                st.write(f"Probé buscando estos archivos (en orden):")
-                st.code(f"assets/{clean}_team.png\nassets/{clean}.png\n{clean}_team.png\n{clean}.png")
-                st.info("Sube un archivo con uno de esos nombres exactos.")
-
+        # HUD
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
-        
         st.markdown(f"""
         <div class="hud-container">
-            <div class="metric-box">
-                <img src="data:image/png;base64,{b64_mp}" class="metric-icon-img">
-                <div class="metric-value" style="color:#FFD700;">{mp}</div>
-                <div class="metric-label">MasterPoints</div>
-            </div>
-            <div class="metric-box">
-                <img src="data:image/png;base64,{b64_ap}" class="metric-icon-img">
-                <div class="metric-value" style="color:#00e5ff;">{ap}</div>
-                <div class="metric-label">AngioPoints</div>
-            </div>
-            <div class="metric-box">
-                <img src="data:image/png;base64,{b64_vp}" class="metric-icon-img">
-                <div class="metric-value" style="color:#ff4b4b;">{vp}%</div>
-                <div class="metric-label">VitaPoints</div>
-            </div>
+            <div class="metric-box"><img src="data:image/png;base64,{b64_mp}" class="metric-icon-img"><div class="metric-value" style="color:#FFD700;">{mp}</div><div class="metric-label">MasterPoints</div></div>
+            <div class="metric-box"><img src="data:image/png;base64,{b64_ap}" class="metric-icon-img"><div class="metric-value" style="color:#00e5ff;">{ap}</div><div class="metric-label">AngioPoints</div></div>
+            <div class="metric-box"><img src="data:image/png;base64,{b64_vp}" class="metric-icon-img"><div class="metric-value" style="color:#ff4b4b;">{vp}%</div><div class="metric-label">VitaPoints</div></div>
         </div>
         """, unsafe_allow_html=True)
-        
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (TABLA HTML PERSONALIZADA - FIX AMARILLO) ---
+    # --- TAB 2: RANKING (HTML PURO PARA CONTROL TOTAL) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
-        
         if df is not None and not df.empty:
-            # Generación de Tabla HTML Manual para control total de estilos
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
-            
-            table_html = '<table class="rank-table">'
-            table_html += '<tr><th style="color:#aaa; text-align:left; padding:10px;">#</th><th style="color:#aaa; text-align:left;">Agente</th><th style="color:#aaa; text-align:left;">Escuadrón</th><th style="color:#aaa; text-align:left; width:40%;">Progreso MP</th></tr>'
-            
+            # Construimos la tabla HTML a mano
+            table_html = """
+            <table class="custom-table">
+            """
             for index, row in df.head(10).iterrows():
                 rank = index + 1
                 name = row["Aspirante"]
                 squad = row["Escuadrón"]
                 points = row["MasterPoints"]
-                percent = (points / max_mp) * 100
+                pct = (points / max_mp) * 100
                 
                 table_html += f"""
-                <tr class="rank-row">
-                    <td class="rank-cell" style="font-family:'Orbitron'; font-size:1.2em;">{rank}</td>
-                    <td class="rank-cell" style="font-weight:bold;">{name}</td>
-                    <td class="rank-cell" style="color:#aaa; font-size:0.9em;">{squad}</td>
-                    <td class="rank-cell">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div class="progress-bg">
-                                <div class="progress-fill" style="width:{percent}%;"></div>
-                            </div>
-                            <span style="font-family:'Orbitron'; color:#FFD700;">{points}</span>
+                <tr class="custom-row">
+                    <td class="custom-cell custom-cell-first">{rank}</td>
+                    <td class="custom-cell">
+                        <div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div>
+                        <div style="color:#aaa; font-size:0.9em;">{squad}</div>
+                    </td>
+                    <td class="custom-cell custom-cell-last">
+                        <div style="display:flex; align-items:center;">
+                            <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div>
+                            <span style="font-family:'Orbitron'; color:#FFD700; font-weight:bold;">{points}</span>
                         </div>
                     </td>
                 </tr>
                 """
-            table_html += '</table>'
+            table_html += "</table>"
             st.markdown(table_html, unsafe_allow_html=True)
             
             st.markdown("### 🛡️ DOMINIO DE ESCUADRONES")
@@ -518,12 +401,11 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (FIX TITULO INVISIBLE) ---
+    # --- TAB 3: HABILIDADES (FIXED TITLE STYLE) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
         habilidades = st.session_state.habilidades_data
-        
         if not habilidades:
             st.info("Sin datos en el Grimorio.")
         else:
@@ -532,7 +414,6 @@ else:
                 costo = hab["costo"]
                 nivel_req = hab["nivel_req"]
                 desc = hab["descripcion"]
-                
                 desbloqueada = nivel_num >= nivel_req
                 puede_pagar = ap >= costo
                 
@@ -541,14 +422,14 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # Usamos la clase .skill-title definida en CSS global para asegurar visibilidad
+                    # Usamos estilo en línea (style="") para asegurar que el título sea BLANCO
                     card_html = f"""
                     <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <span class="skill-title">{nombre}</span>
+                            <span style="font-family:'Orbitron', sans-serif; font-size:1.1em; font-weight:bold; color:#FFFFFF; text-transform:uppercase;">{nombre}</span>
                             <span class="skill-cost">⚡ {costo} AP</span>
                         </div>
-                        <p class="skill-desc">{desc}</p>
+                        <p style="color:#b0bec5; font-size:0.9em; margin:0;">{desc}</p>
                     </div>
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
