@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import os
 import base64
-import textwrap # <--- LA CLAVE PARA ARREGLAR EL HTML
+import textwrap
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -68,6 +68,13 @@ st.markdown("""
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         .hud-icon { width: 50px; height: 50px; object-fit: contain; margin-bottom: 8px; filter: drop-shadow(0 0 5px rgba(0,229,255,0.6)); }
+        
+        /* SKILL CARDS */
+        .skill-card { 
+            background-color: #0a141f; border: 1px solid #1c2e3e; border-radius: 10px; 
+            padding: 20px; margin-bottom: 15px; position: relative; overflow: hidden;
+        }
+        .skill-card:hover { border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.1); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -195,8 +202,8 @@ def cargar_ranking_filtrado(uni, ano):
             
             df = pd.DataFrame(lista)
             if not df.empty:
+                # FIX RANKING: Solo ordenamos, no tocamos el índice aquí para evitar líos
                 df = df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
-                df.index += 1 
             return df
     except: return pd.DataFrame()
     return pd.DataFrame()
@@ -302,7 +309,6 @@ else:
     with c_head2:
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
         
-        # FIX HTML DEDENT
         header_html = textwrap.dedent(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid #00e5ff; padding: 10px; border-radius: 0 10px 10px 0;">
                 <div style="font-family: 'Orbitron', sans-serif; color: #4dd0e1; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);">🌌 MULTIVERSO DETECTADO</div>
@@ -334,7 +340,6 @@ else:
         except: rol = "Sin Rol"
         skuad = st.session_state.squad_name
         
-        # BUSCAR IMAGEN SQUAD
         img_path = find_squad_image(skuad)
         b64_badge = get_img_as_base64(img_path) if img_path else ""
         try: vp = int(p.get("VP", {}).get("number", 1))
@@ -342,13 +347,14 @@ else:
         
         badge_html = ""
         if b64_badge:
-            badge_html = f"""<div style="margin-top:20px;"><img src="data:image/png;base64,{b64_badge}" class="squad-badge"><div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div></div>"""
+            # FIX: Estilo en línea para insignia escuadrón (Evita tamaño gigante)
+            badge_html = f"""<div style="margin-top:20px;"><img src="data:image/png;base64,{b64_badge}" style="width:80px; height:80px; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,229,255,0.6));"><div style="font-size:0.75em; color:#4dd0e1; margin-top:8px; letter-spacing:2px; font-weight:bold; text-transform:uppercase;">{skuad}</div></div>"""
         
-        # FIX HTML DEDENT
+        # FIX: Estilos en línea para avatar (Evita cuadrado gigante)
         profile_html = textwrap.dedent(f"""
             <div class="profile-card">
-                <div class="avatar-container">
-                    {'<img src="' + avatar_url + '" class="avatar-img">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
+                <div style="display:inline-block; margin-bottom:15px;">
+                    {'<img src="' + avatar_url + '" style="width:130px; height:130px; border-radius:50%; object-fit:cover; border:3px solid #00e5ff; box-shadow:0 0 20px rgba(0,229,255,0.5);">' if avatar_url else '<div style="font-size:80px;">👤</div>'}
                 </div>
                 <h2 style="margin:0; color:#00e5ff; text-transform: uppercase; font-size: 2em; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,229,255,0.7);">{st.session_state.nombre}</h2>
                 <h3 style="margin:10px 0; color:#e0f7fa; font-size:1.2em;">{rol}</h3>
@@ -360,12 +366,10 @@ else:
         """)
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # HUD
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_ap = get_img_as_base64("assets/icon_ap.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
-        # FIX HTML DEDENT
         hud_html = textwrap.dedent(f"""
             <div class="hud-wrapper">
                 <div class="hud-box"><img src="data:image/png;base64,{b64_mp}" class="hud-icon"><div class="metric-value" style="color:#FFD700;">{mp}</div><div class="metric-label">MasterPoints</div></div>
@@ -376,7 +380,7 @@ else:
         st.markdown(hud_html, unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
-    # --- TAB 2: RANKING (FIX HTML TABLE DEDENT) ---
+    # --- TAB 2: RANKING (FIXED INDEX LOGIC) ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
@@ -384,8 +388,9 @@ else:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
             
             table_rows = ""
-            for index, row in df.head(10).iterrows():
-                rank = index + 1
+            # FIX: usamos enumerate para contar desde 0 y le sumamos 1 visualmente
+            for i, (index, row) in enumerate(df.head(10).iterrows()):
+                rank = i + 1  # 0+1 = 1, 1+1 = 2, etc.
                 name = row["Aspirante"]
                 squad = row["Escuadrón"]
                 points = row["MasterPoints"]
@@ -407,7 +412,6 @@ else:
                 </tr>
                 """
             
-            # FIX HTML DEDENT
             full_table = textwrap.dedent(f"""
                 <table class="custom-table">
                     {table_rows}
@@ -424,7 +428,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES (FIX HTML DEDENT) ---
+    # --- TAB 3: HABILIDADES (INLINE STYLE TITLE) ---
     with tab_habilidades:
         st.markdown(f"### 📜 GRIMORIO: {rol.upper()}")
         st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
@@ -445,7 +449,7 @@ else:
                     opacity = "1" if desbloqueada else "0.5"
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
-                    # FIX HTML DEDENT
+                    # FIX: Estilos en línea para el título
                     card_html = textwrap.dedent(f"""
                         <div class="skill-card" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
