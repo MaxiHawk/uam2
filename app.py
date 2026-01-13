@@ -42,7 +42,6 @@ NOMBRES_NIVELES = {
 }
 
 # --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
-# Extraídos visualmente de los estandartes proporcionados
 SQUAD_THEMES = {
     "Default": { "primary": "#00e5ff", "glow": "rgba(0, 229, 255, 0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
     
@@ -75,8 +74,8 @@ SQUAD_THEMES = {
 
     # 6. PLATA / BLANCO / NEGRO
     "Hijos de Harvey": { "primary": "#e0e0e0", "glow": "rgba(255, 255, 255, 0.4)", "gradient_start": "#424242", "gradient_end": "#bdbdbd", "text_highlight": "#f5f5f5" },
-    "Vanguardia de Cribier": { "primary": "#bdbdbd", "glow": "rgba(233, 30, 99, 0.3)", "gradient_start": "#616161", "gradient_end": "#efefef", "text_highlight": "#f48fb1" }, # Toque rosa por la estrella
-    "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" } # Negro y Oro
+    "Vanguardia de Cribier": { "primary": "#bdbdbd", "glow": "rgba(233, 30, 99, 0.3)", "gradient_start": "#616161", "gradient_end": "#efefef", "text_highlight": "#f48fb1" },
+    "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" }
 }
 
 # --- 🖼️ DICCIONARIO DE INSIGNIAS ---
@@ -123,7 +122,6 @@ current_squad = st.session_state.squad_name
 if current_squad and current_squad in SQUAD_THEMES:
     THEME = SQUAD_THEMES[current_squad]
 else:
-    # Búsqueda parcial por si acaso
     found = False
     if current_squad:
         for key in SQUAD_THEMES:
@@ -134,12 +132,11 @@ else:
     if not found:
         THEME = SQUAD_THEMES["Default"]
 
-# --- CSS DINÁMICO ---
+# --- CSS DINÁMICO (BORDES SUAVIZADOS) ---
 st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
-        /* VARIABLES DE TEMA */
         :root {{
             --primary-color: {THEME['primary']};
             --glow-color: {THEME['glow']};
@@ -150,7 +147,6 @@ st.markdown(f"""
             --bg-card: rgba(10, 25, 40, 0.7);
         }}
 
-        /* GLOBALES */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
         }}
@@ -164,7 +160,6 @@ st.markdown(f"""
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ display: none !important; }}
         
-        /* CONTENCIÓN CENTRADA */
         [data-testid="stForm"] {{
             max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
         }}
@@ -173,7 +168,6 @@ st.markdown(f"""
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
-        /* BOTONES */
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
             background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); 
@@ -192,11 +186,14 @@ st.markdown(f"""
             border: 1px solid var(--primary-color) !important; 
         }}
 
-        /* PERFIL (Usa Tema) */
+        /* --- PERFIL MEJORADO (Borde sutil + Resplandor) --- */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
-            border: 1px solid var(--primary-color); border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
-            position: relative; box-shadow: 0 0 50px rgba(0, 0, 0, 0.3); text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Borde blanco muy sutil */
+            border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
+            position: relative; 
+            box-shadow: 0 10px 40px -10px var(--glow-color); /* Resplandor del tema */
+            text-align: center;
         }}
         .profile-avatar-wrapper {{ 
             position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; 
@@ -208,7 +205,7 @@ st.markdown(f"""
         .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }}
         .profile-role {{ color: var(--text-highlight); font-size: 1em; margin-bottom: 15px; }}
         
-        /* HUD (FIX: COLORES FIJOS) */
+        /* HUD (Colores fijos) */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
@@ -250,59 +247,31 @@ st.markdown(f"""
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
         .energy-val {{ font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary-color); line-height: 1; }}
 
-        /* --- 4. SISTEMA DE INSIGNIAS (SOLIDO + VISIBILITY) --- */
+        /* BADGES (Usa Tema) */
         .badge-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }}
-        
         .badge-wrapper {{ position: relative; }} 
         .badge-toggle {{ display: none; }} 
-
-        .badge-card {{ 
-            background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; 
-            text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; 
-            cursor: pointer; user-select: none; 
-        }}
-        .badge-card:hover {{ border-color: var(--primary-color); transform: translateY(-5px); box-shadow: 0 0 15px var(--glow-color); }}
+        .badge-card {{ background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; cursor: pointer; user-select: none; }}
+        /* Borde sutil al pasar el mouse */
+        .badge-card:hover {{ border-color: rgba(255,255,255,0.3); transform: translateY(-5px); box-shadow: 0 0 20px var(--glow-color); }}
         .badge-img-container {{ width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }}
         .badge-img {{ width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }}
         .badge-name {{ font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }}
 
         /* MODAL */
-        .badge-hologram-wrapper {{
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
-            z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-        }}
-        
+        .badge-hologram-wrapper {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }}
         .badge-toggle:checked ~ .badge-hologram-wrapper {{ opacity: 1; visibility: visible; pointer-events: auto; }}
-
         .badge-close-backdrop {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }}
         .holo-content {{ position: relative; z-index: 1000001; pointer-events: auto; cursor: default; }}
-
-        .holo-img {{ 
-            width: 250px; height: 250px; object-fit: contain; 
-            filter: drop-shadow(0 0 30px var(--primary-color)); 
-            animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; 
-        }}
+        .holo-img {{ width: 250px; height: 250px; object-fit: contain; filter: drop-shadow(0 0 30px var(--primary-color)); animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; }}
         .holo-title {{ font-family: 'Orbitron'; font-size: 2em; color: var(--text-highlight); text-transform: uppercase; text-shadow: 0 0 20px var(--primary-color); margin-bottom: 10px; }}
         .holo-desc {{ color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }}
-        
-        .holo-close-btn {{
-            display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px;
-            color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;
-            cursor: pointer; transition: 0.3s;
-        }}
+        .holo-close-btn {{ display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px; color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }}
         .holo-close-btn:hover {{ background: #ff1744; border-color: #ff1744; box-shadow: 0 0 15px #ff1744; }}
-
         @keyframes holo-float {{ 0%, 100% {{ transform: translateY(0) scale(1); }} 50% {{ transform: translateY(-10px) scale(1.05); }} }}
 
-        /* --- 5. NEWS TICKER --- */
-        .ticker-wrap {{
-            width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
-            overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); 
-            border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color);
-            display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box;
-        }}
+        /* NEWS TICKER */
+        .ticker-wrap {{ width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color); display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box; }}
         .ticker {{ display: inline-block; white-space: nowrap; padding-right: 100%; box-sizing: content-box; animation: ticker-animation 80s linear infinite; }}
         .ticker-wrap:hover .ticker {{ animation-play-state: paused; }}
         .ticker-item {{ display: inline-block; padding: 0 2rem; font-size: 0.9em; color: var(--text-highlight); font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }}
@@ -345,12 +314,16 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
+# --- NUEVA FUNCIÓN DE BÚSQUEDA DE IMAGEN (SOPORTA SUB-CARPETA) ---
 def find_squad_image(squad_name):
     if not squad_name: return None
     clean_name = squad_name.lower().strip().replace(" ", "_")
+    # Lista priorizada: primero busca en 'estandartes'
     candidates = [
-        f"assets/{clean_name}_team.png", f"assets/{clean_name}.png", f"assets/{clean_name}.jpg",
-        f"{clean_name}_team.png", f"{clean_name}.png"
+        f"assets/estandartes/{clean_name}.png",
+        f"assets/estandartes/{clean_name}.jpg",
+        f"assets/{clean_name}_team.png", 
+        f"assets/{clean_name}.png"
     ]
     for path in candidates:
         if os.path.exists(path): return path
