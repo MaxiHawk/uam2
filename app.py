@@ -151,11 +151,14 @@ st.markdown(f"""
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
         }}
+        
+        /* TÍTULOS LIMPIOS (FIX) */
         h1, h2, h3, h4, h5 {{ 
             font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; 
-            color: var(--primary-color) !important; 
-            text-shadow: 0 0 10px var(--glow-color); 
+            color: #ffffff !important; /* BLANCO PURO PARA LEGIBILIDAD */
+            text-shadow: 0 0 5px rgba(0,0,0,0.5) !important; /* Sombra suave oscura */
         }}
+        
         html, body, [class*="css"] {{ font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); }}
         .block-container {{ padding-top: 1rem !important; overflow-x: hidden; }}
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
@@ -189,7 +192,7 @@ st.markdown(f"""
             border: 1px solid var(--primary-color) !important; 
         }}
 
-        /* --- PERFIL MEJORADO (Textos Épicos) --- */
+        /* PERFIL (Neutro + Glow) */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
             border: 1px solid rgba(255, 255, 255, 0.1); 
@@ -208,13 +211,15 @@ st.markdown(f"""
         /* NOMBRE */
         .profile-name {{ 
             font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; 
-            text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(255,255,255,0.3);
+            text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0,0,0,0.8);
         }}
         
-        /* ROL (Texto más legible y elegante) */
+        /* ROL (Destacado en color) */
         .profile-role {{ 
-            color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; font-weight: 300; letter-spacing: 1px;
+            color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; 
+            font-weight: 400; letter-spacing: 1px;
         }}
+        .profile-role strong {{ color: var(--text-highlight); font-weight: bold; text-transform: uppercase; }}
         
         /* NIVEL (BADGE ÉPICO) */
         .level-badge {{
@@ -222,12 +227,12 @@ st.markdown(f"""
             background: rgba(0, 0, 0, 0.4);
             border: 1px solid var(--primary-color);
             padding: 8px 25px;
-            border-radius: 30px; /* Pill shape */
+            border-radius: 30px;
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.4em; /* Más grande */
+            font-size: 1.4em;
             font-weight: 700;
             color: var(--text-highlight);
-            text-shadow: 0 0 15px var(--glow-color); /* Glow intenso */
+            text-shadow: 0 0 15px var(--glow-color);
             margin-top: 10px;
             margin-bottom: 20px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
@@ -305,6 +310,7 @@ st.markdown(f"""
         @keyframes ticker-animation {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
 
         @media (max-width: 768px) {{
+            /* ... (ajustes móviles) ... */
             .profile-container {{ margin-top: 50px; }}
             .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }}
             .profile-name {{ font-size: 1.8em; }}
@@ -819,7 +825,7 @@ else:
             <div class="profile-avatar-wrapper">{avatar_div}</div>
             <div class="profile-content">
                 <div class="profile-name">{st.session_state.nombre}</div>
-                <div class="profile-role">Perteneciente a la orden de los {rol}</div>
+                <div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div>
                 <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
                 {squad_html}
             </div>
