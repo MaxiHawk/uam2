@@ -41,7 +41,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- 🎨 TEMAS DE ESCUADRÓN (CONFIRMADOS) ---
+# --- 🎨 TEMAS DE ESCUADRÓN (GENERADOS DESDE TUS ESCUDOS) ---
 SQUAD_THEMES = {
     "Default": {
         "primary": "#00e5ff",
@@ -50,26 +50,55 @@ SQUAD_THEMES = {
         "gradient_end": "#00bcd4",
         "text_highlight": "#4dd0e1"
     },
-    "Egipcios": { 
-        # Basado en el escudo: Rojo Carmesí y Dorado
-        "primary": "#d92626",   # Rojo del borde del escudo
-        "glow": "rgba(255, 215, 0, 0.4)", # Brillo Dorado de las alas
-        "gradient_start": "#8a1c1c",
-        "gradient_end": "#ff5252",
-        "text_highlight": "#ffb300" # Amarillo anaranjado
+    # 1. Compañía de Picard (Rojo/Dorado/Verde)
+    "Compañía de Picard": { 
+        "primary": "#d32f2f",   # Rojo Carmesí
+        "glow": "rgba(255, 215, 0, 0.5)", # Brillo Dorado
+        "gradient_start": "#8b0000", # Rojo sangre oscuro
+        "gradient_end": "#ff5252",   # Rojo vivo
+        "text_highlight": "#ffc107"  # Ámbar
     },
+    # Alias por si acaso (puedes borrar este si usas el nombre completo)
+    "Egipcios": { 
+        "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", 
+        "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107"
+    },
+    
+    # 2. Hijos de Palmaz (Azul Alado/Cian)
+    "Hijos de Palmaz": { 
+        "primary": "#00b0ff",   # Azul Eléctrico
+        "glow": "rgba(128, 222, 255, 0.6)", # Brillo Celeste
+        "gradient_start": "#01579b", # Azul Profundo
+        "gradient_end": "#4fc3f7",   # Cian Claro
+        "text_highlight": "#80d8ff"  # Azul Hielo
+    },
+
+    # 3. Catalizadores de Bernard (Amarillo/Dorado/Plata)
+    "Catalizadores de Bernard": { 
+        "primary": "#ffab00",   # Naranja Ámbar
+        "glow": "rgba(255, 215, 0, 0.5)", # Brillo Oro
+        "gradient_start": "#ff6f00", # Naranja oscuro
+        "gradient_end": "#ffca28",   # Amarillo sol
+        "text_highlight": "#ffe082"  # Vainilla
+    },
+
+    # 4. Hijos de Harvey (Plata/Gris/Negro)
+    "Hijos de Harvey": { 
+        "primary": "#e0e0e0",   # Plata Brillante
+        "glow": "rgba(255, 255, 255, 0.4)", # Brillo Blanco
+        "gradient_start": "#424242", # Gris Acero
+        "gradient_end": "#bdbdbd",   # Plata
+        "text_highlight": "#f5f5f5"  # Blanco Humo
+    },
+    
+    # 5. Visionarios (Morado - Placeholder)
     "Visionarios": { 
-        # Morado Místico (Provisional, ajustaremos con tu imagen)
         "primary": "#d500f9",
         "glow": "rgba(213, 0, 249, 0.5)",
         "gradient_start": "#4a148c",
         "gradient_end": "#ea80fc",
         "text_highlight": "#e040fb"
-    },
-    # --- ESPACIO PARA TUS OTROS ESTANDARTES ---
-    # Sube las imágenes y yo te doy los códigos para poner aquí:
-    "Espartanos": { "primary": "#00e5ff", "glow": "rgba(0,229,255,0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
-    "Vikingos": { "primary": "#00e5ff", "glow": "rgba(0,229,255,0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
+    }
 }
 
 # --- 🖼️ DICCIONARIO DE INSIGNIAS ---
@@ -116,7 +145,16 @@ current_squad = st.session_state.squad_name
 if current_squad and current_squad in SQUAD_THEMES:
     THEME = SQUAD_THEMES[current_squad]
 else:
-    THEME = SQUAD_THEMES["Default"]
+    # Intento de búsqueda parcial (ej: "Picard" encuentra "Compañía de Picard")
+    found = False
+    if current_squad:
+        for key in SQUAD_THEMES:
+            if key in current_squad or current_squad in key:
+                THEME = SQUAD_THEMES[key]
+                found = True
+                break
+    if not found:
+        THEME = SQUAD_THEMES["Default"]
 
 # --- CSS DINÁMICO ---
 st.markdown(f"""
@@ -234,30 +272,59 @@ st.markdown(f"""
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
         .energy-val {{ font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary-color); line-height: 1; }}
 
-        /* BADGES (Usa Tema) */
+        /* --- 4. SISTEMA DE INSIGNIAS (SOLIDO + VISIBILITY) --- */
         .badge-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }}
+        
         .badge-wrapper {{ position: relative; }} 
         .badge-toggle {{ display: none; }} 
-        .badge-card {{ background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; cursor: pointer; user-select: none; }}
+
+        .badge-card {{ 
+            background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; 
+            text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; 
+            cursor: pointer; user-select: none; 
+        }}
         .badge-card:hover {{ border-color: var(--primary-color); transform: translateY(-5px); box-shadow: 0 0 15px var(--glow-color); }}
         .badge-img-container {{ width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }}
         .badge-img {{ width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }}
         .badge-name {{ font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }}
 
         /* MODAL */
-        .badge-hologram-wrapper {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }}
+        .badge-hologram-wrapper {{
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
+            z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        }}
+        
         .badge-toggle:checked ~ .badge-hologram-wrapper {{ opacity: 1; visibility: visible; pointer-events: auto; }}
+
         .badge-close-backdrop {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }}
         .holo-content {{ position: relative; z-index: 1000001; pointer-events: auto; cursor: default; }}
-        .holo-img {{ width: 250px; height: 250px; object-fit: contain; filter: drop-shadow(0 0 30px var(--primary-color)); animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; }}
+
+        .holo-img {{ 
+            width: 250px; height: 250px; object-fit: contain; 
+            filter: drop-shadow(0 0 30px var(--primary-color)); 
+            animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; 
+        }}
         .holo-title {{ font-family: 'Orbitron'; font-size: 2em; color: var(--text-highlight); text-transform: uppercase; text-shadow: 0 0 20px var(--primary-color); margin-bottom: 10px; }}
         .holo-desc {{ color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }}
-        .holo-close-btn {{ display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px; color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }}
+        
+        .holo-close-btn {{
+            display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px;
+            color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; transition: 0.3s;
+        }}
         .holo-close-btn:hover {{ background: #ff1744; border-color: #ff1744; box-shadow: 0 0 15px #ff1744; }}
+
         @keyframes holo-float {{ 0%, 100% {{ transform: translateY(0) scale(1); }} 50% {{ transform: translateY(-10px) scale(1.05); }} }}
 
-        /* NEWS TICKER */
-        .ticker-wrap {{ width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color); display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box; }}
+        /* --- 5. NEWS TICKER --- */
+        .ticker-wrap {{
+            width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
+            overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); 
+            border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color);
+            display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box;
+        }}
         .ticker {{ display: inline-block; white-space: nowrap; padding-right: 100%; box-sizing: content-box; animation: ticker-animation 80s linear infinite; }}
         .ticker-wrap:hover .ticker {{ animation-play-state: paused; }}
         .ticker-item {{ display: inline-block; padding: 0 2rem; font-size: 0.9em; color: var(--text-highlight); font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }}
@@ -294,30 +361,6 @@ st.markdown(f"""
         }}
     </style>
 """, unsafe_allow_html=True)
-
-# --- SISTEMA DE LOGOUT AUTOMÁTICO ---
-if "last_active" not in st.session_state:
-    st.session_state.last_active = time.time()
-
-if st.session_state.get("jugador") is not None:
-    if time.time() - st.session_state.last_active > SESSION_TIMEOUT:
-        st.session_state.jugador = None
-        st.session_state.clear()
-        st.rerun()
-    else:
-        st.session_state.last_active = time.time()
-
-# --- ESTADO DE SESIÓN ---
-if "jugador" not in st.session_state: st.session_state.jugador = None
-if "show_intro" not in st.session_state: st.session_state.show_intro = False
-if "team_stats" not in st.session_state: st.session_state.team_stats = 0
-if "squad_name" not in st.session_state: st.session_state.squad_name = None
-if "login_error" not in st.session_state: st.session_state.login_error = None
-if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
-if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
-if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
-if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
-if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 
 # --- HELPERS ---
 def get_img_as_base64(file_path):
@@ -809,7 +852,6 @@ else:
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
-        # --- HUD: FORZAMOS COLORES ORIGINALES (HARDCODED) ---
         hud_html = textwrap.dedent(f"""
             <div class="hud-grid">
                 <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
