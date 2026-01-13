@@ -554,9 +554,9 @@ def play_intro_sequence():
     <div class="intro-overlay">
         <div class="scanline"></div>
         <div class="core-loader">
-            <div class="core-text">💠</div>
+            <div class="core-text">🔒</div>
         </div>
-        <div class="status-text">ESTABLECIENDO COMUNICACIÓN...</div>
+        <div class="status-text">CONECTANDO...</div>
         <div class="bar-container">
             <div class="bar-fill" id="loading-bar"></div>
         </div>
