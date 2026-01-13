@@ -42,38 +42,63 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
+# --- 🏴‍☠️ CATÁLOGO DEL MERCADO NEGRO ---
+# Aquí defines qué vendes. Modifica precios y nombres a gusto.
+MARKET_CATALOG = [
+    {
+        "id": "item_cronos",
+        "nombre": "Poción de Cronos",
+        "costo": 500,
+        "desc": "Otorga +24 horas de plazo para una entrega atrasada.",
+        "icon": "⏳",
+        "tipo": "consumible"
+    },
+    {
+        "id": "item_oraculo",
+        "nombre": "Susurro del Oráculo",
+        "costo": 800,
+        "desc": "El Profesor eliminará 1 alternativa incorrecta en una pregunta del examen.",
+        "icon": "🔮",
+        "tipo": "consumible"
+    },
+    {
+        "id": "item_avatar",
+        "nombre": "Protocolo Camaleón",
+        "costo": 300,
+        "desc": "Permiso para cambiar tu foto de perfil oficial por una personalizada.",
+        "icon": "🎭",
+        "tipo": "cosmetico"
+    },
+    {
+        "id": "item_fenix",
+        "nombre": "Pluma de Fénix",
+        "costo": 1200,
+        "desc": "Permite reenviar un trabajo reprobado (Nota máx 5.0).",
+        "icon": "🪶",
+        "tipo": "epico"
+    }
+]
+
+# --- 🎨 TEMAS DE ESCUADRÓN ---
 SQUAD_THEMES = {
     "Default": { "primary": "#00e5ff", "glow": "rgba(0, 229, 255, 0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
-    
-    # 1. ROJOS / CÁLIDOS
     "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
     "Vanguardia de Hales": { "primary": "#bf360c", "glow": "rgba(255, 87, 34, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#d84315", "text_highlight": "#ffab91" },
     "Herederos de Favaloro": { "primary": "#b71c1c", "glow": "rgba(255, 82, 82, 0.5)", "gradient_start": "#7f0000", "gradient_end": "#e53935", "text_highlight": "#ff8a80" },
     "Sombra de Serbinenko": { "primary": "#ff3d00", "glow": "rgba(255, 61, 0, 0.6)", "gradient_start": "#212121", "gradient_end": "#dd2c00", "text_highlight": "#ff9e80" },
     "Forjadores de Forssmann": { "primary": "#c62828", "glow": "rgba(100, 100, 100, 0.5)", "gradient_start": "#263238", "gradient_end": "#b71c1c", "text_highlight": "#eceff1" },
     "Vanguardia de Sigwart": { "primary": "#8d6e63", "glow": "rgba(141, 110, 99, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#a1887f", "text_highlight": "#d7ccc8" },
-
-    # 2. AZULES / CIANES
     "Guardián de Röntgen": { "primary": "#2979ff", "glow": "rgba(41, 121, 255, 0.6)", "gradient_start": "#0d47a1", "gradient_end": "#448aff", "text_highlight": "#82b1ff" },
     "Forjadores de Palmaz": { "primary": "#00b0ff", "glow": "rgba(0, 176, 255, 0.6)", "gradient_start": "#01579b", "gradient_end": "#4fc3f7", "text_highlight": "#80d8ff" },
     "Legión de Cournand": { "primary": "#1565c0", "glow": "rgba(21, 101, 192, 0.5)", "gradient_start": "#0d47a1", "gradient_end": "#42a5f5", "text_highlight": "#90caf9" },
-
-    # 3. AMARILLOS / DORADOS
     "Catalizadores de Bernard": { "primary": "#ffab00", "glow": "rgba(255, 171, 0, 0.5)", "gradient_start": "#ff6f00", "gradient_end": "#ffca28", "text_highlight": "#ffe082" },
     "Vanguardia de Seldinger": { "primary": "#fbc02d", "glow": "rgba(251, 192, 45, 0.5)", "gradient_start": "#f57f17", "gradient_end": "#fff176", "text_highlight": "#fff59d" },
     "Escuadra de Gruentzig": { "primary": "#ffa000", "glow": "rgba(255, 160, 0, 0.5)", "gradient_start": "#ef6c00", "gradient_end": "#ffca28", "text_highlight": "#ffe0b2" },
-    
-    # 4. VERDES
     "Clan de Judkins": { "primary": "#43a047", "glow": "rgba(255, 215, 0, 0.4)", "gradient_start": "#1b5e20", "gradient_end": "#66bb6a", "text_highlight": "#ffd54f" },
-
-    # 5. VIOLETAS / ROSAS
     "Clan de Cesalpino": { "primary": "#9c27b0", "glow": "rgba(156, 39, 176, 0.5)", "gradient_start": "#4a148c", "gradient_end": "#ba68c8", "text_highlight": "#e1bee7" },
     "Compañía de Sones": { "primary": "#7b1fa2", "glow": "rgba(255, 193, 7, 0.4)", "gradient_start": "#4a148c", "gradient_end": "#8e24aa", "text_highlight": "#ffecb3" },
     "Forjadores de Dotter": { "primary": "#f06292", "glow": "rgba(240, 98, 146, 0.6)", "gradient_start": "#880e4f", "gradient_end": "#ff80ab", "text_highlight": "#f8bbd0" },
     "Legión de Guglielmi": { "primary": "#e040fb", "glow": "rgba(224, 64, 251, 0.5)", "gradient_start": "#aa00ff", "gradient_end": "#ea80fc", "text_highlight": "#f3e5f5" },
-
-    # 6. PLATA / BLANCO / NEGRO
     "Hijos de Harvey": { "primary": "#e0e0e0", "glow": "rgba(255, 255, 255, 0.4)", "gradient_start": "#424242", "gradient_end": "#bdbdbd", "text_highlight": "#f5f5f5" },
     "Vanguardia de Cribier": { "primary": "#bdbdbd", "glow": "rgba(233, 30, 99, 0.3)", "gradient_start": "#616161", "gradient_end": "#efefef", "text_highlight": "#f48fb1" },
     "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" }
@@ -149,7 +174,6 @@ st.markdown(f"""
             --bg-card: rgba(10, 25, 40, 0.7);
         }}
 
-        /* GLOBALES */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
         }}
@@ -163,16 +187,14 @@ st.markdown(f"""
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ display: none !important; }}
         
-        /* CONTENCIÓN CENTRADA */
         [data-testid="stForm"] {{
             max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
         }}
         .centered-container, .profile-container, .hud-grid, .badge-grid, 
-        .energy-core, .rank-table, .log-card, .skill-card-container, .codex-card {{
+        .energy-core, .rank-table, .log-card, .skill-card-container, .codex-card, .market-card {{
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
-        /* BOTONES */
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
             background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); 
@@ -185,7 +207,6 @@ st.markdown(f"""
         }}
         div[data-testid="column"] .stButton>button:hover {{ background: var(--primary-color); color: #000; }}
 
-        /* TABS */
         .stTabs [aria-selected="true"] {{ 
             background-color: transparent !important; 
             color: var(--primary-color) !important; 
@@ -197,7 +218,6 @@ st.markdown(f"""
         .stTabs [data-baseweb="tab-list"] {{ gap: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }}
         .stTabs [data-baseweb="tab"] {{ height: 50px; white-space: nowrap; background-color: transparent !important; border: none !important; color: #888 !important; font-family: 'Orbitron', sans-serif; font-size: 0.9em; }}
 
-        /* PERFIL */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
             border: 1px solid rgba(255, 255, 255, 0.1); 
@@ -220,37 +240,22 @@ st.markdown(f"""
             display: inline-block; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--primary-color);
             padding: 8px 25px; border-radius: 30px; font-family: 'Orbitron', sans-serif;
             font-size: 1.4em; font-weight: 700; color: var(--text-highlight);
-            text-shadow: 0 0 15px var(--glow-color); margin-top: 10px; margin-bottom: 10px;
+            text-shadow: 0 0 15px var(--glow-color); margin-top: 10px; margin-bottom: 20px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }}
 
-        /* --- BARRA DE PROGRESO DE NIVEL (GOLD) --- */
-        .level-progress-wrapper {{
-            width: 80%; margin: 0 auto 20px auto; 
-        }}
-        .level-progress-bg {{
-            background: #1c2e3e; height: 10px; border-radius: 5px; overflow: hidden;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
-        }}
-        .level-progress-fill {{
-            height: 100%; background: #FFD700; /* Color Fijo Dorado */
-            border-radius: 5px;
-            box-shadow: 0 0 15px #FFD700; /* Glow Fijo Dorado */
-            transition: width 1s ease-in-out;
-        }}
-        .level-progress-text {{
-            font-size: 0.8em; color: #aaa; margin-top: 5px; letter-spacing: 1px;
-        }}
-        .level-progress-text strong {{ color: #FFD700; }} /* Texto dorado también */
+        .level-progress-wrapper {{ width: 80%; margin: 0 auto 20px auto; }}
+        .level-progress-bg {{ background: #1c2e3e; height: 10px; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }}
+        .level-progress-fill {{ height: 100%; background: #FFD700; border-radius: 5px; box-shadow: 0 0 15px #FFD700; transition: width 1s ease-in-out; }}
+        .level-progress-text {{ font-size: 0.8em; color: #aaa; margin-top: 5px; letter-spacing: 1px; }}
+        .level-progress-text strong {{ color: #FFD700; }}
 
-        /* HUD */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
         .epic-number {{ font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }}
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
 
-        /* Habilidades */
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
@@ -259,7 +264,6 @@ st.markdown(f"""
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
         
-        /* CÓDICE */
         .codex-card {{ display: flex; align-items: center; justify-content: space-between; background: #0a141f; border: 1px solid #1c2e3e; border-left: 4px solid var(--primary-color); border-radius: 8px; padding: 15px; margin-bottom: 10px; transition: 0.3s; }}
         .codex-card.locked {{ border-left-color: #555; opacity: 0.6; filter: grayscale(1); }}
         .codex-info {{ flex-grow: 1; }}
@@ -268,7 +272,23 @@ st.markdown(f"""
         .codex-action {{ margin-left: 15px; }}
         .codex-icon {{ font-size: 1.5em; margin-right: 15px; }}
 
-        /* Ranking & Logs */
+        /* --- MERCADO NEGRO --- */
+        .market-card {{
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(90deg, rgba(10,20,30,0.9), rgba(0,0,0,0.8));
+            border: 1px solid #333; border-right: 4px solid #FFD700;
+            border-radius: 8px; padding: 15px; margin-bottom: 15px;
+        }}
+        .market-icon {{ font-size: 2em; margin-right: 15px; filter: drop-shadow(0 0 5px var(--glow-color)); }}
+        .market-info {{ flex-grow: 1; }}
+        .market-title {{ font-family: 'Orbitron'; color: #fff; font-size: 1.1em; margin-bottom: 3px; }}
+        .market-desc {{ font-size: 0.85em; color: #aaa; }}
+        .market-cost {{ 
+            font-family: 'Orbitron'; font-weight: bold; font-size: 1.2em; 
+            color: #00e5ff; text-align: center; min-width: 80px;
+        }}
+        .market-cost span {{ font-size: 0.6em; color: #aaa; display: block; }}
+
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
         .rank-cell {{ padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }}
@@ -281,14 +301,12 @@ st.markdown(f"""
         .log-body {{ font-size: 0.95em; color: #fff; margin-bottom: 5px; }}
         .log-reply {{ background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 4px; font-size: 0.9em; color: var(--text-highlight); margin-top: 8px; border-left: 2px solid var(--primary-color); }}
 
-        /* Energy Core */
         .energy-core {{ background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: 0 0 20px var(--glow-color); }}
         .energy-left {{ display: flex; align-items: center; gap: 15px; }}
         .energy-icon-large {{ width: 60px; height: 60px; filter: drop-shadow(0 0 8px var(--primary-color)); }}
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
         .energy-val {{ font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary-color); line-height: 1; }}
 
-        /* BADGES */
         .badge-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }}
         .badge-wrapper {{ position: relative; }} 
         .badge-toggle {{ display: none; }} 
@@ -298,7 +316,6 @@ st.markdown(f"""
         .badge-img {{ width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }}
         .badge-name {{ font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }}
 
-        /* MODAL */
         .badge-hologram-wrapper {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }}
         .badge-toggle:checked ~ .badge-hologram-wrapper {{ opacity: 1; visibility: visible; pointer-events: auto; }}
         .badge-close-backdrop {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }}
@@ -310,7 +327,6 @@ st.markdown(f"""
         .holo-close-btn:hover {{ background: #ff1744; border-color: #ff1744; box-shadow: 0 0 15px #ff1744; }}
         @keyframes holo-float {{ 0%, 100% {{ transform: translateY(0) scale(1); }} 50% {{ transform: translateY(-10px) scale(1.05); }} }}
 
-        /* NEWS TICKER */
         .ticker-wrap {{ width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color); display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box; }}
         .ticker {{ display: inline-block; white-space: nowrap; padding-right: 100%; box-sizing: content-box; animation: ticker-animation 80s linear infinite; }}
         .ticker-wrap:hover .ticker {{ animation-play-state: paused; }}
@@ -474,9 +490,13 @@ def cargar_codice():
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
     
+    # Manejar tipos de mensajes para Notion
     if tipo == "HABILIDAD":
         texto_final = f"{titulo_msg} | Costo: {cuerpo_msg}"
-        tipo_select = "Poder"
+        tipo_select = "Poder" # Asegúrate que esto existe en Notion
+    elif tipo == "COMPRA":
+        texto_final = f"SOLICITUD DE COMPRA: {titulo_msg} | Costo: {cuerpo_msg} AP"
+        tipo_select = "Mensaje" # Usamos Mensaje genérico para compras por ahora
     else:
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
@@ -863,7 +883,7 @@ else:
     # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "📡 COMUNICACIONES"])
+    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "📡 COMUNICACIONES"])
     
     # --- TAB 1: PERFIL ---
     with tab_perfil:
@@ -1127,6 +1147,59 @@ else:
                 </div>
                 """
                 st.markdown(card_html, unsafe_allow_html=True)
+    
+    # --- TAB 5: MERCADO NEGRO (NUEVO) ---
+    with tab_mercado:
+        st.markdown("### 🛒 EL BAZAR CLANDESTINO")
+        st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas al Sindicato para aprobación.")
+        
+        core_html = f"""
+        <div class="energy-core">
+            <div class="energy-left">
+                <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
+                <div class="energy-label">SALDO<br>ACTUAL</div>
+            </div>
+            <div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div>
+        </div>
+        """
+        st.markdown(core_html, unsafe_allow_html=True)
+        
+        # Renderizar Items
+        for item in MARKET_CATALOG:
+            with st.container():
+                puede_comprar = ap >= item['costo']
+                price_color = "#00e5ff" if puede_comprar else "#ff4444"
+                
+                # HTML Card
+                market_html = f"""
+                <div class="market-card">
+                    <div class="market-icon">{item['icon']}</div>
+                    <div class="market-info">
+                        <div class="market-title">{item['nombre']}</div>
+                        <div class="market-desc">{item['desc']}</div>
+                    </div>
+                    <div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">
+                        {item['costo']}
+                        <span>AP</span>
+                    </div>
+                </div>
+                """
+                st.markdown(market_html, unsafe_allow_html=True)
+                
+                # Botón de Compra
+                c1, c2 = st.columns([3, 1])
+                with c2:
+                    if st.button(f"COMPRAR", key=f"buy_{item['id']}", disabled=not puede_comprar, use_container_width=True):
+                        if puede_comprar:
+                            with st.spinner("Transfiriendo créditos encriptados..."):
+                                time.sleep(1)
+                                exito = enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre)
+                                if exito:
+                                    st.success("✅ Transacción enviada. Espera aprobación.")
+                                else:
+                                    st.error("Error en la red. Intenta de nuevo.")
+                        else:
+                            st.error("Fondos insuficientes.")
 
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
