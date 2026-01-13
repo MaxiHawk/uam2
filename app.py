@@ -17,7 +17,7 @@ try:
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
     DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
-    DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None) # NUEVO: ID DEL MERCADO
+    DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -42,6 +42,22 @@ NOMBRES_NIVELES = {
     4: "🔍 Clarividente",
     5: "👑 AngioMaster"
 }
+
+# --- LORE MESSAGES (EASTER EGG) ---
+SYSTEM_MESSAGES = [
+    "📡 Enlace neuronal estable. Latencia: 0.04ms",
+    "🛡️ Escudos de deflexión al 100%.",
+    "👁️ Valerius está observando tu progreso...",
+    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...",
+    "💉 Niveles de contraste en sangre: Óptimos.",
+    "💠 Sincronización con la Matriz completada.",
+    "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?",
+    "⚡ Energía del núcleo: Estable.",
+    "📂 Desencriptando archivos secretos...",
+    "🍕 Se recomienda una pausa para reabastecimiento.",
+    "🌟 La suerte favorece a los audaces.",
+    "🚫 Acceso denegado al Área 51... por ahora."
+]
 
 # --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
 SQUAD_THEMES = {
@@ -106,7 +122,7 @@ if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
 if "codice_data" not in st.session_state: st.session_state.codice_data = [] 
-if "market_data" not in st.session_state: st.session_state.market_data = [] # NUEVO ESTADO MERCADO
+if "market_data" not in st.session_state: st.session_state.market_data = []
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
@@ -978,6 +994,15 @@ else:
         """.replace('\n', '')
         
         st.markdown(profile_html, unsafe_allow_html=True)
+        
+        # --- EASTER EGG BUTTON (SYSTEM STATUS) ---
+        c_egg1, c_egg2, c_egg3 = st.columns([1, 2, 1])
+        with c_egg2:
+            if st.button("💠 STATUS DEL SISTEMA"):
+                msg = random.choice(SYSTEM_MESSAGES)
+                st.toast(msg, icon="🤖")
+                if random.random() < 0.1: # 10% probabilidad de fiesta
+                    st.balloons()
         
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
