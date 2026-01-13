@@ -625,12 +625,12 @@ else:
                         if desbloqueada:
                             # --- MODAL DE CONFIRMACIÓN (POPOVER) ---
                             with st.popover("💠 PREPARAR", use_container_width=True):
-                                st.markdown(f"### ⚠️ Confirmación de Conjuro")
+                                st.markdown(f"### ⚠️ Confirmación de Habilidad")
                                 st.markdown(f"Estás a punto de activar **{nombre}**.")
                                 st.info(f"⚡ Costo de Energía: **{costo} AP**")
                                 st.warning("El Sumo Cartógrafo revisará tu solicitud antes de que surta efecto.")
                                 
-                                if st.button("🔥 CONFIRMAR CONJURO", key=f"confirm_{hab['id']}"):
+                                if st.button("🔥 CONFIRMAR HABILIDAD", key=f"confirm_{hab['id']}"):
                                     if puede_pagar:
                                         with st.spinner("Canalizando energía..."):
                                             time.sleep(1.5)
