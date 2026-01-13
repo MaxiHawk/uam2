@@ -58,22 +58,21 @@ BADGE_MAP = {
 }
 DEFAULT_BADGE = "assets/insignias/default.png" 
 
-# --- CSS: ESTÉTICA BLUE NEON (RESPONSIVE) ---
+# --- CSS: ESTÉTICA BLUE NEON (RESPONSIVE & CENTERED) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
-        /* --- FIX: SCROLL HORIZONTAL (CRÍTICO) --- */
-        /* Esto fuerza a la app a no permitir scroll lateral bajo ninguna circunstancia */
+        /* --- FIX: SCROLL HORIZONTAL & FONDO --- */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             overflow-x: hidden !important;
-            max-width: 100vw !important;
+            background-color: #050810;
         }
         
         /* GENERAL */
         h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
-        .block-container { padding-top: 1rem !important; max-width: 100vw; overflow-x: hidden; }
+        .block-container { padding-top: 1rem !important; overflow-x: hidden; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
@@ -95,21 +94,30 @@ st.markdown("""
             font-size: 0.8em;
         }
         div[data-testid="column"] .stButton>button:hover {
-            background: #00e5ff;
-            color: #000;
+            background: #00e5ff; color: #000;
         }
 
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* ESTILOS RESPONSIVE */
-        .profile-container { background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center; }
+        /* --- ESTILOS DE TARJETAS (CON LIMITADOR DE ANCHO) --- */
+        /* Agregamos max-width y margin auto para centrar en escritorio */
+        
+        .profile-container { 
+            background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
+            border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
+            position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center;
+            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
+        }
         .profile-avatar-wrapper { position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; border-radius: 50%; padding: 5px; background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10; }
         .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
         .profile-content { margin-top: 90px; }
         .profile-name { font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
         .profile-role { color: #4dd0e1; font-size: 1em; margin-bottom: 15px; }
         
-        .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .hud-grid { 
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; 
+            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
+        }
         .hud-card { background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }
         .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
@@ -143,6 +151,7 @@ st.markdown("""
             border: 2px solid #00e5ff; border-radius: 12px; padding: 15px 25px;
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
         }
         .energy-left { display: flex; align-items: center; gap: 15px; }
         .energy-icon-large { width: 60px; height: 60px; filter: drop-shadow(0 0 8px #00e5ff); }
@@ -153,6 +162,7 @@ st.markdown("""
         .badge-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
             margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;
+            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
         }
         .badge-card {
             background: rgba(10, 20, 30, 0.8); border: 1px solid #333; border-radius: 8px;
@@ -167,23 +177,22 @@ st.markdown("""
         .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
         .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
 
-        /* --- NEWS TICKER (CINTA DE NOTICIAS) --- */
+        /* --- NEWS TICKER FULL WIDTH (TRUCO DE MAGIA) --- */
         .ticker-wrap {
-            width: 100%; overflow: hidden; height: 35px;
+            /* Rompe el contenedor centrado para ir de borde a borde */
+            width: 100vw; 
+            position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
+            
+            overflow: hidden; height: 35px;
             background-color: rgba(0, 0, 0, 0.6); 
             border-top: 1px solid #00e5ff; border-bottom: 1px solid #00e5ff;
-            /* box-sizing: border-box is vital here to prevent overflow */
-            box-sizing: border-box; 
-            padding-left: 100%; margin-bottom: 20px;
-            display: flex; align-items: center;
+            display: flex; align-items: center; margin-bottom: 20px;
         }
         .ticker {
             display: inline-block; white-space: nowrap; padding-right: 100%;
-            /* box-sizing: content-box allows it to be calculated correctly for animation */
             box-sizing: content-box;
-            animation: ticker-animation 80s linear infinite; /* VELOCIDAD LENTA */
+            animation: ticker-animation 80s linear infinite;
         }
-        /* PAUSA AL PASAR EL MOUSE (UX PRO) */
         .ticker-wrap:hover .ticker { animation-play-state: paused; }
         
         .ticker-item {
