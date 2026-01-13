@@ -41,64 +41,42 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- 🎨 TEMAS DE ESCUADRÓN (GENERADOS DESDE TUS ESCUDOS) ---
+# --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
+# Extraídos visualmente de los estandartes proporcionados
 SQUAD_THEMES = {
-    "Default": {
-        "primary": "#00e5ff",
-        "glow": "rgba(0, 229, 255, 0.5)",
-        "gradient_start": "#006064",
-        "gradient_end": "#00bcd4",
-        "text_highlight": "#4dd0e1"
-    },
-    # 1. Compañía de Picard (Rojo/Dorado/Verde)
-    "Compañía de Picard": { 
-        "primary": "#d32f2f",   # Rojo Carmesí
-        "glow": "rgba(255, 215, 0, 0.5)", # Brillo Dorado
-        "gradient_start": "#8b0000", # Rojo sangre oscuro
-        "gradient_end": "#ff5252",   # Rojo vivo
-        "text_highlight": "#ffc107"  # Ámbar
-    },
-    # Alias por si acaso (puedes borrar este si usas el nombre completo)
-    "Egipcios": { 
-        "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", 
-        "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107"
-    },
+    "Default": { "primary": "#00e5ff", "glow": "rgba(0, 229, 255, 0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
     
-    # 2. Hijos de Palmaz (Azul Alado/Cian)
-    "Hijos de Palmaz": { 
-        "primary": "#00b0ff",   # Azul Eléctrico
-        "glow": "rgba(128, 222, 255, 0.6)", # Brillo Celeste
-        "gradient_start": "#01579b", # Azul Profundo
-        "gradient_end": "#4fc3f7",   # Cian Claro
-        "text_highlight": "#80d8ff"  # Azul Hielo
-    },
+    # 1. ROJOS / CÁLIDOS
+    "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
+    "Vanguardia de Hales": { "primary": "#bf360c", "glow": "rgba(255, 87, 34, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#d84315", "text_highlight": "#ffab91" },
+    "Herederos de Favaloro": { "primary": "#b71c1c", "glow": "rgba(255, 82, 82, 0.5)", "gradient_start": "#7f0000", "gradient_end": "#e53935", "text_highlight": "#ff8a80" },
+    "Sombra de Serbinenko": { "primary": "#ff3d00", "glow": "rgba(255, 61, 0, 0.6)", "gradient_start": "#212121", "gradient_end": "#dd2c00", "text_highlight": "#ff9e80" },
+    "Forjadores de Forssmann": { "primary": "#c62828", "glow": "rgba(100, 100, 100, 0.5)", "gradient_start": "#263238", "gradient_end": "#b71c1c", "text_highlight": "#eceff1" },
+    "Vanguardia de Sigwart": { "primary": "#8d6e63", "glow": "rgba(141, 110, 99, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#a1887f", "text_highlight": "#d7ccc8" },
 
-    # 3. Catalizadores de Bernard (Amarillo/Dorado/Plata)
-    "Catalizadores de Bernard": { 
-        "primary": "#ffab00",   # Naranja Ámbar
-        "glow": "rgba(255, 215, 0, 0.5)", # Brillo Oro
-        "gradient_start": "#ff6f00", # Naranja oscuro
-        "gradient_end": "#ffca28",   # Amarillo sol
-        "text_highlight": "#ffe082"  # Vainilla
-    },
+    # 2. AZULES / CIANES
+    "Guardián de Röntgen": { "primary": "#2979ff", "glow": "rgba(41, 121, 255, 0.6)", "gradient_start": "#0d47a1", "gradient_end": "#448aff", "text_highlight": "#82b1ff" },
+    "Forjadores de Palmaz": { "primary": "#00b0ff", "glow": "rgba(0, 176, 255, 0.6)", "gradient_start": "#01579b", "gradient_end": "#4fc3f7", "text_highlight": "#80d8ff" },
+    "Legión de Cournand": { "primary": "#1565c0", "glow": "rgba(21, 101, 192, 0.5)", "gradient_start": "#0d47a1", "gradient_end": "#42a5f5", "text_highlight": "#90caf9" },
 
-    # 4. Hijos de Harvey (Plata/Gris/Negro)
-    "Hijos de Harvey": { 
-        "primary": "#e0e0e0",   # Plata Brillante
-        "glow": "rgba(255, 255, 255, 0.4)", # Brillo Blanco
-        "gradient_start": "#424242", # Gris Acero
-        "gradient_end": "#bdbdbd",   # Plata
-        "text_highlight": "#f5f5f5"  # Blanco Humo
-    },
+    # 3. AMARILLOS / DORADOS
+    "Catalizadores de Bernard": { "primary": "#ffab00", "glow": "rgba(255, 171, 0, 0.5)", "gradient_start": "#ff6f00", "gradient_end": "#ffca28", "text_highlight": "#ffe082" },
+    "Vanguardia de Seldinger": { "primary": "#fbc02d", "glow": "rgba(251, 192, 45, 0.5)", "gradient_start": "#f57f17", "gradient_end": "#fff176", "text_highlight": "#fff59d" },
+    "Escuadra de Gruentzig": { "primary": "#ffa000", "glow": "rgba(255, 160, 0, 0.5)", "gradient_start": "#ef6c00", "gradient_end": "#ffca28", "text_highlight": "#ffe0b2" },
     
-    # 5. Visionarios (Morado - Placeholder)
-    "Visionarios": { 
-        "primary": "#d500f9",
-        "glow": "rgba(213, 0, 249, 0.5)",
-        "gradient_start": "#4a148c",
-        "gradient_end": "#ea80fc",
-        "text_highlight": "#e040fb"
-    }
+    # 4. VERDES
+    "Clan de Judkins": { "primary": "#43a047", "glow": "rgba(255, 215, 0, 0.4)", "gradient_start": "#1b5e20", "gradient_end": "#66bb6a", "text_highlight": "#ffd54f" },
+
+    # 5. VIOLETAS / ROSAS
+    "Clan de Cesalpino": { "primary": "#9c27b0", "glow": "rgba(156, 39, 176, 0.5)", "gradient_start": "#4a148c", "gradient_end": "#ba68c8", "text_highlight": "#e1bee7" },
+    "Compañía de Sones": { "primary": "#7b1fa2", "glow": "rgba(255, 193, 7, 0.4)", "gradient_start": "#4a148c", "gradient_end": "#8e24aa", "text_highlight": "#ffecb3" },
+    "Forjadores de Dotter": { "primary": "#f06292", "glow": "rgba(240, 98, 146, 0.6)", "gradient_start": "#880e4f", "gradient_end": "#ff80ab", "text_highlight": "#f8bbd0" },
+    "Legión de Guglielmi": { "primary": "#e040fb", "glow": "rgba(224, 64, 251, 0.5)", "gradient_start": "#aa00ff", "gradient_end": "#ea80fc", "text_highlight": "#f3e5f5" },
+
+    # 6. PLATA / BLANCO / NEGRO
+    "Hijos de Harvey": { "primary": "#e0e0e0", "glow": "rgba(255, 255, 255, 0.4)", "gradient_start": "#424242", "gradient_end": "#bdbdbd", "text_highlight": "#f5f5f5" },
+    "Vanguardia de Cribier": { "primary": "#bdbdbd", "glow": "rgba(233, 30, 99, 0.3)", "gradient_start": "#616161", "gradient_end": "#efefef", "text_highlight": "#f48fb1" }, # Toque rosa por la estrella
+    "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" } # Negro y Oro
 }
 
 # --- 🖼️ DICCIONARIO DE INSIGNIAS ---
@@ -145,11 +123,11 @@ current_squad = st.session_state.squad_name
 if current_squad and current_squad in SQUAD_THEMES:
     THEME = SQUAD_THEMES[current_squad]
 else:
-    # Intento de búsqueda parcial (ej: "Picard" encuentra "Compañía de Picard")
+    # Búsqueda parcial por si acaso
     found = False
     if current_squad:
         for key in SQUAD_THEMES:
-            if key in current_squad or current_squad in key:
+            if key in current_squad:
                 THEME = SQUAD_THEMES[key]
                 found = True
                 break
@@ -230,7 +208,7 @@ st.markdown(f"""
         .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }}
         .profile-role {{ color: var(--text-highlight); font-size: 1em; margin-bottom: 15px; }}
         
-        /* HUD (FIX: COLORES FIJOS, IGNORAN TEMA) */
+        /* HUD (FIX: COLORES FIJOS) */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
@@ -331,7 +309,6 @@ st.markdown(f"""
         @keyframes ticker-animation {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
 
         @media (max-width: 768px) {{
-            /* ... (ajustes móviles) ... */
             .profile-container {{ margin-top: 50px; }}
             .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }}
             .profile-name {{ font-size: 1.8em; }}
