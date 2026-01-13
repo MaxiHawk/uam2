@@ -91,17 +91,12 @@ st.markdown("""
         .log-body { font-size: 0.95em; color: #fff; margin-bottom: 5px; }
         .log-reply { background: rgba(0, 229, 255, 0.1); padding: 8px; border-radius: 4px; font-size: 0.9em; color: #4dd0e1; margin-top: 8px; border-left: 2px solid #00e5ff; }
 
-        /* --- ENERGY CORE HUD (NUEVO) --- */
+        /* ENERGY CORE HUD */
         .energy-core {
             background: linear-gradient(90deg, rgba(0, 96, 100, 0.6), rgba(0, 229, 255, 0.1));
-            border: 2px solid #00e5ff;
-            border-radius: 12px;
-            padding: 15px 25px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+            border: 2px solid #00e5ff; border-radius: 12px; padding: 15px 25px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
         }
         .energy-left { display: flex; align-items: center; gap: 15px; }
         .energy-icon-large { width: 60px; height: 60px; filter: drop-shadow(0 0 8px #00e5ff); }
@@ -586,12 +581,12 @@ else:
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         
-        # --- ENERGY CORE HUD (NUEVO) ---
+        # ENERGY CORE HUD
         core_html = f"""
         <div class="energy-core">
             <div class="energy-left">
                 <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
-                <div class="energy-label">ANGIOPOINTS<br>DISPONIBLE</div>
+                <div class="energy-label">ENERGÍA<br>DISPONIBLE</div>
             </div>
             <div class="energy-val">{ap}</div>
         </div>
@@ -628,17 +623,23 @@ else:
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
                         if desbloqueada:
-                            if st.button(f"ACTIVAR", key=f"btn_{hab['id']}"):
-                                if puede_pagar:
-                                    # UX: SPINNER
-                                    with st.spinner("Conjurando habilidad..."):
-                                        time.sleep(1.5)
-                                        exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
-                                        if exito:
-                                            st.toast(f"✅ Ejecutado: {nombre}", icon="💠")
-                                        else: 
-                                            st.error("Error de enlace. Verifica la base de Solicitudes.")
-                                else: st.toast("❌ Energía Insuficiente", icon="⚠️")
+                            # --- MODAL DE CONFIRMACIÓN (POPOVER) ---
+                            with st.popover("💠 PREPARAR", use_container_width=True):
+                                st.markdown(f"### ⚠️ Confirmación de Conjuro")
+                                st.markdown(f"Estás a punto de activar **{nombre}**.")
+                                st.info(f"⚡ Costo de Energía: **{costo} AP**")
+                                st.warning("El Sumo Cartógrafo revisará tu solicitud antes de que surta efecto.")
+                                
+                                if st.button("🔥 CONFIRMAR CONJURO", key=f"confirm_{hab['id']}"):
+                                    if puede_pagar:
+                                        with st.spinner("Canalizando energía..."):
+                                            time.sleep(1.5)
+                                            exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
+                                            if exito:
+                                                st.toast(f"✅ Solicitud Enviada: {nombre}", icon="💠")
+                                            else: 
+                                                st.error("Error de enlace.")
+                                    else: st.toast("❌ Energía Insuficiente", icon="⚠️")
                         else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
@@ -648,7 +649,6 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        # FIX: SPINNER + DELAY + CLEAN
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
@@ -660,8 +660,8 @@ else:
                         ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                         if ok:
                             st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
-                            time.sleep(1) # Esperar indexado
-                            st.rerun() # Refrescar para ver el mensaje abajo
+                            time.sleep(1)
+                            st.rerun()
                         else:
                             st.error("❌ Error de señal. Verifica las columnas en Notion.")
                 else:
