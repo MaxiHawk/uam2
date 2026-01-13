@@ -165,7 +165,7 @@ st.markdown("""
             position: relative; z-index: 1000001; pointer-events: none; /* Para que clicks pasen si no hay botones */
         }
 
-        /* LÓGICA DE APERTURA: Cuando el checkbox 'hermano' está marcado... */
+        /* LÓGICA DE APERTURA */
         .badge-toggle:checked ~ .badge-hologram-wrapper {
             opacity: 1; pointer-events: auto;
         }
@@ -181,7 +181,6 @@ st.markdown("""
         }
         .holo-desc { color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }
         
-        /* Botón visual de cerrar (dentro del backdrop) */
         .holo-close-btn {
             display: inline-block; padding: 10px 25px; border: 1px solid #555; border-radius: 30px;
             color: #fff; background: rgba(255,255,255,0.1); font-size: 0.8em; text-transform: uppercase;
@@ -778,7 +777,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA (CHECKBOX HACK) ---
+        # --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO: APLANADO) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -791,10 +790,9 @@ else:
         else:
             badge_html = '<div class="badge-grid">'
             for i, badge_name in enumerate(mis_insignias):
-                # Generar ID único para el checkbox
                 modal_id = f"badge-modal-{i}"
-                
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
+                
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
@@ -803,31 +801,8 @@ else:
                     content_html = '<div style="font-size:40px;">🏅</div>'
                     holo_html = '<div style="font-size:100px;">🏅</div>'
 
-                # --- HTML ESTRUCTURA CHECKBOX HACK ---
-                # 1. El Checkbox (Invisible)
-                # 2. La Tarjeta es un Label que activa el checkbox
-                # 3. El Modal es visible solo cuando el checkbox está activo
-                # 4. El Backdrop del Modal es OTRO Label que desactiva el checkbox (cierra)
-                
-                badge_html += f"""
-                <div class="badge-wrapper">
-                    <input type="checkbox" id="{modal_id}" class="badge-toggle">
-                    <label for="{modal_id}" class="badge-card">
-                        <div class="badge-img-container">{content_html}</div>
-                        <div class="badge-name">{badge_name}</div>
-                    </label>
-                    
-                    <div class="badge-hologram-wrapper">
-                        <label for="{modal_id}" class="badge-close-backdrop"></label>
-                        <div class="holo-content">
-                            {holo_html}
-                            <div class="holo-title">{badge_name}</div>
-                            <div class="holo-desc">INSIGNIA DESBLOQUEADA</div>
-                            <label for="{modal_id}" class="holo-close-btn">CERRAR</label>
-                        </div>
-                    </div>
-                </div>
-                """
+                # --- FIX: HTML APLANADO EN UNA LÍNEA (SIN SALTOS) PARA EVITAR ERROR DE CÓDIGO ---
+                badge_html += f'<div class="badge-wrapper"><input type="checkbox" id="{modal_id}" class="badge-toggle"><label for="{modal_id}" class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></label><div class="badge-hologram-wrapper"><label for="{modal_id}" class="badge-close-backdrop"></label><div class="holo-content">{holo_html}<div class="holo-title">{badge_name}</div><div class="holo-desc">INSIGNIA DESBLOQUEADA</div><label for="{modal_id}" class="holo-close-btn">CERRAR</label></div></div></div>'
             
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
