@@ -106,28 +106,6 @@ st.markdown("""
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
         .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-        .skill-card-container { display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; }
-        .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }
-        .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
-        .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
-        .skill-cost-col { width: 100px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
-        .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; }
-        .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }
-        
-        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
-        .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
-        .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
-        .rank-cell-rank { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 50px; text-align: center; }
-        .rank-cell-last { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
-        .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
-        .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
-
-        /* LOG DE COMUNICACIONES */
-        .log-card { background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #555; }
-        .log-header { display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa; margin-bottom: 5px; }
-        .log-body { font-size: 0.95em; color: #fff; margin-bottom: 5px; }
-        .log-reply { background: rgba(0, 229, 255, 0.1); padding: 8px; border-radius: 4px; font-size: 0.9em; color: #4dd0e1; margin-top: 8px; border-left: 2px solid #00e5ff; }
-
         /* ENERGY CORE HUD */
         .energy-core {
             background: linear-gradient(90deg, rgba(0, 96, 100, 0.6), rgba(0, 229, 255, 0.1));
@@ -141,21 +119,24 @@ st.markdown("""
         .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
         .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
-        /* --- BADGE INTERACTIVE SYSTEM (ZOOM) --- */
+        /* --- BADGE INTERACTIVE SYSTEM (CHECKBOX HACK) --- */
         .badge-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
             margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;
             max-width: 700px; margin-left: auto; margin-right: auto;
         }
         
-        .badge-wrapper { position: relative; outline: none; cursor: pointer; }
+        /* Ocultar el checkbox real */
+        .badge-toggle { display: none; }
 
+        /* Estilo de la Tarjeta (Label) */
         .badge-card {
             background: rgba(10, 20, 30, 0.8); border: 1px solid #333; border-radius: 8px;
             padding: 10px 5px; text-align: center; transition: 0.3s;
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px;
+            cursor: pointer; position: relative;
         }
-        .badge-wrapper:hover .badge-card { 
+        .badge-card:hover { 
             border-color: #FFD700; transform: translateY(-5px); 
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
         }
@@ -163,8 +144,8 @@ st.markdown("""
         .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
         .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
 
-        /* EL HOLOGRAMA (Modal Oculto) */
-        .badge-hologram {
+        /* EL HOLOGRAMA (Modal) */
+        .badge-hologram-wrapper {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
             z-index: 999999;
@@ -173,23 +154,40 @@ st.markdown("""
             text-align: center;
         }
         
-        .badge-wrapper:focus .badge-hologram { opacity: 1; pointer-events: auto; }
+        /* Capa de cierre (Backdrop Click) */
+        .badge-close-backdrop {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            cursor: pointer; z-index: 1000000;
+        }
+        
+        /* Contenido del modal (encima del backdrop) */
+        .holo-content {
+            position: relative; z-index: 1000001; pointer-events: none; /* Para que clicks pasen si no hay botones */
+        }
+
+        /* LÓGICA DE APERTURA: Cuando el checkbox 'hermano' está marcado... */
+        .badge-toggle:checked ~ .badge-hologram-wrapper {
+            opacity: 1; pointer-events: auto;
+        }
 
         .holo-img { 
             width: 250px; height: 250px; object-fit: contain; 
             filter: drop-shadow(0 0 30px #FFD700); 
-            animation: holo-float 3s ease-in-out infinite;
-            margin-bottom: 20px;
+            animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px;
         }
         .holo-title {
             font-family: 'Orbitron'; font-size: 2em; color: #FFD700; text-transform: uppercase;
             text-shadow: 0 0 20px #FFD700; margin-bottom: 10px;
         }
-        .holo-desc { color: #aaa; font-size: 0.9em; letter-spacing: 2px; }
-        .holo-close {
-            margin-top: 30px; padding: 10px 20px; border: 1px solid #555; border-radius: 20px;
-            color: #555; font-size: 0.8em; text-transform: uppercase;
+        .holo-desc { color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }
+        
+        /* Botón visual de cerrar (dentro del backdrop) */
+        .holo-close-btn {
+            display: inline-block; padding: 10px 25px; border: 1px solid #555; border-radius: 30px;
+            color: #fff; background: rgba(255,255,255,0.1); font-size: 0.8em; text-transform: uppercase;
+            pointer-events: auto; cursor: pointer; transition: 0.3s;
         }
+        .holo-close-btn:hover { background: #ff1744; border-color: #ff1744; }
 
         @keyframes holo-float {
             0%, 100% { transform: translateY(0) scale(1); }
@@ -231,17 +229,14 @@ st.markdown("""
             .skill-cost-val { font-size: 1.4em; }
             .rank-cell { padding: 8px 5px; font-size: 0.9em; }
             .rank-cell-rank { width: 30px; font-size: 1em; }
-            /* Mobile Energy Core */
             .energy-core { padding: 10px 15px; }
             .energy-icon-large { width: 45px; height: 45px; }
             .energy-val { font-size: 2.2em; }
             .energy-label { font-size: 0.7em; }
-            /* Mobile Badges */
             .badge-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
             .badge-card { height: 110px; }
             .badge-img-container { width: 50px; height: 50px; }
             .badge-name { font-size: 0.6em; }
-            /* Holo Mobile */
             .holo-img { width: 200px; height: 200px; }
             .holo-title { font-size: 1.5em; }
         }
@@ -783,7 +778,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO) ---
+        # --- SECCIÓN SALÓN DE LA FAMA (CHECKBOX HACK) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -795,9 +790,11 @@ else:
             st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
         else:
             badge_html = '<div class="badge-grid">'
-            for badge_name in mis_insignias:
-                img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
+            for i, badge_name in enumerate(mis_insignias):
+                # Generar ID único para el checkbox
+                modal_id = f"badge-modal-{i}"
                 
+                img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
@@ -806,8 +803,31 @@ else:
                     content_html = '<div style="font-size:40px;">🏅</div>'
                     holo_html = '<div style="font-size:100px;">🏅</div>'
 
-                # --- FIX: APLANAR HTML PARA EVITAR QUE STREAMLIT LO LEA COMO CÓDIGO ---
-                badge_html += f'<div class="badge-wrapper" tabindex="0"><div class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></div><div class="badge-hologram">{holo_html}<div class="holo-title">{badge_name}</div><div class="holo-desc">INSIGNIA DESBLOQUEADA</div><div class="holo-close">Toca fuera para cerrar</div></div></div>'
+                # --- HTML ESTRUCTURA CHECKBOX HACK ---
+                # 1. El Checkbox (Invisible)
+                # 2. La Tarjeta es un Label que activa el checkbox
+                # 3. El Modal es visible solo cuando el checkbox está activo
+                # 4. El Backdrop del Modal es OTRO Label que desactiva el checkbox (cierra)
+                
+                badge_html += f"""
+                <div class="badge-wrapper">
+                    <input type="checkbox" id="{modal_id}" class="badge-toggle">
+                    <label for="{modal_id}" class="badge-card">
+                        <div class="badge-img-container">{content_html}</div>
+                        <div class="badge-name">{badge_name}</div>
+                    </label>
+                    
+                    <div class="badge-hologram-wrapper">
+                        <label for="{modal_id}" class="badge-close-backdrop"></label>
+                        <div class="holo-content">
+                            {holo_html}
+                            <div class="holo-title">{badge_name}</div>
+                            <div class="holo-desc">INSIGNIA DESBLOQUEADA</div>
+                            <label for="{modal_id}" class="holo-close-btn">CERRAR</label>
+                        </div>
+                    </div>
+                </div>
+                """
             
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
