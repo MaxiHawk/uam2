@@ -591,7 +591,7 @@ else:
         <div class="energy-core">
             <div class="energy-left">
                 <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
-                <div class="energy-label">ENERGÍA<br>DISPONIBLE</div>
+                <div class="energy-label">ANGIOPOINTS<br>DISPONIBLE</div>
             </div>
             <div class="energy-val">{ap}</div>
         </div>
