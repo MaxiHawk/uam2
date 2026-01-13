@@ -148,13 +148,8 @@ st.markdown("""
             max-width: 700px; margin-left: auto; margin-right: auto;
         }
         
-        /* El Wrapper maneja el Foco */
-        .badge-wrapper {
-            position: relative; outline: none; /* Quita el borde azul del navegador */
-            cursor: pointer;
-        }
+        .badge-wrapper { position: relative; outline: none; cursor: pointer; }
 
-        /* Tarjeta visible (Miniatura) */
         .badge-card {
             background: rgba(10, 20, 30, 0.8); border: 1px solid #333; border-radius: 8px;
             padding: 10px 5px; text-align: center; transition: 0.3s;
@@ -178,12 +173,8 @@ st.markdown("""
             text-align: center;
         }
         
-        /* Cuando el wrapper tiene Foco (Click), mostramos el holograma */
-        .badge-wrapper:focus .badge-hologram {
-            opacity: 1; pointer-events: auto;
-        }
+        .badge-wrapper:focus .badge-hologram { opacity: 1; pointer-events: auto; }
 
-        /* Estilo del contenido del holograma */
         .holo-img { 
             width: 250px; height: 250px; object-fit: contain; 
             filter: drop-shadow(0 0 30px #FFD700); 
@@ -194,9 +185,7 @@ st.markdown("""
             font-family: 'Orbitron'; font-size: 2em; color: #FFD700; text-transform: uppercase;
             text-shadow: 0 0 20px #FFD700; margin-bottom: 10px;
         }
-        .holo-desc {
-            color: #aaa; font-size: 0.9em; letter-spacing: 2px;
-        }
+        .holo-desc { color: #aaa; font-size: 0.9em; letter-spacing: 2px; }
         .holo-close {
             margin-top: 30px; padding: 10px 20px; border: 1px solid #555; border-radius: 20px;
             color: #555; font-size: 0.8em; text-transform: uppercase;
@@ -794,7 +783,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA (BADGES) ---
+        # --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -808,32 +797,18 @@ else:
             badge_html = '<div class="badge-grid">'
             for badge_name in mis_insignias:
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
-                content_html = '<div style="font-size:40px;">🏅</div>' # Fallback
                 
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
-                    # Imagen HD para el holograma (usamos la misma por ahora, idealmente una mayor resolución)
                     holo_html = f'<img src="data:image/png;base64,{b64_badge}" class="holo-img">'
                 else:
+                    content_html = '<div style="font-size:40px;">🏅</div>'
                     holo_html = '<div style="font-size:100px;">🏅</div>'
 
-                # --- ESTRUCTURA FOCUS TRAP PARA ZOOM ---
-                badge_html += f"""
-                <div class="badge-wrapper" tabindex="0">
-                    <div class="badge-card">
-                        <div class="badge-img-container">{content_html}</div>
-                        <div class="badge-name">{badge_name}</div>
-                    </div>
-                    
-                    <div class="badge-hologram">
-                        {holo_html}
-                        <div class="holo-title">{badge_name}</div>
-                        <div class="holo-desc">INSIGNIA DESBLOQUEADA</div>
-                        <div class="holo-close">Toca fuera para cerrar</div>
-                    </div>
-                </div>
-                """
+                # --- FIX: APLANAR HTML PARA EVITAR QUE STREAMLIT LO LEA COMO CÓDIGO ---
+                badge_html += f'<div class="badge-wrapper" tabindex="0"><div class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></div><div class="badge-hologram">{holo_html}<div class="holo-title">{badge_name}</div><div class="holo-desc">INSIGNIA DESBLOQUEADA</div><div class="holo-close">Toca fuera para cerrar</div></div></div>'
+            
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
             
