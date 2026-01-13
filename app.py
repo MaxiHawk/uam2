@@ -213,8 +213,16 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
 
-    uni = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
-    ano = st.session_state.ano_actual if st.session_state.ano_actual else "Sin Año"
+    # Manejo seguro de contexto (por si no está logueado)
+    if "uni_actual" in st.session_state and st.session_state.uni_actual:
+        uni = st.session_state.uni_actual
+    else:
+        uni = "Sin Asignar"
+        
+    if "ano_actual" in st.session_state and st.session_state.ano_actual:
+        ano = st.session_state.ano_actual
+    else:
+        ano = "Sin Año"
 
     nuevo_mensaje = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
@@ -223,7 +231,7 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
             "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
             "Procesado": {"checkbox": False},
             "Tipo": {"select": {"name": tipo_select}},
-            "Status": {"select": {"name": "Pendiente"}}, # Estado inicial
+            "Status": {"select": {"name": "Pendiente"}}, 
             "Universidad": {"select": {"name": uni}},
             "Año": {"select": {"name": ano}}
         }
@@ -237,7 +245,7 @@ def obtener_mis_solicitudes(jugador_nombre):
     payload = {
         "filter": {"property": "Remitente", "title": {"equals": jugador_nombre}},
         "sorts": [{"timestamp": "created_time", "direction": "descending"}],
-        "page_size": 15 # Traer solo las ultimas 15 para no saturar
+        "page_size": 15 
     }
     res = requests.post(url, headers=headers, json=payload)
     
@@ -398,6 +406,25 @@ if not st.session_state.jugador:
             st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
             st.text_input("Password:", type="password", key="input_pass")
             st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
+        
+        # --- BLOQUE DE RECUPERACIÓN (NUEVO) ---
+        with st.expander("🆘 ¿Problemas de Acceso?"):
+            st.caption("Si olvidaste tu clave, solicita un reinicio al comando.")
+            with st.form("reset_form", clear_on_submit=True):
+                reset_user = st.text_input("Ingresa tu Usuario (Aspirante):")
+                if st.form_submit_button("SOLICITAR REINICIO DE CLAVE"):
+                    if reset_user:
+                        with st.spinner("Enviando señal de auxilio..."):
+                            time.sleep(1)
+                            # Enviar como mensaje general
+                            ok = enviar_solicitud("MENSAJE", "SOLICITUD DE RESET", f"El usuario {reset_user} solicita cambio de clave.", reset_user)
+                            if ok:
+                                st.success("✅ Solicitud enviada. Contacta a tu profesor.")
+                            else:
+                                st.error("Error al conectar con la base de datos.")
+                    else:
+                        st.warning("Ingresa tu nombre de usuario.")
+
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
@@ -597,7 +624,7 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        # FORMULARIO DE ENVÍO
+        # FIX: SPINNER + DELAY + CLEAN
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
@@ -609,8 +636,8 @@ else:
                         ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                         if ok:
                             st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
-                            time.sleep(1) # Esperar para que Notion indexe
-                            st.rerun() # Recargar para ver el mensaje en la bitácora
+                            time.sleep(1) # Esperar indexado
+                            st.rerun() # Refrescar para ver el mensaje abajo
                         else:
                             st.error("❌ Error de señal. Verifica las columnas en Notion.")
                 else:
@@ -619,15 +646,13 @@ else:
         st.markdown("---")
         st.markdown("#### 📂 BITÁCORA DE COMUNICACIONES")
         
-        # OBTENER Y MOSTRAR HISTORIAL
         mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
         
         if not mi_historial:
             st.caption("No hay registros de comunicaciones previas.")
         else:
             for item in mi_historial:
-                # Estilos visuales según estado
-                status_color = "#999" # Default
+                status_color = "#999"
                 icon = "⏳"
                 if item["status"] == "Aprobado":
                     status_color = "#00e676"; icon = "✅"
@@ -636,7 +661,6 @@ else:
                 elif item["status"] == "Respuesta":
                     status_color = "#00e5ff"; icon = "📩"
                 
-                # Formato Fecha Chile
                 try:
                     utc_dt = datetime.fromisoformat(item['fecha'].replace('Z', '+00:00'))
                     chile_tz = pytz.timezone('America/Santiago')
@@ -644,7 +668,6 @@ else:
                     fecha_str = local_dt.strftime("%d/%m/%Y %H:%M")
                 except: fecha_str = "Fecha desc."
 
-                # HTML Card
                 log_html = f"""
                 <div class="log-card" style="border-left-color: {status_color};">
                     <div class="log-header">
