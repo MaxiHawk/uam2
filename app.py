@@ -39,22 +39,27 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- 🖼️ DICCIONARIO DE INSIGNIAS GRÁFICAS (EDITAR AQUÍ) ---
-# Asocia el nombre exacto de la etiqueta en Notion con la ruta de tu imagen.
-# Si no tienes imagen para alguna, el sistema usará una genérica.
+# --- 🖼️ DICCIONARIO DE INSIGNIAS GRÁFICAS ---
+# Clave (Izquierda): El nombre EXACTO que pusiste en la etiqueta de Notion.
+# Valor (Derecha): La ruta al archivo renombrado (sin tildes).
+
 BADGE_MAP = {
+    # Misiones (Ejemplos basados en tu imagen)
+    "Misión 1": "assets/insignias/mision_1.png",
+    "Misión 2": "assets/insignias/mision_2.png",
+    "Misión 3": "assets/insignias/mision_3.png",
+    
+    # Otros logros (Asegúrate que coincidan con tus etiquetas de Notion)
     "Primer Sangre": "assets/insignias/primer_sangre.png",
     "Francotirador": "assets/insignias/francotirador.png",
     "Erudito":       "assets/insignias/erudito.png",
     "Veterano":      "assets/insignias/veterano.png",
-    "Hacker":        "assets/insignias/hacker.png",
-    "Curador":       "assets/insignias/curador.png",
-    "Velocista":     "assets/insignias/velocista.png",
-    "Imparable":     "assets/insignias/imparable.png",
-    "Legendario":    "assets/insignias/legendario.png"
+    
+    # ... agrega aquí todas tus etiquetas de Notion
 }
-# Ruta de imagen por defecto si falta alguna (puedes crear un default.png)
-DEFAULT_BADGE = "assets/insignias/default.png" 
+
+# Ruta de imagen por defecto si falta alguna
+DEFAULT_BADGE = "assets/insignias/default.png"
 
 # --- CSS: ESTÉTICA BLUE NEON (RESPONSIVE) ---
 st.markdown("""
