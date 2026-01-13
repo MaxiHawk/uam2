@@ -43,8 +43,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- FRASES DEL SISTEMA (AQUÍ AGREGAS MÁS EN EL FUTURO) ---
-# Simplemente añade una coma y una nueva frase entre comillas.
+# --- FRASES DEL SISTEMA (EASTER EGG) ---
 SYSTEM_MESSAGES = [
     "📡 Enlace neuronal estable. Latencia: 0.04ms",
     "🛡️ Escudos de deflexión al 100%.",
@@ -64,35 +63,23 @@ SYSTEM_MESSAGES = [
 # --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
 SQUAD_THEMES = {
     "Default": { "primary": "#00e5ff", "glow": "rgba(0, 229, 255, 0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
-    
-    # 1. ROJOS / CÁLIDOS
     "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
     "Vanguardia de Hales": { "primary": "#bf360c", "glow": "rgba(255, 87, 34, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#d84315", "text_highlight": "#ffab91" },
     "Herederos de Favaloro": { "primary": "#b71c1c", "glow": "rgba(255, 82, 82, 0.5)", "gradient_start": "#7f0000", "gradient_end": "#e53935", "text_highlight": "#ff8a80" },
     "Sombra de Serbinenko": { "primary": "#ff3d00", "glow": "rgba(255, 61, 0, 0.6)", "gradient_start": "#212121", "gradient_end": "#dd2c00", "text_highlight": "#ff9e80" },
     "Forjadores de Forssmann": { "primary": "#c62828", "glow": "rgba(100, 100, 100, 0.5)", "gradient_start": "#263238", "gradient_end": "#b71c1c", "text_highlight": "#eceff1" },
     "Vanguardia de Sigwart": { "primary": "#8d6e63", "glow": "rgba(141, 110, 99, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#a1887f", "text_highlight": "#d7ccc8" },
-
-    # 2. AZULES / CIANES
     "Guardián de Röntgen": { "primary": "#2979ff", "glow": "rgba(41, 121, 255, 0.6)", "gradient_start": "#0d47a1", "gradient_end": "#448aff", "text_highlight": "#82b1ff" },
     "Forjadores de Palmaz": { "primary": "#00b0ff", "glow": "rgba(0, 176, 255, 0.6)", "gradient_start": "#01579b", "gradient_end": "#4fc3f7", "text_highlight": "#80d8ff" },
     "Legión de Cournand": { "primary": "#1565c0", "glow": "rgba(21, 101, 192, 0.5)", "gradient_start": "#0d47a1", "gradient_end": "#42a5f5", "text_highlight": "#90caf9" },
-
-    # 3. AMARILLOS / DORADOS
     "Catalizadores de Bernard": { "primary": "#ffab00", "glow": "rgba(255, 171, 0, 0.5)", "gradient_start": "#ff6f00", "gradient_end": "#ffca28", "text_highlight": "#ffe082" },
     "Vanguardia de Seldinger": { "primary": "#fbc02d", "glow": "rgba(251, 192, 45, 0.5)", "gradient_start": "#f57f17", "gradient_end": "#fff176", "text_highlight": "#fff59d" },
     "Escuadra de Gruentzig": { "primary": "#ffa000", "glow": "rgba(255, 160, 0, 0.5)", "gradient_start": "#ef6c00", "gradient_end": "#ffca28", "text_highlight": "#ffe0b2" },
-    
-    # 4. VERDES
     "Clan de Judkins": { "primary": "#43a047", "glow": "rgba(255, 215, 0, 0.4)", "gradient_start": "#1b5e20", "gradient_end": "#66bb6a", "text_highlight": "#ffd54f" },
-
-    # 5. VIOLETAS / ROSAS
     "Clan de Cesalpino": { "primary": "#9c27b0", "glow": "rgba(156, 39, 176, 0.5)", "gradient_start": "#4a148c", "gradient_end": "#ba68c8", "text_highlight": "#e1bee7" },
     "Compañía de Sones": { "primary": "#7b1fa2", "glow": "rgba(255, 193, 7, 0.4)", "gradient_start": "#4a148c", "gradient_end": "#8e24aa", "text_highlight": "#ffecb3" },
     "Forjadores de Dotter": { "primary": "#f06292", "glow": "rgba(240, 98, 146, 0.6)", "gradient_start": "#880e4f", "gradient_end": "#ff80ab", "text_highlight": "#f8bbd0" },
     "Legión de Guglielmi": { "primary": "#e040fb", "glow": "rgba(224, 64, 251, 0.5)", "gradient_start": "#aa00ff", "gradient_end": "#ea80fc", "text_highlight": "#f3e5f5" },
-
-    # 6. PLATA / BLANCO / NEGRO
     "Hijos de Harvey": { "primary": "#e0e0e0", "glow": "rgba(255, 255, 255, 0.4)", "gradient_start": "#424242", "gradient_end": "#bdbdbd", "text_highlight": "#f5f5f5" },
     "Vanguardia de Cribier": { "primary": "#bdbdbd", "glow": "rgba(233, 30, 99, 0.3)", "gradient_start": "#616161", "gradient_end": "#efefef", "text_highlight": "#f48fb1" },
     "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" }
@@ -129,7 +116,7 @@ if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
-if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0 # Anti-Spam
+if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
 
 # Logout automático
 if st.session_state.get("jugador") is not None:
@@ -547,7 +534,7 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         tipo_select = "Mensaje"
     elif tipo == "SISTEMA":
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
-        tipo_select = "Mensaje" # O "Sistema" si tienes ese tag en Notion
+        tipo_select = "Mensaje" 
     else:
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
@@ -1001,10 +988,12 @@ else:
         
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # --- EASTER EGG (PROTEGIDO) ---
-        c_egg1, c_egg2, c_egg3 = st.columns([1, 2, 1])
+        # --- EASTER EGG BUTTON (SYSTEM STATUS) ---
+        # Centrado perfecto: Columnas laterales grandes, central pequeña + expandir ancho
+        c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
-            if st.button("💠 STATUS DEL SISTEMA"):
+            # use_container_width=True llena la columna central perfectamente
+            if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
                 # Anti-Spam: Solo cada 60 seg
                 now = time.time()
                 if now - st.session_state.last_easter_egg > 60:
