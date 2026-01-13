@@ -151,14 +151,11 @@ st.markdown(f"""
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
         }}
-        
-        /* TÍTULOS LIMPIOS (FIX) */
         h1, h2, h3, h4, h5 {{ 
             font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; 
-            color: #ffffff !important; /* BLANCO PURO PARA LEGIBILIDAD */
-            text-shadow: 0 0 5px rgba(0,0,0,0.5) !important; /* Sombra suave oscura */
+            color: #ffffff !important;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
         }}
-        
         html, body, [class*="css"] {{ font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); }}
         .block-container {{ padding-top: 1rem !important; overflow-x: hidden; }}
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
@@ -186,10 +183,27 @@ st.markdown(f"""
         }}
         div[data-testid="column"] .stButton>button:hover {{ background: var(--primary-color); color: #000; }}
 
-        .stTabs [aria-selected="true"] {{ 
-            background-color: rgba(255, 255, 255, 0.05) !important; 
-            color: var(--primary-color) !important; 
-            border: 1px solid var(--primary-color) !important; 
+        /* --- PESTAÑAS (TABS) LIMPIAS --- */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Línea base sutil */
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            height: 50px;
+            white-space: nowrap;
+            background-color: transparent !important;
+            border: none !important;
+            color: #888 !important; /* Inactivo */
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background-color: transparent !important; /* Sin fondo */
+            color: var(--primary-color) !important;   /* Texto iluminado */
+            border-radius: 0 !important;
+            border-bottom: 3px solid var(--primary-color) !important; /* Solo línea inferior */
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--glow-color);
         }}
 
         /* PERFIL (Neutro + Glow) */
@@ -208,20 +222,16 @@ st.markdown(f"""
         .profile-avatar {{ width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }}
         .profile-content {{ margin-top: 90px; }}
         
-        /* NOMBRE */
         .profile-name {{ 
             font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; 
             text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0,0,0,0.8);
         }}
-        
-        /* ROL (Destacado en color) */
         .profile-role {{ 
             color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; 
             font-weight: 400; letter-spacing: 1px;
         }}
         .profile-role strong {{ color: var(--text-highlight); font-weight: bold; text-transform: uppercase; }}
         
-        /* NIVEL (BADGE ÉPICO) */
         .level-badge {{
             display: inline-block;
             background: rgba(0, 0, 0, 0.4);
