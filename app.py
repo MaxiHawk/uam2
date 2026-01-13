@@ -473,71 +473,106 @@ def cerrar_sesion():
     st.session_state.ano_actual = None
     st.session_state.estado_uam = None
 
-# --- INTRO EPIC SEQUENCE ---
+# --- INTRO EPIC SEQUENCE (FULLSCREEN OVERLAY) ---
 def play_intro_sequence():
     placeholder = st.empty()
     
-    # CSS para el efecto Matrix/Terminal Esmeralda
+    # CSS para Overlay a pantalla completa que flota sobre todo
     st.markdown("""
     <style>
-        .terminal-container {
-            height: 80vh; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; 
-            background-color: #050810; font-family: 'Courier New', monospace;
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
-        .term-text {
-            color: #00ff80; font-size: 1.2em; text-shadow: 0 0 10px rgba(0, 255, 128, 0.7);
-            margin-bottom: 10px;
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 255, 128, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0); }
         }
-        .term-title {
-            color: #e0f7fa; font-family: 'Orbitron'; font-size: 2.5em; 
-            text-shadow: 0 0 20px #00e5ff; margin-top: 20px;
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
         }
-        .progress-bar-container {
-            width: 300px; height: 4px; background: #1c2e3e; margin-top: 20px;
+        
+        .intro-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #050810; /* Fondo base del tema */
+            z-index: 999999; /* Encima de todo */
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
         }
-        .progress-bar-fill {
-            height: 100%; background: #00ff80; width: 0%; 
-            box-shadow: 0 0 15px #00ff80; transition: width 0.1s;
+        
+        /* Efecto de Scanline */
+        .scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 20px;
+            background: rgba(0, 255, 128, 0.1);
+            opacity: 0.6;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+        }
+        
+        .core-loader {
+            width: 120px; height: 120px;
+            border: 4px solid #00ff80;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            animation: pulse-green 2s infinite;
+            background: rgba(0, 20, 10, 0.8);
+            margin-bottom: 30px;
+        }
+        
+        .core-text {
+            font-size: 3em; color: #00ff80; font-family: 'Orbitron';
+        }
+        
+        .status-text {
+            color: #00ff80; font-size: 1.2em; text-transform: uppercase;
+            letter-spacing: 3px;
+            border-right: 3px solid #00ff80;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: typing 3s steps(40, end);
+            max-width: 80%;
+        }
+        
+        .bar-container {
+            width: 300px; height: 6px; background: #1c2e3e; margin-top: 20px; border-radius: 3px;
+        }
+        .bar-fill {
+            height: 100%; background: #00ff80; width: 0%;
+            transition: width 0.1s;
+            box-shadow: 0 0 10px #00ff80;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # Secuencia de animación
-    msgs = [
-        "INITIALIZING NEURAL UPLINK...",
-        "DECRYPTING BIO-SIGNATURE...",
-        "SEARCHING FOR SIGNAL: PRAXIS PRIMORIS...",
-        "COORDINATES LOCKED: SECTOR UAM-01",
-        "ESTABLISHING CONNECTION..."
-    ]
+    # HTML del Overlay
+    intro_html = """
+    <div class="intro-overlay">
+        <div class="scanline"></div>
+        <div class="core-loader">
+            <div class="core-text">💠</div>
+        </div>
+        <div class="status-text">ESTABLISHING SECURE UPLINK...</div>
+        <div class="bar-container">
+            <div class="bar-fill" id="loading-bar"></div>
+        </div>
+        <script>
+            let bar = document.getElementById('loading-bar');
+            let width = 0;
+            let interval = setInterval(function() {
+                if (width >= 100) { clearInterval(interval); }
+                else { width++; bar.style.width = width + '%'; }
+            }, 30);
+        </script>
+    </div>
+    """
     
-    with placeholder.container():
-        st.markdown('<div class="terminal-container">', unsafe_allow_html=True)
-        # Texto parpadeante
-        console_placeholder = st.empty()
-        
-        for msg in msgs:
-            console_placeholder.markdown(f'<div class="terminal-container"><div class="term-text">> {msg}</div></div>', unsafe_allow_html=True)
-            time.sleep(0.6)
-        
-        # Barra de carga falsa
-        bar_placeholder = st.empty()
-        for i in range(0, 101, 10):
-            bar_html = f"""
-            <div class="terminal-container">
-                <div class="term-title">ACCESS GRANTED</div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar-fill" style="width: {i}%;"></div>
-                </div>
-            </div>
-            """
-            bar_placeholder.markdown(bar_html, unsafe_allow_html=True)
-            time.sleep(0.05)
-            
-        time.sleep(0.5)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
+    placeholder.markdown(intro_html, unsafe_allow_html=True)
+    time.sleep(3.5) # Esperar a que la "animación" visual termine
     placeholder.empty()
 
 # ================= UI PRINCIPAL =================
