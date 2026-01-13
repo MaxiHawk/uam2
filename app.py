@@ -203,6 +203,7 @@ if st.session_state.get("jugador") is not None:
 
 # --- ESTADO DE SESIÓN ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
+if "show_intro" not in st.session_state: st.session_state.show_intro = False
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
 if "login_error" not in st.session_state: st.session_state.login_error = None
@@ -433,6 +434,7 @@ def validar_login():
                         st.session_state.jugador = props
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
+                        st.session_state.show_intro = True # ACTIVAR INTRO
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -470,6 +472,73 @@ def cerrar_sesion():
     st.session_state.uni_actual = None
     st.session_state.ano_actual = None
     st.session_state.estado_uam = None
+
+# --- INTRO EPIC SEQUENCE ---
+def play_intro_sequence():
+    placeholder = st.empty()
+    
+    # CSS para el efecto Matrix/Terminal Esmeralda
+    st.markdown("""
+    <style>
+        .terminal-container {
+            height: 80vh; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; 
+            background-color: #050810; font-family: 'Courier New', monospace;
+        }
+        .term-text {
+            color: #00ff80; font-size: 1.2em; text-shadow: 0 0 10px rgba(0, 255, 128, 0.7);
+            margin-bottom: 10px;
+        }
+        .term-title {
+            color: #e0f7fa; font-family: 'Orbitron'; font-size: 2.5em; 
+            text-shadow: 0 0 20px #00e5ff; margin-top: 20px;
+        }
+        .progress-bar-container {
+            width: 300px; height: 4px; background: #1c2e3e; margin-top: 20px;
+        }
+        .progress-bar-fill {
+            height: 100%; background: #00ff80; width: 0%; 
+            box-shadow: 0 0 15px #00ff80; transition: width 0.1s;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Secuencia de animación
+    msgs = [
+        "INITIALIZING NEURAL UPLINK...",
+        "DECRYPTING BIO-SIGNATURE...",
+        "SEARCHING FOR SIGNAL: PRAXIS PRIMORIS...",
+        "COORDINATES LOCKED: SECTOR UAM-01",
+        "ESTABLISHING CONNECTION..."
+    ]
+    
+    with placeholder.container():
+        st.markdown('<div class="terminal-container">', unsafe_allow_html=True)
+        # Texto parpadeante
+        console_placeholder = st.empty()
+        
+        for msg in msgs:
+            console_placeholder.markdown(f'<div class="terminal-container"><div class="term-text">> {msg}</div></div>', unsafe_allow_html=True)
+            time.sleep(0.6)
+        
+        # Barra de carga falsa
+        bar_placeholder = st.empty()
+        for i in range(0, 101, 10):
+            bar_html = f"""
+            <div class="terminal-container">
+                <div class="term-title">ACCESS GRANTED</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" style="width: {i}%;"></div>
+                </div>
+            </div>
+            """
+            bar_placeholder.markdown(bar_html, unsafe_allow_html=True)
+            time.sleep(0.05)
+            
+        time.sleep(0.5)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    placeholder.empty()
 
 # ================= UI PRINCIPAL =================
 
@@ -509,6 +578,12 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
+    # --- SECUENCIA DE INTRODUCCIÓN (SOLO UNA VEZ AL LOGIN) ---
+    if st.session_state.show_intro:
+        play_intro_sequence()
+        st.session_state.show_intro = False
+        st.rerun()
+
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -758,7 +833,6 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        # FIX: SPINNER + DELAY + CLEAN
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
@@ -770,8 +844,8 @@ else:
                         ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                         if ok:
                             st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
-                            time.sleep(1) # Esperar indexado
-                            st.rerun() # Refrescar para ver el mensaje abajo
+                            time.sleep(1)
+                            st.rerun()
                         else:
                             st.error("❌ Error de señal. Verifica las columnas en Notion.")
                 else:
