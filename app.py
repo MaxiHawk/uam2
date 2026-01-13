@@ -556,7 +556,7 @@ def play_intro_sequence():
         <div class="core-loader">
             <div class="core-text">💠</div>
         </div>
-        <div class="status-text">ESTABLISHING SECURE UPLINK...</div>
+        <div class="status-text">ESTABLECIENDO COMUNICACIÓN...</div>
         <div class="bar-container">
             <div class="bar-fill" id="loading-bar"></div>
         </div>
