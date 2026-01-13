@@ -16,6 +16,7 @@ try:
     DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
+    DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None) # NUEVO: ID DEL CÓDICE
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -103,6 +104,7 @@ if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
+if "codice_data" not in st.session_state: st.session_state.codice_data = [] # NUEVO ESTADO
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
@@ -166,7 +168,7 @@ st.markdown(f"""
             max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
         }}
         .centered-container, .profile-container, .hud-grid, .badge-grid, 
-        .energy-core, .rank-table, .log-card, .skill-card-container {{
+        .energy-core, .rank-table, .log-card, .skill-card-container, .codex-card {{
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
@@ -183,27 +185,27 @@ st.markdown(f"""
         }}
         div[data-testid="column"] .stButton>button:hover {{ background: var(--primary-color); color: #000; }}
 
-        /* --- PESTAÑAS (TABS) LIMPIAS --- */
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Línea base sutil */
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            height: 50px;
-            white-space: nowrap;
-            background-color: transparent !important;
-            border: none !important;
-            color: #888 !important; /* Inactivo */
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.9em;
-        }}
-        .stTabs [aria-selected="true"] {{
+        .stTabs [aria-selected="true"] {{ 
             background-color: transparent !important; /* Sin fondo */
             color: var(--primary-color) !important;   /* Texto iluminado */
             border-radius: 0 !important;
             border-bottom: 3px solid var(--primary-color) !important; /* Solo línea inferior */
             font-weight: bold;
             text-shadow: 0 0 8px var(--glow-color);
+        }}
+        
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            height: 50px;
+            white-space: nowrap;
+            background-color: transparent !important;
+            border: none !important;
+            color: #888 !important; 
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
         }}
 
         /* PERFIL (Neutro + Glow) */
@@ -264,6 +266,19 @@ st.markdown(f"""
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
         
+        /* CÓDICE (NUEVO) */
+        .codex-card {{
+            display: flex; align-items: center; justify-content: space-between;
+            background: #0a141f; border: 1px solid #1c2e3e; border-left: 4px solid var(--primary-color);
+            border-radius: 8px; padding: 15px; margin-bottom: 10px; transition: 0.3s;
+        }}
+        .codex-card.locked {{ border-left-color: #555; opacity: 0.6; filter: grayscale(1); }}
+        .codex-info {{ flex-grow: 1; }}
+        .codex-title {{ font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 4px; }}
+        .codex-desc {{ font-size: 0.85em; color: #aaa; }}
+        .codex-action {{ margin-left: 15px; }}
+        .codex-icon {{ font-size: 1.5em; margin-right: 15px; }}
+
         /* Ranking & Logs (Usa Tema) */
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
@@ -422,6 +437,56 @@ def cargar_habilidades_rol(rol_jugador):
         return habilidades
     except: return []
 
+# --- FUNCIÓN NUEVA: CARGAR CÓDICE ---
+def cargar_codice():
+    if not DB_CODICE_ID: return []
+    url = f"https://api.notion.com/v1/databases/{DB_CODICE_ID}/query"
+    # Traemos todo y filtramos en Python si es necesario, o filtramos por estado Activo
+    payload = {
+        "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        items = []
+        if res.status_code == 200:
+            for r in res.json()["results"]:
+                props = r["properties"]
+                try:
+                    # Nombre
+                    nom_list = props.get("Nombre", {}).get("title", [])
+                    nombre = nom_list[0]["text"]["content"] if nom_list else "Recurso Sin Nombre"
+                    
+                    # Nivel
+                    nivel = props.get("Nivel Requerido", {}).get("number", 1) or 1
+                    
+                    # Descripción
+                    desc_list = props.get("Descripcion", {}).get("rich_text", [])
+                    desc = desc_list[0]["text"]["content"] if desc_list else ""
+                    
+                    # Tipo
+                    tipo_obj = props.get("Tipo", {}).get("select")
+                    tipo = tipo_obj["name"] if tipo_obj else "Archivo"
+                    
+                    # Enlace (Puede ser URL o Archivo subido)
+                    url_recurso = "#"
+                    if "Enlace" in props and props["Enlace"]["url"]:
+                        url_recurso = props["Enlace"]["url"]
+                    elif "Archivo" in props:
+                        files = props["Archivo"].get("files", [])
+                        if files:
+                            url_recurso = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+                    
+                    items.append({
+                        "nombre": nombre,
+                        "nivel": nivel,
+                        "descripcion": desc,
+                        "tipo": tipo,
+                        "url": url_recurso
+                    })
+                except: pass
+        return items
+    except: return []
+
 # --- FUNCIÓN UNIFICADA DE MENSAJERÍA ---
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
@@ -553,6 +618,14 @@ def actualizar_datos_sesion():
                     props = data["results"][0]["properties"]
                     st.session_state.jugador = props
                     st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
+                    # Recargar códice y habilidades
+                    try:
+                        rol_data = props.get("Rol", {}).get("select")
+                        rol_usuario = rol_data["name"] if rol_data else None
+                    except: rol_usuario = None
+                    if rol_usuario:
+                        st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
+                    st.session_state.codice_data = cargar_codice()
                     st.rerun()
         except: pass
 
@@ -638,6 +711,10 @@ def validar_login():
                         except: rol_usuario = None
                         if rol_usuario:
                             st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
+                        
+                        # CARGAR CÓDICE AL INICIO
+                        st.session_state.codice_data = cargar_codice()
+
                     else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
                 except Exception as e: st.session_state.login_error = f"Error Credenciales: {e}"
             else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
@@ -648,6 +725,7 @@ def cerrar_sesion():
     st.session_state.jugador = None
     st.session_state.ranking_data = None
     st.session_state.habilidades_data = []
+    st.session_state.codice_data = []
     st.session_state.uni_actual = None
     st.session_state.ano_actual = None
     st.session_state.estado_uam = None
@@ -804,7 +882,7 @@ else:
     # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    tab_perfil, tab_ranking, tab_habilidades, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📡 COMUNICACIONES"])
+    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "📡 COMUNICACIONES"])
     
     # --- TAB 1: PERFIL ---
     with tab_perfil:
@@ -868,7 +946,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA (CHECKBOX HACK CORREGIDO) ---
+        # --- SECCIÓN SALÓN DE LA FAMA ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -951,7 +1029,6 @@ else:
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         
-        # ENERGY CORE HUD
         core_html = f"""
         <div class="energy-core">
             <div class="energy-left">
@@ -993,7 +1070,6 @@ else:
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
                         if desbloqueada:
-                            # --- MODAL DE CONFIRMACIÓN (POPOVER) ---
                             with st.popover("💠 PREPARAR", use_container_width=True):
                                 st.markdown(f"### ⚠️ Confirmación de Conjuro")
                                 st.markdown(f"Estás a punto de activar **{nombre}**.")
@@ -1014,7 +1090,51 @@ else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
 
-    # --- TAB 4: COMUNICACIONES ---
+    # --- TAB 4: CÓDICE (NUEVA) ---
+    with tab_codice:
+        st.markdown("### 📜 ARCHIVOS SECRETOS")
+        st.caption("Documentos clasificados recuperados de la Era Dorada.")
+        
+        codice_items = st.session_state.codice_data
+        
+        if not codice_items:
+            st.info("Sin registros en el Códice. Esperando desencriptación...")
+        else:
+            for item in codice_items:
+                nivel_req = item["nivel"]
+                unlocked = nivel_num >= nivel_req
+                
+                # Icono según tipo
+                tipo_icon = "📄"
+                if "Video" in item["tipo"]: tipo_icon = "🎥"
+                elif "Secreto" in item["tipo"]: tipo_icon = "🗝️"
+                
+                # Estado Visual
+                lock_class = "" if unlocked else "locked"
+                lock_icon = "🔓" if unlocked else "🔒"
+                
+                # Botón / Acción
+                action_html = ""
+                if unlocked:
+                    action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
+                else:
+                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {nivel_req} REQ.</span>'
+
+                card_html = f"""
+                <div class="codex-card {lock_class}">
+                    <div class="codex-icon">{tipo_icon}</div>
+                    <div class="codex-info">
+                        <div class="codex-title">{item["nombre"]} {lock_icon}</div>
+                        <div class="codex-desc">{item["descripcion"]}</div>
+                    </div>
+                    <div class="codex-action">
+                        {action_html}
+                    </div>
+                </div>
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
+
+    # --- TAB 5: COMUNICACIONES ---
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
