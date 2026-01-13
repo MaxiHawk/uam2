@@ -16,7 +16,7 @@ try:
     DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
-    DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None) # NUEVO: ID DEL CÓDICE
+    DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -104,7 +104,7 @@ if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
-if "codice_data" not in st.session_state: st.session_state.codice_data = [] # NUEVO ESTADO
+if "codice_data" not in st.session_state: st.session_state.codice_data = [] 
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
@@ -185,30 +185,19 @@ st.markdown(f"""
         }}
         div[data-testid="column"] .stButton>button:hover {{ background: var(--primary-color); color: #000; }}
 
+        /* TABS */
         .stTabs [aria-selected="true"] {{ 
-            background-color: transparent !important; /* Sin fondo */
-            color: var(--primary-color) !important;   /* Texto iluminado */
+            background-color: transparent !important; 
+            color: var(--primary-color) !important; 
             border-radius: 0 !important;
-            border-bottom: 3px solid var(--primary-color) !important; /* Solo línea inferior */
+            border-bottom: 3px solid var(--primary-color) !important; 
             font-weight: bold;
             text-shadow: 0 0 8px var(--glow-color);
         }}
-        
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            height: 50px;
-            white-space: nowrap;
-            background-color: transparent !important;
-            border: none !important;
-            color: #888 !important; 
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.9em;
-        }}
+        .stTabs [data-baseweb="tab-list"] {{ gap: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }}
+        .stTabs [data-baseweb="tab"] {{ height: 50px; white-space: nowrap; background-color: transparent !important; border: none !important; color: #888 !important; font-family: 'Orbitron', sans-serif; font-size: 0.9em; }}
 
-        /* PERFIL (Neutro + Glow) */
+        /* PERFIL */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
             border: 1px solid rgba(255, 255, 255, 0.1); 
@@ -223,41 +212,44 @@ st.markdown(f"""
         }}
         .profile-avatar {{ width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }}
         .profile-content {{ margin-top: 90px; }}
-        
-        .profile-name {{ 
-            font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; 
-            text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0,0,0,0.8);
-        }}
-        .profile-role {{ 
-            color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; 
-            font-weight: 400; letter-spacing: 1px;
-        }}
+        .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0,0,0,0.8); }}
+        .profile-role {{ color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; font-weight: 400; letter-spacing: 1px; }}
         .profile-role strong {{ color: var(--text-highlight); font-weight: bold; text-transform: uppercase; }}
         
         .level-badge {{
-            display: inline-block;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--primary-color);
-            padding: 8px 25px;
-            border-radius: 30px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.4em;
-            font-weight: 700;
-            color: var(--text-highlight);
-            text-shadow: 0 0 15px var(--glow-color);
-            margin-top: 10px;
-            margin-bottom: 20px;
+            display: inline-block; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--primary-color);
+            padding: 8px 25px; border-radius: 30px; font-family: 'Orbitron', sans-serif;
+            font-size: 1.4em; font-weight: 700; color: var(--text-highlight);
+            text-shadow: 0 0 15px var(--glow-color); margin-top: 10px; margin-bottom: 10px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }}
-        
-        /* HUD (Colores fijos) */
+
+        /* --- BARRA DE PROGRESO DE NIVEL --- */
+        .level-progress-wrapper {{
+            width: 80%; margin: 0 auto 20px auto; 
+        }}
+        .level-progress-bg {{
+            background: #1c2e3e; height: 10px; border-radius: 5px; overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+        }}
+        .level-progress-fill {{
+            height: 100%; background: var(--primary-color); border-radius: 5px;
+            box-shadow: 0 0 10px var(--glow-color);
+            transition: width 1s ease-in-out;
+        }}
+        .level-progress-text {{
+            font-size: 0.8em; color: #aaa; margin-top: 5px; letter-spacing: 1px;
+        }}
+        .level-progress-text strong {{ color: #fff; }}
+
+        /* HUD */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
         .epic-number {{ font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }}
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
 
-        /* Habilidades (Usa Tema) */
+        /* Habilidades */
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
@@ -266,12 +258,8 @@ st.markdown(f"""
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
         
-        /* CÓDICE (NUEVO) */
-        .codex-card {{
-            display: flex; align-items: center; justify-content: space-between;
-            background: #0a141f; border: 1px solid #1c2e3e; border-left: 4px solid var(--primary-color);
-            border-radius: 8px; padding: 15px; margin-bottom: 10px; transition: 0.3s;
-        }}
+        /* CÓDICE */
+        .codex-card {{ display: flex; align-items: center; justify-content: space-between; background: #0a141f; border: 1px solid #1c2e3e; border-left: 4px solid var(--primary-color); border-radius: 8px; padding: 15px; margin-bottom: 10px; transition: 0.3s; }}
         .codex-card.locked {{ border-left-color: #555; opacity: 0.6; filter: grayscale(1); }}
         .codex-info {{ flex-grow: 1; }}
         .codex-title {{ font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 4px; }}
@@ -279,7 +267,7 @@ st.markdown(f"""
         .codex-action {{ margin-left: 15px; }}
         .codex-icon {{ font-size: 1.5em; margin-right: 15px; }}
 
-        /* Ranking & Logs (Usa Tema) */
+        /* Ranking & Logs */
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
         .rank-cell {{ padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }}
@@ -287,19 +275,13 @@ st.markdown(f"""
         .rank-cell-last {{ border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }}
         .bar-bg {{ background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }}
         .bar-fill {{ height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }}
-        
         .log-card {{ background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #555; }}
         .log-header {{ display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa; margin-bottom: 5px; }}
         .log-body {{ font-size: 0.95em; color: #fff; margin-bottom: 5px; }}
         .log-reply {{ background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 4px; font-size: 0.9em; color: var(--text-highlight); margin-top: 8px; border-left: 2px solid var(--primary-color); }}
 
-        /* Energy Core (Usa Tema) */
-        .energy-core {{ 
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); 
-            border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; 
-            display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; 
-            box-shadow: 0 0 20px var(--glow-color); 
-        }}
+        /* Energy Core */
+        .energy-core {{ background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: 0 0 20px var(--glow-color); }}
         .energy-left {{ display: flex; align-items: center; gap: 15px; }}
         .energy-icon-large {{ width: 60px; height: 60px; filter: drop-shadow(0 0 8px var(--primary-color)); }}
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
@@ -335,7 +317,6 @@ st.markdown(f"""
         @keyframes ticker-animation {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
 
         @media (max-width: 768px) {{
-            /* ... (ajustes móviles) ... */
             .profile-container {{ margin-top: 50px; }}
             .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }}
             .profile-name {{ font-size: 1.8em; }}
@@ -397,6 +378,39 @@ def calcular_nivel_usuario(mp):
     elif mp <= 500: return 4
     else: return 5
 
+def calcular_progreso_nivel(mp):
+    # Definir rangos: Lvl 1 (0-50), Lvl 2 (51-150), etc.
+    # Retorna: (puntos_actuales_en_nivel, total_necesario_nivel, porcentaje, faltante, es_max)
+    
+    thresholds = {1: 50, 2: 150, 3: 300, 4: 500}
+    
+    nivel_actual = calcular_nivel_usuario(mp)
+    
+    if nivel_actual >= 5:
+        return 1, 1, 100, 0, True # Max level
+    
+    # Calcular base y techo del nivel actual
+    techo = thresholds[nivel_actual]
+    # La base es el techo del nivel anterior + 1 (o 0 si es nivel 1)
+    base = thresholds[nivel_actual - 1] + 1 if nivel_actual > 1 else 0
+    
+    # Puntos obtenidos dentro de este nivel
+    progreso_actual = mp - base
+    if progreso_actual < 0: progreso_actual = 0 # Safety check
+    
+    # Total de puntos que tiene este nivel de ancho
+    total_nivel = techo - base + 1 # +1 para incluir el rango completo
+    if nivel_actual == 1: total_nivel = 51 # 0 to 50 is 51 points
+    
+    # Porcentaje
+    pct = (progreso_actual / total_nivel) * 100
+    if pct > 100: pct = 100
+    
+    # Puntos faltantes para el siguiente nivel (techo + 1)
+    faltantes = (techo + 1) - mp
+    
+    return progreso_actual, total_nivel, pct, faltantes, False
+
 def cargar_habilidades_rol(rol_jugador):
     if not rol_jugador: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
@@ -437,11 +451,9 @@ def cargar_habilidades_rol(rol_jugador):
         return habilidades
     except: return []
 
-# --- FUNCIÓN NUEVA: CARGAR CÓDICE ---
 def cargar_codice():
     if not DB_CODICE_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_CODICE_ID}/query"
-    # Traemos todo y filtramos en Python si es necesario, o filtramos por estado Activo
     payload = {
         "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
     }
@@ -452,22 +464,14 @@ def cargar_codice():
             for r in res.json()["results"]:
                 props = r["properties"]
                 try:
-                    # Nombre
                     nom_list = props.get("Nombre", {}).get("title", [])
                     nombre = nom_list[0]["text"]["content"] if nom_list else "Recurso Sin Nombre"
-                    
-                    # Nivel
                     nivel = props.get("Nivel Requerido", {}).get("number", 1) or 1
-                    
-                    # Descripción
                     desc_list = props.get("Descripcion", {}).get("rich_text", [])
                     desc = desc_list[0]["text"]["content"] if desc_list else ""
-                    
-                    # Tipo
                     tipo_obj = props.get("Tipo", {}).get("select")
                     tipo = tipo_obj["name"] if tipo_obj else "Archivo"
                     
-                    # Enlace (Puede ser URL o Archivo subido)
                     url_recurso = "#"
                     if "Enlace" in props and props["Enlace"]["url"]:
                         url_recurso = props["Enlace"]["url"]
@@ -477,11 +481,7 @@ def cargar_codice():
                             url_recurso = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
                     
                     items.append({
-                        "nombre": nombre,
-                        "nivel": nivel,
-                        "descripcion": desc,
-                        "tipo": tipo,
-                        "url": url_recurso
+                        "nombre": nombre, "nivel": nivel, "descripcion": desc, "tipo": tipo, "url": url_recurso
                     })
                 except: pass
         return items
@@ -618,7 +618,6 @@ def actualizar_datos_sesion():
                     props = data["results"][0]["properties"]
                     st.session_state.jugador = props
                     st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
-                    # Recargar códice y habilidades
                     try:
                         rol_data = props.get("Rol", {}).get("select")
                         rol_usuario = rol_data["name"] if rol_data else None
@@ -712,7 +711,6 @@ def validar_login():
                         if rol_usuario:
                             st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                         
-                        # CARGAR CÓDICE AL INICIO
                         st.session_state.codice_data = cargar_codice()
 
                     else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
@@ -902,6 +900,29 @@ else:
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
+        # PROGRESO NIVEL
+        prog_act, prog_total, prog_pct, faltantes, is_max = calcular_progreso_nivel(mp)
+        
+        # HTML BARRA DE PROGRESO
+        if is_max:
+            progress_html = f"""
+            <div class="level-progress-wrapper">
+                <div class="level-progress-bg">
+                    <div class="level-progress-fill" style="width: 100%; background: #FFD700; box-shadow: 0 0 15px #FFD700;"></div>
+                </div>
+                <div class="level-progress-text" style="color: #FFD700;"><strong>¡NIVEL MÁXIMO ALCANZADO!</strong></div>
+            </div>
+            """
+        else:
+            progress_html = f"""
+            <div class="level-progress-wrapper">
+                <div class="level-progress-bg">
+                    <div class="level-progress-fill" style="width: {prog_pct}%;"></div>
+                </div>
+                <div class="level-progress-text">Faltan <strong>{faltantes} MP</strong> para el siguiente rango</div>
+            </div>
+            """
+
         squad_html = ""
         if b64_badge:
             squad_html = f"""<div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;"><div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div><img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,0,0,0.6));"><div style="color:{THEME['text_highlight']}; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div></div>"""
@@ -915,6 +936,7 @@ else:
                 <div class="profile-name">{st.session_state.nombre}</div>
                 <div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div>
                 <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
+                {progress_html}
                 {squad_html}
             </div>
         </div>
@@ -946,7 +968,6 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -977,7 +998,6 @@ else:
             
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # --- BOTONES DE PIE DE PÁGINA (CONTROL DE SESIÓN) ---
         c_refresh, c_logout = st.columns(2)
         with c_refresh:
             if st.button("ACTUALIZAR"):
@@ -987,13 +1007,11 @@ else:
                 cerrar_sesion()
                 st.rerun()
 
-    # --- TAB 2: RANKING ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
-            
             table_rows = ""
             for i, (index, row) in enumerate(df.head(10).iterrows()):
                 rank = i + 1
@@ -1002,7 +1020,6 @@ else:
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
                 table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
-            
             st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
             
             st.markdown("### 🛡️ TOP ESCUADRONES")
@@ -1025,7 +1042,6 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         
@@ -1060,7 +1076,6 @@ else:
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
                     banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
-                    
                     ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
 
                     card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{desc}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
@@ -1090,7 +1105,6 @@ else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
 
-    # --- TAB 4: CÓDICE (NUEVA) ---
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
         st.caption("Documentos clasificados recuperados de la Era Dorada.")
@@ -1104,16 +1118,13 @@ else:
                 nivel_req = item["nivel"]
                 unlocked = nivel_num >= nivel_req
                 
-                # Icono según tipo
                 tipo_icon = "📄"
                 if "Video" in item["tipo"]: tipo_icon = "🎥"
                 elif "Secreto" in item["tipo"]: tipo_icon = "🗝️"
                 
-                # Estado Visual
                 lock_class = "" if unlocked else "locked"
                 lock_icon = "🔓" if unlocked else "🔒"
                 
-                # Botón / Acción
                 action_html = ""
                 if unlocked:
                     action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
@@ -1134,7 +1145,6 @@ else:
                 """
                 st.markdown(card_html, unsafe_allow_html=True)
 
-    # --- TAB 5: COMUNICACIONES ---
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
