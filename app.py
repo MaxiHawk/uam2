@@ -43,7 +43,8 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- LORE MESSAGES (EASTER EGG) ---
+# --- FRASES DEL SISTEMA (AQUÍ AGREGAS MÁS EN EL FUTURO) ---
+# Simplemente añade una coma y una nueva frase entre comillas.
 SYSTEM_MESSAGES = [
     "📡 Enlace neuronal estable. Latencia: 0.04ms",
     "🛡️ Escudos de deflexión al 100%.",
@@ -56,7 +57,8 @@ SYSTEM_MESSAGES = [
     "📂 Desencriptando archivos secretos...",
     "🍕 Se recomienda una pausa para reabastecimiento.",
     "🌟 La suerte favorece a los audaces.",
-    "🚫 Acceso denegado al Área 51... por ahora."
+    "🚫 Acceso denegado al Área 51... por ahora.",
+    "🎲 Tira los dados, el destino aguarda."
 ]
 
 # --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
@@ -127,6 +129,7 @@ if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
+if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0 # Anti-Spam
 
 # Logout automático
 if st.session_state.get("jugador") is not None:
@@ -541,7 +544,10 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         tipo_select = "Poder"
     elif tipo == "COMPRA":
         texto_final = f"SOLICITUD DE COMPRA: {titulo_msg} | Costo: {cuerpo_msg} AP"
-        tipo_select = "Mensaje" 
+        tipo_select = "Mensaje"
+    elif tipo == "SISTEMA":
+        texto_final = f"{titulo_msg} - {cuerpo_msg}"
+        tipo_select = "Mensaje" # O "Sistema" si tienes ese tag en Notion
     else:
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
@@ -995,14 +1001,23 @@ else:
         
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # --- EASTER EGG BUTTON (SYSTEM STATUS) ---
+        # --- EASTER EGG (PROTEGIDO) ---
         c_egg1, c_egg2, c_egg3 = st.columns([1, 2, 1])
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA"):
-                msg = random.choice(SYSTEM_MESSAGES)
-                st.toast(msg, icon="🤖")
-                if random.random() < 0.1: # 10% probabilidad de fiesta
-                    st.balloons()
+                # Anti-Spam: Solo cada 60 seg
+                now = time.time()
+                if now - st.session_state.last_easter_egg > 60:
+                    st.session_state.last_easter_egg = now
+                    msg = random.choice(SYSTEM_MESSAGES)
+                    st.toast(msg, icon="🤖")
+                    
+                    if random.random() < 0.1: # 10% probabilidad de chivatazo y globos
+                        st.balloons()
+                        # Enviar notificación silenciosa a Valerius
+                        enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
+                else:
+                    st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
         
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
