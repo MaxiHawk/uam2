@@ -41,32 +41,35 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- 🎨 TEMAS DE ESCUADRÓN (PALETA DE COLORES) ---
-# Aquí defines los colores para cada bando.
-# Nombre del Escuadrón (Igual a Notion) : { Primary (Neón), Secondary (Fondo/Borde), Text (Títulos) }
+# --- 🎨 TEMAS DE ESCUADRÓN (CONFIRMADOS) ---
 SQUAD_THEMES = {
     "Default": {
-        "primary": "#00e5ff",   # Azul Cian (Original)
+        "primary": "#00e5ff",
         "glow": "rgba(0, 229, 255, 0.5)",
         "gradient_start": "#006064",
         "gradient_end": "#00bcd4",
         "text_highlight": "#4dd0e1"
     },
-    "Egipcios": {  # Basado en tu escudo (Rojo/Dorado)
-        "primary": "#ff2a2a",   # Rojo Intenso
-        "glow": "rgba(255, 42, 42, 0.6)",
-        "gradient_start": "#800000", # Rojo oscuro
-        "gradient_end": "#ff4d4d",   # Rojo claro
-        "text_highlight": "#FFD700"  # Dorado
+    "Egipcios": { 
+        # Basado en el escudo: Rojo Carmesí y Dorado
+        "primary": "#d92626",   # Rojo del borde del escudo
+        "glow": "rgba(255, 215, 0, 0.4)", # Brillo Dorado de las alas
+        "gradient_start": "#8a1c1c",
+        "gradient_end": "#ff5252",
+        "text_highlight": "#ffb300" # Amarillo anaranjado
     },
-    "Visionarios": { # Basado en tus capturas (Morado/Rosa)
-        "primary": "#d500f9",   # Violeta Neón
+    "Visionarios": { 
+        # Morado Místico (Provisional, ajustaremos con tu imagen)
+        "primary": "#d500f9",
         "glow": "rgba(213, 0, 249, 0.5)",
         "gradient_start": "#4a148c",
         "gradient_end": "#ea80fc",
         "text_highlight": "#e040fb"
     },
-    # Agrega más escuadrones aquí...
+    # --- ESPACIO PARA TUS OTROS ESTANDARTES ---
+    # Sube las imágenes y yo te doy los códigos para poner aquí:
+    "Espartanos": { "primary": "#00e5ff", "glow": "rgba(0,229,255,0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
+    "Vikingos": { "primary": "#00e5ff", "glow": "rgba(0,229,255,0.5)", "gradient_start": "#006064", "gradient_end": "#00bcd4", "text_highlight": "#4dd0e1" },
 }
 
 # --- 🖼️ DICCIONARIO DE INSIGNIAS ---
@@ -89,7 +92,6 @@ DEFAULT_BADGE = "assets/insignias/default.png"
 # --- ESTADO DE SESIÓN ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
-# ... otros estados ...
 if "show_intro" not in st.session_state: st.session_state.show_intro = False
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "login_error" not in st.session_state: st.session_state.login_error = None
@@ -111,18 +113,17 @@ if st.session_state.get("jugador") is not None:
 
 # --- DETERMINAR COLORES DEL TEMA ---
 current_squad = st.session_state.squad_name
-# Buscar si el nombre del escuadrón está en el diccionario, si no, usar Default
 if current_squad and current_squad in SQUAD_THEMES:
     THEME = SQUAD_THEMES[current_squad]
 else:
     THEME = SQUAD_THEMES["Default"]
 
-# --- CSS DINÁMICO (USANDO VARIABLES) ---
+# --- CSS DINÁMICO ---
 st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
-        /* DEFINICIÓN DE VARIABLES CSS SEGÚN ESCUADRÓN */
+        /* VARIABLES DE TEMA */
         :root {{
             --primary-color: {THEME['primary']};
             --glow-color: {THEME['glow']};
@@ -133,7 +134,7 @@ st.markdown(f"""
             --bg-card: rgba(10, 25, 40, 0.7);
         }}
 
-        /* --- 1. CONFIGURACIÓN GLOBAL --- */
+        /* GLOBALES */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
         }}
@@ -147,7 +148,7 @@ st.markdown(f"""
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ display: none !important; }}
         
-        /* --- 2. CONTENCIÓN ARMÓNICA --- */
+        /* CONTENCIÓN CENTRADA */
         [data-testid="stForm"] {{
             max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
         }}
@@ -156,9 +157,7 @@ st.markdown(f"""
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
-        /* --- 3. COMPONENTES VISUALES --- */
-        
-        /* Botones */
+        /* BOTONES */
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
             background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); 
@@ -177,11 +176,11 @@ st.markdown(f"""
             border: 1px solid var(--primary-color) !important; 
         }}
 
-        /* Perfil */
+        /* PERFIL (Usa Tema) */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
             border: 1px solid var(--primary-color); border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
-            position: relative; box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); text-align: center;
+            position: relative; box-shadow: 0 0 50px rgba(0, 0, 0, 0.3); text-align: center;
         }}
         .profile-avatar-wrapper {{ 
             position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; 
@@ -193,14 +192,14 @@ st.markdown(f"""
         .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }}
         .profile-role {{ color: var(--text-highlight); font-size: 1em; margin-bottom: 15px; }}
         
-        /* HUD */
+        /* HUD (FIX: COLORES FIJOS, IGNORAN TEMA) */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
         .epic-number {{ font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }}
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
 
-        /* Habilidades */
+        /* Habilidades (Usa Tema) */
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
@@ -209,7 +208,7 @@ st.markdown(f"""
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
         
-        /* Ranking & Logs */
+        /* Ranking & Logs (Usa Tema) */
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
         .rank-cell {{ padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }}
@@ -223,7 +222,7 @@ st.markdown(f"""
         .log-body {{ font-size: 0.95em; color: #fff; margin-bottom: 5px; }}
         .log-reply {{ background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 4px; font-size: 0.9em; color: var(--text-highlight); margin-top: 8px; border-left: 2px solid var(--primary-color); }}
 
-        /* Energy Core */
+        /* Energy Core (Usa Tema) */
         .energy-core {{ 
             background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); 
             border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; 
@@ -235,59 +234,30 @@ st.markdown(f"""
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
         .energy-val {{ font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary-color); line-height: 1; }}
 
-        /* --- 4. SISTEMA DE INSIGNIAS (SOLIDO + VISIBILITY) --- */
+        /* BADGES (Usa Tema) */
         .badge-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }}
-        
         .badge-wrapper {{ position: relative; }} 
         .badge-toggle {{ display: none; }} 
-
-        .badge-card {{ 
-            background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; 
-            text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; 
-            cursor: pointer; user-select: none; 
-        }}
+        .badge-card {{ background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; cursor: pointer; user-select: none; }}
         .badge-card:hover {{ border-color: var(--primary-color); transform: translateY(-5px); box-shadow: 0 0 15px var(--glow-color); }}
         .badge-img-container {{ width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }}
         .badge-img {{ width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }}
         .badge-name {{ font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }}
 
         /* MODAL */
-        .badge-hologram-wrapper {{
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
-            z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-        }}
-        
+        .badge-hologram-wrapper {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }}
         .badge-toggle:checked ~ .badge-hologram-wrapper {{ opacity: 1; visibility: visible; pointer-events: auto; }}
-
         .badge-close-backdrop {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }}
         .holo-content {{ position: relative; z-index: 1000001; pointer-events: auto; cursor: default; }}
-
-        .holo-img {{ 
-            width: 250px; height: 250px; object-fit: contain; 
-            filter: drop-shadow(0 0 30px var(--primary-color)); 
-            animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; 
-        }}
+        .holo-img {{ width: 250px; height: 250px; object-fit: contain; filter: drop-shadow(0 0 30px var(--primary-color)); animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; }}
         .holo-title {{ font-family: 'Orbitron'; font-size: 2em; color: var(--text-highlight); text-transform: uppercase; text-shadow: 0 0 20px var(--primary-color); margin-bottom: 10px; }}
         .holo-desc {{ color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }}
-        
-        .holo-close-btn {{
-            display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px;
-            color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;
-            cursor: pointer; transition: 0.3s;
-        }}
+        .holo-close-btn {{ display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px; color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }}
         .holo-close-btn:hover {{ background: #ff1744; border-color: #ff1744; box-shadow: 0 0 15px #ff1744; }}
-
         @keyframes holo-float {{ 0%, 100% {{ transform: translateY(0) scale(1); }} 50% {{ transform: translateY(-10px) scale(1.05); }} }}
 
-        /* --- 5. NEWS TICKER --- */
-        .ticker-wrap {{
-            width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
-            overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); 
-            border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color);
-            display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box;
-        }}
+        /* NEWS TICKER */
+        .ticker-wrap {{ width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--primary-color); border-bottom: 1px solid var(--primary-color); display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box; }}
         .ticker {{ display: inline-block; white-space: nowrap; padding-right: 100%; box-sizing: content-box; animation: ticker-animation 80s linear infinite; }}
         .ticker-wrap:hover .ticker {{ animation-play-state: paused; }}
         .ticker-item {{ display: inline-block; padding: 0 2rem; font-size: 0.9em; color: var(--text-highlight); font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }}
@@ -324,6 +294,30 @@ st.markdown(f"""
         }}
     </style>
 """, unsafe_allow_html=True)
+
+# --- SISTEMA DE LOGOUT AUTOMÁTICO ---
+if "last_active" not in st.session_state:
+    st.session_state.last_active = time.time()
+
+if st.session_state.get("jugador") is not None:
+    if time.time() - st.session_state.last_active > SESSION_TIMEOUT:
+        st.session_state.jugador = None
+        st.session_state.clear()
+        st.rerun()
+    else:
+        st.session_state.last_active = time.time()
+
+# --- ESTADO DE SESIÓN ---
+if "jugador" not in st.session_state: st.session_state.jugador = None
+if "show_intro" not in st.session_state: st.session_state.show_intro = False
+if "team_stats" not in st.session_state: st.session_state.team_stats = 0
+if "squad_name" not in st.session_state: st.session_state.squad_name = None
+if "login_error" not in st.session_state: st.session_state.login_error = None
+if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
+if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
+if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
+if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
+if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 
 # --- HELPERS ---
 def get_img_as_base64(file_path):
@@ -527,6 +521,7 @@ def actualizar_datos_sesion():
 # --- FUNCIÓN NOTICIAS (HÍBRIDA) ---
 @st.cache_data(ttl=600) # Guardar en caché 10 mins para no quemar la API
 def obtener_noticias():
+    # 1. Noticias de respaldo (LORE POR DEFECTO)
     noticias = [
         "📡 Transmisión entrante desde Sector UAM-01...",
         "⚠️ Tormentas de iones detectadas en el cuadrante norte.",
@@ -534,6 +529,8 @@ def obtener_noticias():
         "🏆 El ranking se actualiza en tiempo real.",
         "🔐 La seguridad de la red Praxis es estable."
     ]
+    
+    # 2. Intentar leer de Notion (si existe DB_NOTICIAS_ID)
     if DB_NOTICIAS_ID:
         try:
             url = f"https://api.notion.com/v1/databases/{DB_NOTICIAS_ID}/query"
@@ -551,9 +548,10 @@ def obtener_noticias():
                         noticias_notion.append(f"💠 {texto}")
                     except: pass
                 if noticias_notion:
-                    noticias = noticias_notion
+                    noticias = noticias_notion # Sobreescribir con las reales
         except: pass
-    return "   |   ".join(noticias)
+        
+    return "   |   ".join(noticias) # Unir todas en una cinta
 
 # --- LOGIN ---
 def validar_login():
@@ -577,7 +575,7 @@ def validar_login():
                         st.session_state.jugador = props
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
-                        st.session_state.show_intro = True
+                        st.session_state.show_intro = True # ACTIVAR INTRO
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -616,9 +614,44 @@ def cerrar_sesion():
     st.session_state.ano_actual = None
     st.session_state.estado_uam = None
 
-# --- INTRO EPIC SEQUENCE (OVERLAY) ---
+# --- INTRO EPIC SEQUENCE (FULLSCREEN OVERLAY) ---
 def play_intro_sequence():
     placeholder = st.empty()
+    
+    # CSS para Overlay a pantalla completa que flota sobre todo
+    st.markdown("""
+    <style>
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(0, 255, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0); } }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        
+        .intro-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(5, 8, 16, 0.95); backdrop-filter: blur(10px);
+            z-index: 999999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; font-family: 'Courier New', monospace; overflow: hidden;
+        }
+        .scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 20px;
+            background: rgba(0, 255, 128, 0.1); opacity: 0.6; animation: scanline 4s linear infinite; pointer-events: none;
+        }
+        .core-loader {
+            width: 120px; height: 120px; border: 4px solid #00ff80; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            animation: pulse-green 2s infinite; background: rgba(0, 20, 10, 0.8); margin-bottom: 30px;
+        }
+        .core-text { font-size: 3em; color: #00ff80; }
+        .status-text {
+            color: #00ff80; font-size: 1.2em; text-transform: uppercase; letter-spacing: 3px;
+            border-right: 3px solid #00ff80; white-space: nowrap; overflow: hidden;
+            animation: typing 3s steps(40, end); max-width: 80%;
+        }
+        .bar-container { width: 300px; height: 6px; background: #1c2e3e; margin-top: 20px; border-radius: 3px; }
+        .bar-fill { height: 100%; background: #00ff80; width: 0%; transition: width 0.1s; box-shadow: 0 0 10px #00ff80; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # HTML del Overlay
     intro_html = """
     <div class="intro-overlay">
         <div class="scanline"></div>
@@ -635,8 +668,9 @@ def play_intro_sequence():
         </script>
     </div>
     """
+    
     placeholder.markdown(intro_html, unsafe_allow_html=True)
-    time.sleep(3.5)
+    time.sleep(3.5) # Esperar a que la "animación" visual termine
     placeholder.empty()
 
 # ================= UI PRINCIPAL =================
@@ -677,11 +711,13 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
+    # --- SECUENCIA DE INTRODUCCIÓN ---
     if st.session_state.show_intro:
         play_intro_sequence()
         st.session_state.show_intro = False
         st.rerun()
 
+    # --- NEWS TICKER (NOTICIAS EN CINTA) ---
     news_text = obtener_noticias()
     st.markdown(f"""
     <div class="ticker-wrap">
@@ -727,10 +763,12 @@ else:
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
+    # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
     tab_perfil, tab_ranking, tab_habilidades, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📡 COMUNICACIONES"])
     
+    # --- TAB 1: PERFIL ---
     with tab_perfil:
         avatar_url = None
         try:
@@ -771,6 +809,7 @@ else:
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
         
+        # --- HUD: FORZAMOS COLORES ORIGINALES (HARDCODED) ---
         hud_html = textwrap.dedent(f"""
             <div class="hud-grid">
                 <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
@@ -778,9 +817,9 @@ else:
                     <div class="epic-number" style="color:#FFD700;">{mp}</div>
                     <div class="hud-label">MasterPoints</div>
                 </div>
-                <div class="hud-card" style="border-bottom: 3px solid {THEME['primary']};">
+                <div class="hud-card" style="border-bottom: 3px solid #00e5ff;">
                     <img src="data:image/png;base64,{b64_ap}" class="hud-icon">
-                    <div class="epic-number" style="color:{THEME['primary']};">{ap}</div>
+                    <div class="epic-number" style="color:#00e5ff;">{ap}</div>
                     <div class="hud-label">AngioPoints</div>
                 </div>
                 <div class="hud-card" style="border-bottom: 3px solid #ff4b4b;">
@@ -792,6 +831,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
+        # --- SECCIÓN SALÓN DE LA FAMA (CHECKBOX HACK CORREGIDO) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -822,6 +862,7 @@ else:
             
         st.markdown("<br>", unsafe_allow_html=True)
         
+        # --- BOTONES DE PIE DE PÁGINA (CONTROL DE SESIÓN) ---
         c_refresh, c_logout = st.columns(2)
         with c_refresh:
             if st.button("ACTUALIZAR"):
@@ -831,11 +872,13 @@ else:
                 cerrar_sesion()
                 st.rerun()
 
+    # --- TAB 2: RANKING ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
         if df is not None and not df.empty:
             max_mp = int(df["MasterPoints"].max()) if df["MasterPoints"].max() > 0 else 1
+            
             table_rows = ""
             for i, (index, row) in enumerate(df.head(10).iterrows()):
                 rank = i + 1
@@ -844,6 +887,7 @@ else:
                 points = row["MasterPoints"]
                 pct = (points / max_mp) * 100
                 table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
+            
             st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
             
             st.markdown("### 🛡️ TOP ESCUADRONES")
@@ -866,9 +910,11 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
+    # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
         
+        # ENERGY CORE HUD
         core_html = f"""
         <div class="energy-core">
             <div class="energy-left">
@@ -900,6 +946,7 @@ else:
                     grayscale = "" if desbloqueada else "filter: grayscale(100%);"
                     
                     banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
+                    
                     ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
 
                     card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{desc}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
@@ -909,6 +956,7 @@ else:
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
                         if desbloqueada:
+                            # --- MODAL DE CONFIRMACIÓN (POPOVER) ---
                             with st.popover("💠 PREPARAR", use_container_width=True):
                                 st.markdown(f"### ⚠️ Confirmación de Conjuro")
                                 st.markdown(f"Estás a punto de activar **{nombre}**.")
@@ -929,6 +977,7 @@ else:
                             nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
                             st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
 
+    # --- TAB 4: COMUNICACIONES ---
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
