@@ -132,7 +132,7 @@ else:
     if not found:
         THEME = SQUAD_THEMES["Default"]
 
-# --- CSS DINÁMICO (BORDES SUAVIZADOS) ---
+# --- CSS DINÁMICO ---
 st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
@@ -147,6 +147,7 @@ st.markdown(f"""
             --bg-card: rgba(10, 25, 40, 0.7);
         }}
 
+        /* GLOBALES */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
         }}
@@ -160,6 +161,7 @@ st.markdown(f"""
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ display: none !important; }}
         
+        /* CONTENCIÓN CENTRADA */
         [data-testid="stForm"] {{
             max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
         }}
@@ -168,6 +170,7 @@ st.markdown(f"""
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
+        /* BOTONES */
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
             background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); 
@@ -186,33 +189,34 @@ st.markdown(f"""
             border: 1px solid var(--primary-color) !important; 
         }}
 
-        /* --- PERFIL MEJORADO (Borde sutil + Resplandor) --- */
+        /* --- PERFIL MEJORADO (Borde NEUTRO para combinar con todo) --- */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Borde blanco muy sutil */
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Borde sutil neutro */
             border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
-            position: relative; 
-            box-shadow: 0 10px 40px -10px var(--glow-color); /* Resplandor del tema */
+            position: relative; box-shadow: 0 10px 40px -10px var(--glow-color); /* Resplandor del tema */
             text-align: center;
         }}
         .profile-avatar-wrapper {{ 
             position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; 
             border-radius: 50%; padding: 5px; background: var(--bg-dark); 
-            border: 2px solid var(--primary-color); box-shadow: 0 0 25px var(--glow-color); z-index: 10; 
+            /* Borde AVATAR NEUTRO (Blanco Plata) para que no choque con colores fuertes */
+            border: 2px solid #e0f7fa; 
+            box-shadow: 0 0 25px var(--glow-color); z-index: 10; 
         }}
         .profile-avatar {{ width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }}
         .profile-content {{ margin-top: 90px; }}
         .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }}
         .profile-role {{ color: var(--text-highlight); font-size: 1em; margin-bottom: 15px; }}
         
-        /* HUD (Colores fijos) */
+        /* HUD */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
         .epic-number {{ font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }}
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
 
-        /* Habilidades (Usa Tema) */
+        /* Habilidades */
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
@@ -221,7 +225,7 @@ st.markdown(f"""
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
         
-        /* Ranking & Logs (Usa Tema) */
+        /* Ranking & Logs */
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
         .rank-cell {{ padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }}
@@ -235,7 +239,7 @@ st.markdown(f"""
         .log-body {{ font-size: 0.95em; color: #fff; margin-bottom: 5px; }}
         .log-reply {{ background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 4px; font-size: 0.9em; color: var(--text-highlight); margin-top: 8px; border-left: 2px solid var(--primary-color); }}
 
-        /* Energy Core (Usa Tema) */
+        /* Energy Core */
         .energy-core {{ 
             background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); 
             border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; 
@@ -247,13 +251,12 @@ st.markdown(f"""
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
         .energy-val {{ font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary-color); line-height: 1; }}
 
-        /* BADGES (Usa Tema) */
+        /* BADGES */
         .badge-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }}
         .badge-wrapper {{ position: relative; }} 
         .badge-toggle {{ display: none; }} 
         .badge-card {{ background: var(--bg-card); border: 1px solid #333; border-radius: 8px; padding: 10px 5px; text-align: center; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px; cursor: pointer; user-select: none; }}
-        /* Borde sutil al pasar el mouse */
-        .badge-card:hover {{ border-color: rgba(255,255,255,0.3); transform: translateY(-5px); box-shadow: 0 0 20px var(--glow-color); }}
+        .badge-card:hover {{ border-color: var(--primary-color); transform: translateY(-5px); box-shadow: 0 0 15px var(--glow-color); }}
         .badge-img-container {{ width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }}
         .badge-img {{ width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }}
         .badge-name {{ font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }}
@@ -278,6 +281,7 @@ st.markdown(f"""
         @keyframes ticker-animation {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
 
         @media (max-width: 768px) {{
+            /* ... (ajustes móviles) ... */
             .profile-container {{ margin-top: 50px; }}
             .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }}
             .profile-name {{ font-size: 1.8em; }}
@@ -314,17 +318,32 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- NUEVA FUNCIÓN DE BÚSQUEDA DE IMAGEN (SOPORTA SUB-CARPETA) ---
+# --- NUEVA FUNCIÓN DE BÚSQUEDA INTELIGENTE DE IMAGEN ---
 def find_squad_image(squad_name):
     if not squad_name: return None
-    clean_name = squad_name.lower().strip().replace(" ", "_")
-    # Lista priorizada: primero busca en 'estandartes'
+    
+    # 1. Limpieza estándar
+    clean_full = squad_name.lower().strip().replace(" ", "_")
+    
+    # 2. Extracción de apellido (Última palabra)
+    # Ejemplo: "Clan de Judkins" -> "Judkins"
+    parts = squad_name.split(" ")
+    keyword = parts[-1].strip()
+    
     candidates = [
-        f"assets/estandartes/{clean_name}.png",
-        f"assets/estandartes/{clean_name}.jpg",
-        f"assets/{clean_name}_team.png", 
-        f"assets/{clean_name}.png"
+        # Prioridad 1: Carpeta estandartes con apellido capitalizado (GitHub es Case Sensitive)
+        f"assets/estandartes/{keyword.capitalize()}.png",
+        f"assets/estandartes/{keyword.capitalize()}.jpg",
+        
+        # Prioridad 2: Carpeta estandartes con nombre completo limpio
+        f"assets/estandartes/{clean_full}.png",
+        f"assets/estandartes/{clean_full}.jpg",
+        
+        # Prioridad 3: Carpeta raíz (Legacy)
+        f"assets/{clean_full}_team.png", 
+        f"assets/{clean_full}.png"
     ]
+    
     for path in candidates:
         if os.path.exists(path): return path
     return None
