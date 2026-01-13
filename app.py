@@ -224,7 +224,7 @@ st.markdown(f"""
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }}
 
-        /* --- BARRA DE PROGRESO DE NIVEL --- */
+        /* --- BARRA DE PROGRESO DE NIVEL (GOLD) --- */
         .level-progress-wrapper {{
             width: 80%; margin: 0 auto 20px auto; 
         }}
@@ -233,14 +233,15 @@ st.markdown(f"""
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
         }}
         .level-progress-fill {{
-            height: 100%; background: var(--primary-color); border-radius: 5px;
-            box-shadow: 0 0 10px var(--glow-color);
+            height: 100%; background: #FFD700; /* Color Fijo Dorado */
+            border-radius: 5px;
+            box-shadow: 0 0 15px #FFD700; /* Glow Fijo Dorado */
             transition: width 1s ease-in-out;
         }}
         .level-progress-text {{
             font-size: 0.8em; color: #aaa; margin-top: 5px; letter-spacing: 1px;
         }}
-        .level-progress-text strong {{ color: #fff; }}
+        .level-progress-text strong {{ color: #FFD700; }} /* Texto dorado también */
 
         /* HUD */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
@@ -379,36 +380,18 @@ def calcular_nivel_usuario(mp):
     else: return 5
 
 def calcular_progreso_nivel(mp):
-    # Definir rangos: Lvl 1 (0-50), Lvl 2 (51-150), etc.
-    # Retorna: (puntos_actuales_en_nivel, total_necesario_nivel, porcentaje, faltante, es_max)
-    
     thresholds = {1: 50, 2: 150, 3: 300, 4: 500}
-    
     nivel_actual = calcular_nivel_usuario(mp)
-    
-    if nivel_actual >= 5:
-        return 1, 1, 100, 0, True # Max level
-    
-    # Calcular base y techo del nivel actual
+    if nivel_actual >= 5: return 1, 1, 100, 0, True
     techo = thresholds[nivel_actual]
-    # La base es el techo del nivel anterior + 1 (o 0 si es nivel 1)
     base = thresholds[nivel_actual - 1] + 1 if nivel_actual > 1 else 0
-    
-    # Puntos obtenidos dentro de este nivel
     progreso_actual = mp - base
-    if progreso_actual < 0: progreso_actual = 0 # Safety check
-    
-    # Total de puntos que tiene este nivel de ancho
-    total_nivel = techo - base + 1 # +1 para incluir el rango completo
-    if nivel_actual == 1: total_nivel = 51 # 0 to 50 is 51 points
-    
-    # Porcentaje
+    if progreso_actual < 0: progreso_actual = 0
+    total_nivel = techo - base + 1
+    if nivel_actual == 1: total_nivel = 51
     pct = (progreso_actual / total_nivel) * 100
     if pct > 100: pct = 100
-    
-    # Puntos faltantes para el siguiente nivel (techo + 1)
     faltantes = (techo + 1) - mp
-    
     return progreso_actual, total_nivel, pct, faltantes, False
 
 def cargar_habilidades_rol(rol_jugador):
