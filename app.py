@@ -65,8 +65,7 @@ st.markdown("""
         
         /* --- FIX: SCROLL HORIZONTAL & FONDO --- */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-            overflow-x: hidden !important;
-            background-color: #050810;
+            overflow-x: hidden !important; background-color: #050810;
         }
         
         /* GENERAL */
@@ -76,37 +75,24 @@ st.markdown("""
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
-        /* BOTONES PRINCIPALES */
+        /* BOTONES */
         .stButton>button { 
-            width: 100%; border-radius: 8px; 
-            background: linear-gradient(90deg, #006064, #00bcd4); 
-            color: white; border: none; 
-            font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; 
-            transition: 0.3s; 
+            width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); 
+            color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; 
         }
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
         
-        /* BOTONES SECUNDARIOS (MINIMALISTAS) */
-        div[data-testid="column"] .stButton>button {
-            background: rgba(0, 229, 255, 0.1);
-            border: 1px solid #00e5ff;
-            color: #00e5ff;
-            font-size: 0.8em;
-        }
-        div[data-testid="column"] .stButton>button:hover {
-            background: #00e5ff; color: #000;
-        }
+        div[data-testid="column"] .stButton>button { background: rgba(0, 229, 255, 0.1); border: 1px solid #00e5ff; color: #00e5ff; font-size: 0.8em; }
+        div[data-testid="column"] .stButton>button:hover { background: #00e5ff; color: #000; }
 
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* --- ESTILOS DE TARJETAS (CON LIMITADOR DE ANCHO) --- */
-        /* Agregamos max-width y margin auto para centrar en escritorio */
-        
+        /* --- ESTILOS DE TARJETAS --- */
         .profile-container { 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
             border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
             position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center;
-            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
+            max-width: 700px; margin-left: auto; margin-right: auto;
         }
         .profile-avatar-wrapper { position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; border-radius: 50%; padding: 5px; background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10; }
         .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
@@ -114,10 +100,7 @@ st.markdown("""
         .profile-name { font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
         .profile-role { color: #4dd0e1; font-size: 1em; margin-bottom: 15px; }
         
-        .hud-grid { 
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; 
-            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
-        }
+        .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; max-width: 700px; margin-left: auto; margin-right: auto; }
         .hud-card { background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }
         .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
@@ -151,58 +134,96 @@ st.markdown("""
             border: 2px solid #00e5ff; border-radius: 12px; padding: 15px 25px;
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
-            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
+            max-width: 700px; margin-left: auto; margin-right: auto;
         }
         .energy-left { display: flex; align-items: center; gap: 15px; }
         .energy-icon-large { width: 60px; height: 60px; filter: drop-shadow(0 0 8px #00e5ff); }
         .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
         .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
-        /* BADGE GRID */
+        /* --- BADGE INTERACTIVE SYSTEM (ZOOM) --- */
         .badge-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
             margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;
-            max-width: 700px; margin-left: auto; margin-right: auto; /* CENTRADO ESCRITORIO */
+            max-width: 700px; margin-left: auto; margin-right: auto;
         }
+        
+        /* El Wrapper maneja el Foco */
+        .badge-wrapper {
+            position: relative; outline: none; /* Quita el borde azul del navegador */
+            cursor: pointer;
+        }
+
+        /* Tarjeta visible (Miniatura) */
         .badge-card {
             background: rgba(10, 20, 30, 0.8); border: 1px solid #333; border-radius: 8px;
             padding: 10px 5px; text-align: center; transition: 0.3s;
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px;
         }
-        .badge-card:hover { 
-            border-color: #FFD700; transform: translateY(-5px) scale(1.05); 
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); z-index: 10;
+        .badge-wrapper:hover .badge-card { 
+            border-color: #FFD700; transform: translateY(-5px); 
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
         }
         .badge-img-container { width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
         .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
         .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
 
-        /* --- NEWS TICKER FULL WIDTH (TRUCO DE MAGIA) --- */
+        /* EL HOLOGRAMA (Modal Oculto) */
+        .badge-hologram {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
+            z-index: 999999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            text-align: center;
+        }
+        
+        /* Cuando el wrapper tiene Foco (Click), mostramos el holograma */
+        .badge-wrapper:focus .badge-hologram {
+            opacity: 1; pointer-events: auto;
+        }
+
+        /* Estilo del contenido del holograma */
+        .holo-img { 
+            width: 250px; height: 250px; object-fit: contain; 
+            filter: drop-shadow(0 0 30px #FFD700); 
+            animation: holo-float 3s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        .holo-title {
+            font-family: 'Orbitron'; font-size: 2em; color: #FFD700; text-transform: uppercase;
+            text-shadow: 0 0 20px #FFD700; margin-bottom: 10px;
+        }
+        .holo-desc {
+            color: #aaa; font-size: 0.9em; letter-spacing: 2px;
+        }
+        .holo-close {
+            margin-top: 30px; padding: 10px 20px; border: 1px solid #555; border-radius: 20px;
+            color: #555; font-size: 0.8em; text-transform: uppercase;
+        }
+
+        @keyframes holo-float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+
+        /* NEWS TICKER */
         .ticker-wrap {
-            /* Rompe el contenedor centrado para ir de borde a borde */
-            width: 100vw; 
-            position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
-            
-            overflow: hidden; height: 35px;
-            background-color: rgba(0, 0, 0, 0.6); 
+            width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
+            overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); 
             border-top: 1px solid #00e5ff; border-bottom: 1px solid #00e5ff;
-            display: flex; align-items: center; margin-bottom: 20px;
+            display: flex; align-items: center; margin-bottom: 20px; box-sizing: border-box;
         }
         .ticker {
             display: inline-block; white-space: nowrap; padding-right: 100%;
-            box-sizing: content-box;
-            animation: ticker-animation 80s linear infinite;
+            box-sizing: content-box; animation: ticker-animation 80s linear infinite;
         }
         .ticker-wrap:hover .ticker { animation-play-state: paused; }
-        
         .ticker-item {
             display: inline-block; padding: 0 2rem; font-size: 0.9em; 
             color: #FFD700; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
         }
-        @keyframes ticker-animation {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
-        }
+        @keyframes ticker-animation { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
 
         @media (max-width: 768px) {
             .profile-container { margin-top: 50px; }
@@ -231,6 +252,9 @@ st.markdown("""
             .badge-card { height: 110px; }
             .badge-img-container { width: 50px; height: 50px; }
             .badge-name { font-size: 0.6em; }
+            /* Holo Mobile */
+            .holo-img { width: 200px; height: 200px; }
+            .holo-title { font-size: 1.5em; }
         }
     </style>
 """, unsafe_allow_html=True)
@@ -784,13 +808,32 @@ else:
             badge_html = '<div class="badge-grid">'
             for badge_name in mis_insignias:
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
+                content_html = '<div style="font-size:40px;">🏅</div>' # Fallback
+                
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
+                    # Imagen HD para el holograma (usamos la misma por ahora, idealmente una mayor resolución)
+                    holo_html = f'<img src="data:image/png;base64,{b64_badge}" class="holo-img">'
                 else:
-                    content_html = '<div style="font-size:40px;">🏅</div>'
+                    holo_html = '<div style="font-size:100px;">🏅</div>'
 
-                badge_html += f"""<div class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></div>"""
+                # --- ESTRUCTURA FOCUS TRAP PARA ZOOM ---
+                badge_html += f"""
+                <div class="badge-wrapper" tabindex="0">
+                    <div class="badge-card">
+                        <div class="badge-img-container">{content_html}</div>
+                        <div class="badge-name">{badge_name}</div>
+                    </div>
+                    
+                    <div class="badge-hologram">
+                        {holo_html}
+                        <div class="holo-title">{badge_name}</div>
+                        <div class="holo-desc">INSIGNIA DESBLOQUEADA</div>
+                        <div class="holo-close">Toca fuera para cerrar</div>
+                    </div>
+                </div>
+                """
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
             
