@@ -39,27 +39,26 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- 🖼️ DICCIONARIO DE INSIGNIAS GRÁFICAS ---
-# Clave (Izquierda): El nombre EXACTO que pusiste en la etiqueta de Notion.
-# Valor (Derecha): La ruta al archivo renombrado (sin tildes).
-
+# --- 🖼️ DICCIONARIO DE INSIGNIAS ---
+# ¡OJO! PEGA AQUÍ TU MAPA DE IMÁGENES SI LO TIENES PERSONALIZADO
 BADGE_MAP = {
-    # Misiones (Ejemplos basados en tu imagen)
+    # Misiones (Ejemplo)
     "Misión 1": "assets/insignias/mision_1.png",
     "Misión 2": "assets/insignias/mision_2.png",
     "Misión 3": "assets/insignias/mision_3.png",
     
-    # Otros logros (Asegúrate que coincidan con tus etiquetas de Notion)
+    # Logros
     "Primer Sangre": "assets/insignias/primer_sangre.png",
     "Francotirador": "assets/insignias/francotirador.png",
     "Erudito":       "assets/insignias/erudito.png",
     "Veterano":      "assets/insignias/veterano.png",
-    
-    # ... agrega aquí todas tus etiquetas de Notion
+    "Hacker":        "assets/insignias/hacker.png",
+    "Curador":       "assets/insignias/curador.png",
+    "Velocista":     "assets/insignias/velocista.png",
+    "Imparable":     "assets/insignias/imparable.png",
+    "Legendario":    "assets/insignias/legendario.png"
 }
-
-# Ruta de imagen por defecto si falta alguna
-DEFAULT_BADGE = "assets/insignias/default.png"
+DEFAULT_BADGE = "assets/insignias/default.png" 
 
 # --- CSS: ESTÉTICA BLUE NEON (RESPONSIVE) ---
 st.markdown("""
@@ -76,6 +75,9 @@ st.markdown("""
         .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
+        
+        /* SIDEBAR */
+        [data-testid="stSidebar"] { background-color: #0a141f; border-right: 1px solid #1c2e3e; }
         
         /* ESTILOS RESPONSIVE */
         .profile-container { background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center; }
@@ -125,7 +127,7 @@ st.markdown("""
         .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
         .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
-        /* --- BADGE GRID GRÁFICO --- */
+        /* BADGE GRID */
         .badge-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
             margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;
@@ -432,6 +434,23 @@ def validar_login():
         else: st.session_state.login_error = "⚠️ Error de conexión"
     except Exception as e: st.session_state.login_error = f"Error técnico: {e}"
 
+# --- NUEVA FUNCIÓN: ACTUALIZAR DATOS DE SESIÓN SIN LOGOUT ---
+def actualizar_datos_sesion():
+    if "nombre" in st.session_state and st.session_state.nombre:
+        url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+        payload = {"filter": {"property": "Jugador", "title": {"equals": st.session_state.nombre}}}
+        try:
+            res = requests.post(url, headers=headers, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                if len(data["results"]) > 0:
+                    props = data["results"][0]["properties"]
+                    st.session_state.jugador = props # Actualiza puntos e insignias
+                    # Actualizar ranking también
+                    st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
+                    st.rerun() # Recarga suave
+        except: pass
+
 def cerrar_sesion():
     st.session_state.jugador = None
     st.session_state.ranking_data = None
@@ -459,7 +478,7 @@ if not st.session_state.jugador:
             st.text_input("Password:", type="password", key="input_pass")
             st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
         
-        # --- BLOQUE DE RECUPERACIÓN (NUEVO) ---
+        # --- BLOQUE DE RECUPERACIÓN ---
         with st.expander("🆘 ¿Problemas de Acceso?"):
             st.caption("Si olvidaste tu clave, solicita un reinicio al comando.")
             with st.form("reset_form", clear_on_submit=True):
@@ -468,7 +487,6 @@ if not st.session_state.jugador:
                     if reset_user:
                         with st.spinner("Enviando señal de auxilio..."):
                             time.sleep(1)
-                            # Enviar como mensaje general
                             ok = enviar_solicitud("MENSAJE", "SOLICITUD DE RESET", f"El usuario {reset_user} solicita cambio de clave.", reset_user)
                             if ok:
                                 st.success("✅ Solicitud enviada. Contacta a tu profesor.")
@@ -480,6 +498,18 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
+    # --- SIDEBAR: CONTROLES DE SESIÓN ---
+    with st.sidebar:
+        st.header("⚙️ SISTEMA")
+        if st.button("🔄 REFRESCAR DATOS"):
+            actualizar_datos_sesion()
+        
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+        
+        if st.button("🔴 CERRAR SESIÓN"):
+            cerrar_sesion()
+            st.rerun()
+
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -583,8 +613,8 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-# --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO) ---
-        st.markdown("### 🏅 INSIGNIAS GANADAS")
+        # --- SECCIÓN SALÓN DE LA FAMA (BADGES) ---
+        st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
             insignias_data = p.get("Insignias", {}).get("multi_select", [])
@@ -594,31 +624,20 @@ else:
         if not mis_insignias:
             st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
         else:
-            # Renderizar Grid
-            # IMPORTANTE: Todo el HTML debe estar en una sola línea o pegado al margen izquierdo
-            # para evitar que Markdown crea que es un bloque de código.
             badge_html = '<div class="badge-grid">'
-            
             for badge_name in mis_insignias:
-                # 1. Buscar ruta de imagen
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
                 
-                # 2. Decidir si mostramos Imagen o Emoji
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
                 else:
-                    # Si no encuentra la imagen, pone una medalla genérica
                     content_html = '<div style="font-size:40px;">🏅</div>'
 
-                # 3. Construir la tarjeta (SIN ESPACIOS EXTRA AL INICIO)
                 badge_html += f"""<div class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></div>"""
             
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.button("DESCONECTAR", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING ---
     with tab_ranking:
