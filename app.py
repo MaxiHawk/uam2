@@ -578,7 +578,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA (BADGES CON IMÁGENES) ---
+# --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -589,24 +589,26 @@ else:
         if not mis_insignias:
             st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
         else:
+            # Renderizar Grid
+            # IMPORTANTE: Todo el HTML debe estar en una sola línea o pegado al margen izquierdo
+            # para evitar que Markdown crea que es un bloque de código.
             badge_html = '<div class="badge-grid">'
+            
             for badge_name in mis_insignias:
-                # Buscar ruta de imagen, o usar default
+                # 1. Buscar ruta de imagen
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
                 
-                # Convertir a Base64 para mostrar
+                # 2. Decidir si mostramos Imagen o Emoji
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
-                    img_tag = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
+                    content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
                 else:
-                    img_tag = '<div style="font-size:40px;">🏅</div>'
+                    # Si no encuentra la imagen, pone una medalla genérica
+                    content_html = '<div style="font-size:40px;">🏅</div>'
 
-                badge_html += f"""
-                <div class="badge-card">
-                    <div class="badge-img-container">{img_tag}</div>
-                    <div class="badge-name">{badge_name}</div>
-                </div>
-                """
+                # 3. Construir la tarjeta (SIN ESPACIOS EXTRA AL INICIO)
+                badge_html += f"""<div class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></div>"""
+            
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
 
