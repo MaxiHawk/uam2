@@ -5,6 +5,8 @@ import os
 import base64
 import textwrap
 import time 
+from datetime import datetime
+import pytz
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -82,6 +84,14 @@ st.markdown("""
         .rank-cell-last { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
         .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
         .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
+
+        /* LOG DE COMUNICACIONES */
+        .log-card {
+            background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #555;
+        }
+        .log-header { display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa; margin-bottom: 5px; }
+        .log-body { font-size: 0.95em; color: #fff; margin-bottom: 5px; }
+        .log-reply { background: rgba(0, 229, 255, 0.1); padding: 8px; border-radius: 4px; font-size: 0.9em; color: #4dd0e1; margin-top: 8px; border-left: 2px solid #00e5ff; }
 
         @media (max-width: 768px) {
             .profile-container { margin-top: 50px; }
@@ -203,7 +213,6 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
 
-    # Datos de contexto
     uni = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
     ano = st.session_state.ano_actual if st.session_state.ano_actual else "Sin Año"
 
@@ -214,14 +223,48 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
             "Mensaje": {"rich_text": [{"text": {"content": texto_final}}]},
             "Procesado": {"checkbox": False},
             "Tipo": {"select": {"name": tipo_select}},
-            # --- FIX: AGREGAR STATUS PENDIENTE Y CONTEXTO ---
-            "Status": {"select": {"name": "Pendiente"}},
+            "Status": {"select": {"name": "Pendiente"}}, # Estado inicial
             "Universidad": {"select": {"name": uni}},
             "Año": {"select": {"name": ano}}
         }
     }
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
     return res.status_code == 200
+
+# --- NUEVA FUNCIÓN: OBTENER HISTORIAL DE MIS SOLICITUDES ---
+def obtener_mis_solicitudes(jugador_nombre):
+    url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
+    payload = {
+        "filter": {"property": "Remitente", "title": {"equals": jugador_nombre}},
+        "sorts": [{"timestamp": "created_time", "direction": "descending"}],
+        "page_size": 15 # Traer solo las ultimas 15 para no saturar
+    }
+    res = requests.post(url, headers=headers, json=payload)
+    
+    historial = []
+    if res.status_code == 200:
+        for r in res.json()["results"]:
+            props = r["properties"]
+            try:
+                msg_list = props.get("Mensaje", {}).get("rich_text", [])
+                mensaje = msg_list[0]["text"]["content"] if msg_list else "Sin contenido"
+                
+                status_obj = props.get("Status", {}).get("select")
+                status = status_obj["name"] if status_obj else "Pendiente"
+                
+                obs_list = props.get("Observaciones", {}).get("rich_text", [])
+                obs = obs_list[0]["text"]["content"] if obs_list else None
+                
+                created = r["created_time"]
+                
+                historial.append({
+                    "mensaje": mensaje,
+                    "status": status,
+                    "obs": obs,
+                    "fecha": created
+                })
+            except: pass
+    return historial
 
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
     if not nombre_escuadron or not uni or not ano: return 0
@@ -554,7 +597,7 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
-        # FIX: SPINNER + DELAY + CLEAN
+        # FORMULARIO DE ENVÍO
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
@@ -566,7 +609,50 @@ else:
                         ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                         if ok:
                             st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
+                            time.sleep(1) # Esperar para que Notion indexe
+                            st.rerun() # Recargar para ver el mensaje en la bitácora
                         else:
                             st.error("❌ Error de señal. Verifica las columnas en Notion.")
                 else:
                     st.warning("⚠️ Debes llenar Asunto y Mensaje.")
+        
+        st.markdown("---")
+        st.markdown("#### 📂 BITÁCORA DE COMUNICACIONES")
+        
+        # OBTENER Y MOSTRAR HISTORIAL
+        mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
+        
+        if not mi_historial:
+            st.caption("No hay registros de comunicaciones previas.")
+        else:
+            for item in mi_historial:
+                # Estilos visuales según estado
+                status_color = "#999" # Default
+                icon = "⏳"
+                if item["status"] == "Aprobado":
+                    status_color = "#00e676"; icon = "✅"
+                elif item["status"] == "Rechazado":
+                    status_color = "#ff1744"; icon = "❌"
+                elif item["status"] == "Respuesta":
+                    status_color = "#00e5ff"; icon = "📩"
+                
+                # Formato Fecha Chile
+                try:
+                    utc_dt = datetime.fromisoformat(item['fecha'].replace('Z', '+00:00'))
+                    chile_tz = pytz.timezone('America/Santiago')
+                    local_dt = utc_dt.astimezone(chile_tz)
+                    fecha_str = local_dt.strftime("%d/%m/%Y %H:%M")
+                except: fecha_str = "Fecha desc."
+
+                # HTML Card
+                log_html = f"""
+                <div class="log-card" style="border-left-color: {status_color};">
+                    <div class="log-header">
+                        <span>{fecha_str}</span>
+                        <span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span>
+                    </div>
+                    <div class="log-body">{item['mensaje']}</div>
+                    {f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}
+                </div>
+                """
+                st.markdown(log_html, unsafe_allow_html=True)
