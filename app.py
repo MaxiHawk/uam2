@@ -15,7 +15,6 @@ try:
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
     DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
-    # Intentamos leer la de noticias, si no existe, no explota
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
@@ -172,8 +171,14 @@ st.markdown("""
         .ticker {
             display: inline-block; white-space: nowrap; padding-right: 100%;
             box-sizing: content-box;
-            animation: ticker-animation 30s linear infinite;
+            /* VELOCIDAD: 80s = Muy lento, fácil de leer */
+            animation: ticker-animation 80s linear infinite;
         }
+        /* PAUSA AL PASAR EL MOUSE (UX PRO) */
+        .ticker-wrap:hover .ticker {
+            animation-play-state: paused;
+        }
+        
         .ticker-item {
             display: inline-block; padding: 0 2rem; font-size: 0.9em; 
             color: #FFD700; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
