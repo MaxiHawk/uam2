@@ -584,7 +584,7 @@ else:
         st.markdown(hud_html, unsafe_allow_html=True)
         
 # --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO) ---
-        st.markdown("### 🏅 SALÓN DE LA FAMA")
+        st.markdown("### 🏅 INSIGNIAS GANADAS")
         
         try:
             insignias_data = p.get("Insignias", {}).get("multi_select", [])
