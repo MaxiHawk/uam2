@@ -189,34 +189,58 @@ st.markdown(f"""
             border: 1px solid var(--primary-color) !important; 
         }}
 
-        /* --- PERFIL MEJORADO (Borde NEUTRO para combinar con todo) --- */
+        /* --- PERFIL MEJORADO (Textos Épicos) --- */
         .profile-container {{ 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Borde sutil neutro */
+            border: 1px solid rgba(255, 255, 255, 0.1); 
             border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
-            position: relative; box-shadow: 0 10px 40px -10px var(--glow-color); /* Resplandor del tema */
+            position: relative; box-shadow: 0 10px 40px -10px var(--glow-color); 
             text-align: center;
         }}
         .profile-avatar-wrapper {{ 
             position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; 
             border-radius: 50%; padding: 5px; background: var(--bg-dark); 
-            /* Borde AVATAR NEUTRO (Blanco Plata) para que no choque con colores fuertes */
-            border: 2px solid #e0f7fa; 
-            box-shadow: 0 0 25px var(--glow-color); z-index: 10; 
+            border: 2px solid #e0f7fa; box-shadow: 0 0 25px var(--glow-color); z-index: 10; 
         }}
         .profile-avatar {{ width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }}
         .profile-content {{ margin-top: 90px; }}
-        .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }}
-        .profile-role {{ color: var(--text-highlight); font-size: 1em; margin-bottom: 15px; }}
         
-        /* HUD */
+        /* NOMBRE */
+        .profile-name {{ 
+            font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; 
+            text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }}
+        
+        /* ROL (Texto más legible y elegante) */
+        .profile-role {{ 
+            color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; font-weight: 300; letter-spacing: 1px;
+        }}
+        
+        /* NIVEL (BADGE ÉPICO) */
+        .level-badge {{
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--primary-color);
+            padding: 8px 25px;
+            border-radius: 30px; /* Pill shape */
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4em; /* Más grande */
+            font-weight: 700;
+            color: var(--text-highlight);
+            text-shadow: 0 0 15px var(--glow-color); /* Glow intenso */
+            margin-top: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }}
+        
+        /* HUD (Colores fijos) */
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
         .epic-number {{ font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }}
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
 
-        /* Habilidades */
+        /* Habilidades (Usa Tema) */
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
@@ -225,7 +249,7 @@ st.markdown(f"""
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
         
-        /* Ranking & Logs */
+        /* Ranking & Logs (Usa Tema) */
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
         .rank-cell {{ padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }}
@@ -239,7 +263,7 @@ st.markdown(f"""
         .log-body {{ font-size: 0.95em; color: #fff; margin-bottom: 5px; }}
         .log-reply {{ background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 4px; font-size: 0.9em; color: var(--text-highlight); margin-top: 8px; border-left: 2px solid var(--primary-color); }}
 
-        /* Energy Core */
+        /* Energy Core (Usa Tema) */
         .energy-core {{ 
             background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); 
             border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; 
@@ -281,7 +305,6 @@ st.markdown(f"""
         @keyframes ticker-animation {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
 
         @media (max-width: 768px) {{
-            /* ... (ajustes móviles) ... */
             .profile-container {{ margin-top: 50px; }}
             .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }}
             .profile-name {{ font-size: 1.8em; }}
@@ -318,32 +341,19 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- NUEVA FUNCIÓN DE BÚSQUEDA INTELIGENTE DE IMAGEN ---
 def find_squad_image(squad_name):
     if not squad_name: return None
-    
-    # 1. Limpieza estándar
-    clean_full = squad_name.lower().strip().replace(" ", "_")
-    
-    # 2. Extracción de apellido (Última palabra)
-    # Ejemplo: "Clan de Judkins" -> "Judkins"
+    clean_name = squad_name.lower().strip().replace(" ", "_")
     parts = squad_name.split(" ")
     keyword = parts[-1].strip()
-    
     candidates = [
-        # Prioridad 1: Carpeta estandartes con apellido capitalizado (GitHub es Case Sensitive)
         f"assets/estandartes/{keyword.capitalize()}.png",
         f"assets/estandartes/{keyword.capitalize()}.jpg",
-        
-        # Prioridad 2: Carpeta estandartes con nombre completo limpio
-        f"assets/estandartes/{clean_full}.png",
-        f"assets/estandartes/{clean_full}.jpg",
-        
-        # Prioridad 3: Carpeta raíz (Legacy)
-        f"assets/{clean_full}_team.png", 
-        f"assets/{clean_full}.png"
+        f"assets/estandartes/{clean_name}.png",
+        f"assets/estandartes/{clean_name}.jpg",
+        f"assets/{clean_name}_team.png", 
+        f"assets/{clean_name}.png"
     ]
-    
     for path in candidates:
         if os.path.exists(path): return path
     return None
