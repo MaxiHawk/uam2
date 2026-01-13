@@ -63,36 +63,49 @@ st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
-        /* --- FIX: SCROLL HORIZONTAL & FONDO --- */
+        /* --- 1. CONFIGURACIÓN GLOBAL Y FONDO --- */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             overflow-x: hidden !important; background-color: #050810;
         }
-        
-        /* GENERAL */
         h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
         .block-container { padding-top: 1rem !important; overflow-x: hidden; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
-        /* BOTONES */
+        /* --- 2. CONTENCIÓN ARMÓNICA (CENTRAR TODO EN ESCRITORIO) --- */
+        /* Esta clase y reglas aseguran que nada se estire al 100% en PC */
+        
+        /* Centrar Formularios Nativos de Streamlit */
+        [data-testid="stForm"] {
+            max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
+        }
+        
+        /* Contenedores personalizados */
+        .centered-container, .profile-container, .hud-grid, .badge-grid, 
+        .energy-core, .rank-table, .log-card, .skill-card-container {
+            max-width: 700px; 
+            margin-left: auto !important; 
+            margin-right: auto !important;
+        }
+
+        /* --- 3. COMPONENTES VISUALES --- */
+        
+        /* Botones */
         .stButton>button { 
             width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); 
             color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; 
         }
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
-        
         div[data-testid="column"] .stButton>button { background: rgba(0, 229, 255, 0.1); border: 1px solid #00e5ff; color: #00e5ff; font-size: 0.8em; }
         div[data-testid="column"] .stButton>button:hover { background: #00e5ff; color: #000; }
-
         .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
-        
-        /* --- ESTILOS DE TARJETAS --- */
+
+        /* Perfil */
         .profile-container { 
             background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
             border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
             position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center;
-            max-width: 700px; margin-left: auto; margin-right: auto;
         }
         .profile-avatar-wrapper { position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; border-radius: 50%; padding: 5px; background: #050810; border: 2px solid #00e5ff; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); z-index: 10; }
         .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
@@ -100,100 +113,100 @@ st.markdown("""
         .profile-name { font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
         .profile-role { color: #4dd0e1; font-size: 1em; margin-bottom: 15px; }
         
-        .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; max-width: 700px; margin-left: auto; margin-right: auto; }
+        /* HUD */
+        .hud-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
         .hud-card { background: rgba(10, 25, 40, 0.7); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }
         .hud-icon { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }
         .epic-number { font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }
         .hud-label { font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }
 
-        /* ENERGY CORE HUD */
+        /* Habilidades */
+        .skill-card-container { display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }
+        .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }
+        .skill-banner-img { width: 100%; height: 100%; object-fit: cover; }
+        .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
+        .skill-cost-col { width: 100px; flex-shrink: 0; background: rgba(0, 229, 255, 0.05); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
+        .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; }
+        .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }
+        
+        /* Ranking */
+        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        .rank-row { background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }
+        .rank-cell { padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }
+        .rank-cell-rank { border-left: 1px solid #1c2e3e; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: bold; color: #00e5ff; font-family: 'Orbitron'; font-size: 1.2em; width: 50px; text-align: center; }
+        .rank-cell-last { border-right: 1px solid #1c2e3e; border-top-right-radius: 8px; border-bottom-right-radius: 8px; width: 40%; }
+        .bar-bg { background: #0f1520; height: 8px; border-radius: 4px; width: 100%; margin-right: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
+
+        /* Logs */
+        .log-card { background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #555; }
+        .log-header { display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa; margin-bottom: 5px; }
+        .log-body { font-size: 0.95em; color: #fff; margin-bottom: 5px; }
+        .log-reply { background: rgba(0, 229, 255, 0.1); padding: 8px; border-radius: 4px; font-size: 0.9em; color: #4dd0e1; margin-top: 8px; border-left: 2px solid #00e5ff; }
+
+        /* Energy Core */
         .energy-core {
             background: linear-gradient(90deg, rgba(0, 96, 100, 0.6), rgba(0, 229, 255, 0.1));
             border: 2px solid #00e5ff; border-radius: 12px; padding: 15px 25px;
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
-            max-width: 700px; margin-left: auto; margin-right: auto;
         }
         .energy-left { display: flex; align-items: center; gap: 15px; }
         .energy-icon-large { width: 60px; height: 60px; filter: drop-shadow(0 0 8px #00e5ff); }
         .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
         .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
-        /* --- BADGE INTERACTIVE SYSTEM (CHECKBOX HACK) --- */
+        /* --- 4. SISTEMA DE INSIGNIAS INTERACTIVAS (CORREGIDO) --- */
         .badge-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
             margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;
-            max-width: 700px; margin-left: auto; margin-right: auto;
         }
         
-        /* Ocultar el checkbox real */
-        .badge-toggle { display: none; }
+        .badge-wrapper { position: relative; } /* Quitamos tabindex para evitar salto de foco */
+        .badge-toggle { display: none; } /* Checkbox oculto */
 
-        /* Estilo de la Tarjeta (Label) */
         .badge-card {
             background: rgba(10, 20, 30, 0.8); border: 1px solid #333; border-radius: 8px;
             padding: 10px 5px; text-align: center; transition: 0.3s;
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px;
-            cursor: pointer; position: relative;
+            cursor: pointer; position: relative; user-select: none;
         }
-        .badge-card:hover { 
-            border-color: #FFD700; transform: translateY(-5px); 
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
-        }
+        .badge-card:hover { border-color: #FFD700; transform: translateY(-5px); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
         .badge-img-container { width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
         .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
         .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
 
-        /* EL HOLOGRAMA (Modal) */
+        /* Modal Holográfico */
         .badge-hologram-wrapper {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
-            z-index: 999999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-            text-align: center;
+            z-index: 999999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
         }
         
-        /* Capa de cierre (Backdrop Click) */
-        .badge-close-backdrop {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            cursor: pointer; z-index: 1000000;
-        }
+        .badge-close-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }
+        .holo-content { position: relative; z-index: 1000001; pointer-events: none; }
         
-        /* Contenido del modal (encima del backdrop) */
-        .holo-content {
-            position: relative; z-index: 1000001; pointer-events: none; /* Para que clicks pasen si no hay botones */
-        }
-
-        /* LÓGICA DE APERTURA */
-        .badge-toggle:checked ~ .badge-hologram-wrapper {
-            opacity: 1; pointer-events: auto;
-        }
+        /* Activación */
+        .badge-toggle:checked ~ .badge-hologram-wrapper { opacity: 1; pointer-events: auto; }
 
         .holo-img { 
             width: 250px; height: 250px; object-fit: contain; 
-            filter: drop-shadow(0 0 30px #FFD700); 
-            animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px;
+            filter: drop-shadow(0 0 30px #FFD700); animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px;
         }
-        .holo-title {
-            font-family: 'Orbitron'; font-size: 2em; color: #FFD700; text-transform: uppercase;
-            text-shadow: 0 0 20px #FFD700; margin-bottom: 10px;
-        }
+        .holo-title { font-family: 'Orbitron'; font-size: 2em; color: #FFD700; text-transform: uppercase; text-shadow: 0 0 20px #FFD700; margin-bottom: 10px; }
         .holo-desc { color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }
         
         .holo-close-btn {
             display: inline-block; padding: 10px 25px; border: 1px solid #555; border-radius: 30px;
             color: #fff; background: rgba(255,255,255,0.1); font-size: 0.8em; text-transform: uppercase;
-            pointer-events: auto; cursor: pointer; transition: 0.3s;
+            pointer-events: auto; cursor: pointer; transition: 0.3s; user-select: none;
         }
         .holo-close-btn:hover { background: #ff1744; border-color: #ff1744; }
 
-        @keyframes holo-float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-10px) scale(1.05); }
-        }
+        @keyframes holo-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.05); } }
 
-        /* NEWS TICKER */
+        /* --- 5. NEWS TICKER (FULL WIDTH EXCEPTION) --- */
         .ticker-wrap {
             width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
             overflow: hidden; height: 35px; background-color: rgba(0, 0, 0, 0.6); 
@@ -777,7 +790,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA (CORREGIDO: APLANADO) ---
+        # --- SECCIÓN SALÓN DE LA FAMA (CHECKBOX HACK CORREGIDO) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
@@ -801,7 +814,6 @@ else:
                     content_html = '<div style="font-size:40px;">🏅</div>'
                     holo_html = '<div style="font-size:100px;">🏅</div>'
 
-                # --- FIX: HTML APLANADO EN UNA LÍNEA (SIN SALTOS) PARA EVITAR ERROR DE CÓDIGO ---
                 badge_html += f'<div class="badge-wrapper"><input type="checkbox" id="{modal_id}" class="badge-toggle"><label for="{modal_id}" class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></label><div class="badge-hologram-wrapper"><label for="{modal_id}" class="badge-close-backdrop"></label><div class="holo-content">{holo_html}<div class="holo-title">{badge_name}</div><div class="holo-desc">INSIGNIA DESBLOQUEADA</div><label for="{modal_id}" class="holo-close-btn">CERRAR</label></div></div></div>'
             
             badge_html += '</div>'
