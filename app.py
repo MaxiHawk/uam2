@@ -135,7 +135,7 @@ st.markdown("""
         .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
         .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
-        /* --- 4. SISTEMA DE INSIGNIAS (SOLIDO) --- */
+        /* --- 4. SISTEMA DE INSIGNIAS (VISIBILITY FIX) --- */
         .badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }
         
         .badge-wrapper { position: relative; } 
@@ -147,28 +147,28 @@ st.markdown("""
         .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
         .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
 
-        /* MODAL */
+        /* MODAL CON VISIBILITY FIX */
         .badge-hologram-wrapper {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
-            z-index: 999999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            z-index: 999999; 
+            opacity: 0; visibility: hidden; /* FIX: Ocultar físicamente para no bloquear clicks */
+            transition: opacity 0.3s ease, visibility 0.3s; /* Animación */
             display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
         }
         
-        /* 1. BACKDROP CLICKABLE (Cierra el modal) */
+        /* Activación */
+        .badge-toggle:checked ~ .badge-hologram-wrapper { 
+            opacity: 1; visibility: visible; /* FIX: Mostrar físicamente */
+        }
+
         .badge-close-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }
-        
-        /* 2. CONTENIDO SOLIDO (No cierra al hacer click, excepto en el botón) */
         .holo-content { position: relative; z-index: 1000001; pointer-events: auto; cursor: default; }
-        
-        /* ACTIVACIÓN */
-        .badge-toggle:checked ~ .badge-hologram-wrapper { opacity: 1; pointer-events: auto; }
 
         .holo-img { width: 250px; height: 250px; object-fit: contain; filter: drop-shadow(0 0 30px #FFD700); animation: holo-float 3s ease-in-out infinite; margin-bottom: 20px; }
         .holo-title { font-family: 'Orbitron'; font-size: 2em; color: #FFD700; text-transform: uppercase; text-shadow: 0 0 20px #FFD700; margin-bottom: 10px; }
         .holo-desc { color: #aaa; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 30px; }
         
-        /* 3. BOTÓN CERRAR (Cierra el modal explícitamente) */
         .holo-close-btn {
             display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px;
             color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;
@@ -756,7 +756,7 @@ else:
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # --- SECCIÓN SALÓN DE LA FAMA ---
+        # --- SECCIÓN SALÓN DE LA FAMA (CHECKBOX HACK CORREGIDO) ---
         st.markdown("### 🏅 SALÓN DE LA FAMA")
         
         try:
