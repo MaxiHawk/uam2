@@ -40,14 +40,10 @@ NOMBRES_NIVELES = {
 }
 
 # --- 🖼️ DICCIONARIO DE INSIGNIAS ---
-# ¡OJO! PEGA AQUÍ TU MAPA DE IMÁGENES SI LO TIENES PERSONALIZADO
 BADGE_MAP = {
-    # Misiones (Ejemplo)
     "Misión 1": "assets/insignias/mision_1.png",
     "Misión 2": "assets/insignias/mision_2.png",
     "Misión 3": "assets/insignias/mision_3.png",
-    
-    # Logros
     "Primer Sangre": "assets/insignias/primer_sangre.png",
     "Francotirador": "assets/insignias/francotirador.png",
     "Erudito":       "assets/insignias/erudito.png",
@@ -72,12 +68,29 @@ st.markdown("""
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
-        .stButton>button { width: 100%; border-radius: 8px; background: linear-gradient(90deg, #006064, #00bcd4); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        /* BOTONES PRINCIPALES */
+        .stButton>button { 
+            width: 100%; border-radius: 8px; 
+            background: linear-gradient(90deg, #006064, #00bcd4); 
+            color: white; border: none; 
+            font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; 
+            transition: 0.3s; 
+        }
         .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px #00e5ff; }
-        .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
-        /* SIDEBAR */
-        [data-testid="stSidebar"] { background-color: #0a141f; border-right: 1px solid #1c2e3e; }
+        /* BOTONES SECUNDARIOS (MINIMALISTAS) */
+        div[data-testid="column"] .stButton>button {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid #00e5ff;
+            color: #00e5ff;
+            font-size: 0.8em;
+        }
+        div[data-testid="column"] .stButton>button:hover {
+            background: #00e5ff;
+            color: #000;
+        }
+
+        .stTabs [aria-selected="true"] { background-color: rgba(0, 229, 255, 0.1) !important; color: #00e5ff !important; border: 1px solid #00e5ff !important; }
         
         /* ESTILOS RESPONSIVE */
         .profile-container { background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); border: 1px solid #004d66; border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 0 50px rgba(0, 229, 255, 0.05); text-align: center; }
@@ -382,6 +395,22 @@ def cargar_ranking_filtrado(uni, ano):
     except: return pd.DataFrame()
     return pd.DataFrame()
 
+# --- ACTUALIZACIÓN MANUAL DE DATOS ---
+def actualizar_datos_sesion():
+    if "nombre" in st.session_state and st.session_state.nombre:
+        url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+        payload = {"filter": {"property": "Jugador", "title": {"equals": st.session_state.nombre}}}
+        try:
+            res = requests.post(url, headers=headers, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                if len(data["results"]) > 0:
+                    props = data["results"][0]["properties"]
+                    st.session_state.jugador = props
+                    st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
+                    st.rerun()
+        except: pass
+
 # --- LOGIN ---
 def validar_login():
     usuario = st.session_state.input_user.strip()
@@ -434,23 +463,6 @@ def validar_login():
         else: st.session_state.login_error = "⚠️ Error de conexión"
     except Exception as e: st.session_state.login_error = f"Error técnico: {e}"
 
-# --- NUEVA FUNCIÓN: ACTUALIZAR DATOS DE SESIÓN SIN LOGOUT ---
-def actualizar_datos_sesion():
-    if "nombre" in st.session_state and st.session_state.nombre:
-        url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-        payload = {"filter": {"property": "Jugador", "title": {"equals": st.session_state.nombre}}}
-        try:
-            res = requests.post(url, headers=headers, json=payload)
-            if res.status_code == 200:
-                data = res.json()
-                if len(data["results"]) > 0:
-                    props = data["results"][0]["properties"]
-                    st.session_state.jugador = props # Actualiza puntos e insignias
-                    # Actualizar ranking también
-                    st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
-                    st.rerun() # Recarga suave
-        except: pass
-
 def cerrar_sesion():
     st.session_state.jugador = None
     st.session_state.ranking_data = None
@@ -478,7 +490,6 @@ if not st.session_state.jugador:
             st.text_input("Password:", type="password", key="input_pass")
             st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
         
-        # --- BLOQUE DE RECUPERACIÓN ---
         with st.expander("🆘 ¿Problemas de Acceso?"):
             st.caption("Si olvidaste tu clave, solicita un reinicio al comando.")
             with st.form("reset_form", clear_on_submit=True):
@@ -498,18 +509,6 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # --- SIDEBAR: CONTROLES DE SESIÓN ---
-    with st.sidebar:
-        st.header("⚙️ SISTEMA")
-        if st.button("🔄 REFRESCAR DATOS"):
-            actualizar_datos_sesion()
-        
-        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-        
-        if st.button("🔴 CERRAR SESIÓN"):
-            cerrar_sesion()
-            st.rerun()
-
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -627,7 +626,6 @@ else:
             badge_html = '<div class="badge-grid">'
             for badge_name in mis_insignias:
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
-                
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
@@ -635,9 +633,20 @@ else:
                     content_html = '<div style="font-size:40px;">🏅</div>'
 
                 badge_html += f"""<div class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></div>"""
-            
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # --- BOTONES DE PIE DE PÁGINA (CONTROL DE SESIÓN) ---
+        c_refresh, c_logout = st.columns(2)
+        with c_refresh:
+            if st.button("ACTUALIZAR"):
+                actualizar_datos_sesion()
+        with c_logout:
+            if st.button("DESCONECTAR"):
+                cerrar_sesion()
+                st.rerun()
 
     # --- TAB 2: RANKING ---
     with tab_ranking:
@@ -749,6 +758,7 @@ else:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
         
+        # FIX: SPINNER + DELAY + CLEAN
         with st.form("comms_form_tab", clear_on_submit=True):
             msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
             msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
@@ -760,8 +770,8 @@ else:
                         ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
                         if ok:
                             st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
-                            time.sleep(1)
-                            st.rerun()
+                            time.sleep(1) # Esperar indexado
+                            st.rerun() # Refrescar para ver el mensaje abajo
                         else:
                             st.error("❌ Error de señal. Verifica las columnas en Notion.")
                 else:
