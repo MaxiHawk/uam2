@@ -39,6 +39,23 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
+# --- 🖼️ DICCIONARIO DE INSIGNIAS GRÁFICAS (EDITAR AQUÍ) ---
+# Asocia el nombre exacto de la etiqueta en Notion con la ruta de tu imagen.
+# Si no tienes imagen para alguna, el sistema usará una genérica.
+BADGE_MAP = {
+    "Primer Sangre": "assets/insignias/primer_sangre.png",
+    "Francotirador": "assets/insignias/francotirador.png",
+    "Erudito":       "assets/insignias/erudito.png",
+    "Veterano":      "assets/insignias/veterano.png",
+    "Hacker":        "assets/insignias/hacker.png",
+    "Curador":       "assets/insignias/curador.png",
+    "Velocista":     "assets/insignias/velocista.png",
+    "Imparable":     "assets/insignias/imparable.png",
+    "Legendario":    "assets/insignias/legendario.png"
+}
+# Ruta de imagen por defecto si falta alguna (puedes crear un default.png)
+DEFAULT_BADGE = "assets/insignias/default.png" 
+
 # --- CSS: ESTÉTICA BLUE NEON (RESPONSIVE) ---
 st.markdown("""
     <style>
@@ -103,6 +120,24 @@ st.markdown("""
         .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
         .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
+        /* --- BADGE GRID GRÁFICO --- */
+        .badge-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
+            margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;
+        }
+        .badge-card {
+            background: rgba(10, 20, 30, 0.8); border: 1px solid #333; border-radius: 8px;
+            padding: 10px 5px; text-align: center; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 130px;
+        }
+        .badge-card:hover { 
+            border-color: #FFD700; transform: translateY(-5px) scale(1.05); 
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); z-index: 10;
+        }
+        .badge-img-container { width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+        .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
+        .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
+
         @media (max-width: 768px) {
             .profile-container { margin-top: 50px; }
             .profile-avatar-wrapper { width: 130px; height: 130px; top: -65px; }
@@ -125,6 +160,11 @@ st.markdown("""
             .energy-icon-large { width: 45px; height: 45px; }
             .energy-val { font-size: 2.2em; }
             .energy-label { font-size: 0.7em; }
+            /* Mobile Badges */
+            .badge-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+            .badge-card { height: 110px; }
+            .badge-img-container { width: 50px; height: 50px; }
+            .badge-name { font-size: 0.6em; }
         }
     </style>
 """, unsafe_allow_html=True)
@@ -537,6 +577,40 @@ else:
             </div>
         """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
+        
+        # --- SECCIÓN SALÓN DE LA FAMA (BADGES CON IMÁGENES) ---
+        st.markdown("### 🏅 SALÓN DE LA FAMA")
+        
+        try:
+            insignias_data = p.get("Insignias", {}).get("multi_select", [])
+            mis_insignias = [t["name"] for t in insignias_data]
+        except: mis_insignias = []
+        
+        if not mis_insignias:
+            st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
+        else:
+            badge_html = '<div class="badge-grid">'
+            for badge_name in mis_insignias:
+                # Buscar ruta de imagen, o usar default
+                img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
+                
+                # Convertir a Base64 para mostrar
+                if os.path.exists(img_path):
+                    b64_badge = get_img_as_base64(img_path)
+                    img_tag = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
+                else:
+                    img_tag = '<div style="font-size:40px;">🏅</div>'
+
+                badge_html += f"""
+                <div class="badge-card">
+                    <div class="badge-img-container">{img_tag}</div>
+                    <div class="badge-name">{badge_name}</div>
+                </div>
+                """
+            badge_html += '</div>'
+            st.markdown(badge_html, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
         st.button("DESCONECTAR", on_click=cerrar_sesion)
 
     # --- TAB 2: RANKING ---
@@ -625,12 +699,12 @@ else:
                         if desbloqueada:
                             # --- MODAL DE CONFIRMACIÓN (POPOVER) ---
                             with st.popover("💠 PREPARAR", use_container_width=True):
-                                st.markdown(f"### ⚠️ Confirmación de Habilidad")
+                                st.markdown(f"### ⚠️ Confirmación de Conjuro")
                                 st.markdown(f"Estás a punto de activar **{nombre}**.")
                                 st.info(f"⚡ Costo de Energía: **{costo} AP**")
                                 st.warning("El Sumo Cartógrafo revisará tu solicitud antes de que surta efecto.")
                                 
-                                if st.button("🔥 CONFIRMAR HABILIDAD", key=f"confirm_{hab['id']}"):
+                                if st.button("🔥 CONFIRMAR CONJURO", key=f"confirm_{hab['id']}"):
                                     if puede_pagar:
                                         with st.spinner("Canalizando energía..."):
                                             time.sleep(1.5)
