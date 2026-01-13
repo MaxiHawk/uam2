@@ -63,10 +63,17 @@ st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
         
+        /* --- FIX: SCROLL HORIZONTAL (CRÍTICO) --- */
+        /* Esto fuerza a la app a no permitir scroll lateral bajo ninguna circunstancia */
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+            overflow-x: hidden !important;
+            max-width: 100vw !important;
+        }
+        
         /* GENERAL */
         h1, h2, h3, h4, h5 { font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #00e5ff !important; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
         html, body, [class*="css"] { font-family: 'Roboto', sans-serif; background-color: #050810; color: #e0f7fa; }
-        .block-container { padding-top: 1rem !important; }
+        .block-container { padding-top: 1rem !important; max-width: 100vw; overflow-x: hidden; }
         #MainMenu, header, footer, .stAppDeployButton { display: none !important; }
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
         
@@ -165,19 +172,19 @@ st.markdown("""
             width: 100%; overflow: hidden; height: 35px;
             background-color: rgba(0, 0, 0, 0.6); 
             border-top: 1px solid #00e5ff; border-bottom: 1px solid #00e5ff;
+            /* box-sizing: border-box is vital here to prevent overflow */
+            box-sizing: border-box; 
             padding-left: 100%; margin-bottom: 20px;
-            box-sizing: content-box; display: flex; align-items: center;
+            display: flex; align-items: center;
         }
         .ticker {
             display: inline-block; white-space: nowrap; padding-right: 100%;
+            /* box-sizing: content-box allows it to be calculated correctly for animation */
             box-sizing: content-box;
-            /* VELOCIDAD: 80s = Muy lento, fácil de leer */
-            animation: ticker-animation 80s linear infinite;
+            animation: ticker-animation 80s linear infinite; /* VELOCIDAD LENTA */
         }
         /* PAUSA AL PASAR EL MOUSE (UX PRO) */
-        .ticker-wrap:hover .ticker {
-            animation-play-state: paused;
-        }
+        .ticker-wrap:hover .ticker { animation-play-state: paused; }
         
         .ticker-item {
             display: inline-block; padding: 0 2rem; font-size: 0.9em; 
