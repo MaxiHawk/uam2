@@ -5,6 +5,7 @@ import os
 import base64
 import textwrap
 import time 
+import random
 from datetime import datetime
 import pytz
 
@@ -14,6 +15,8 @@ try:
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
     DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
+    # Intentamos leer la de noticias, si no existe, no explota
+    DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -157,6 +160,28 @@ st.markdown("""
         .badge-img-container { width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
         .badge-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
         .badge-name { font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }
+
+        /* --- NEWS TICKER (CINTA DE NOTICIAS) --- */
+        .ticker-wrap {
+            width: 100%; overflow: hidden; height: 35px;
+            background-color: rgba(0, 0, 0, 0.6); 
+            border-top: 1px solid #00e5ff; border-bottom: 1px solid #00e5ff;
+            padding-left: 100%; margin-bottom: 20px;
+            box-sizing: content-box; display: flex; align-items: center;
+        }
+        .ticker {
+            display: inline-block; white-space: nowrap; padding-right: 100%;
+            box-sizing: content-box;
+            animation: ticker-animation 30s linear infinite;
+        }
+        .ticker-item {
+            display: inline-block; padding: 0 2rem; font-size: 0.9em; 
+            color: #FFD700; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
+        }
+        @keyframes ticker-animation {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
 
         @media (max-width: 768px) {
             .profile-container { margin-top: 50px; }
@@ -412,6 +437,41 @@ def actualizar_datos_sesion():
                     st.rerun()
         except: pass
 
+# --- FUNCIÓN NOTICIAS (HÍBRIDA) ---
+@st.cache_data(ttl=600) # Guardar en caché 10 mins para no quemar la API
+def obtener_noticias():
+    # 1. Noticias de respaldo (LORE POR DEFECTO)
+    noticias = [
+        "📡 Transmisión entrante desde Sector UAM-01...",
+        "⚠️ Tormentas de iones detectadas en el cuadrante norte.",
+        "💡 Consejo: Revisa tus Habilidades antes de cada misión.",
+        "🏆 El ranking se actualiza en tiempo real.",
+        "🔐 La seguridad de la red Praxis es estable."
+    ]
+    
+    # 2. Intentar leer de Notion (si existe DB_NOTICIAS_ID)
+    if DB_NOTICIAS_ID:
+        try:
+            url = f"https://api.notion.com/v1/databases/{DB_NOTICIAS_ID}/query"
+            payload = {
+                "filter": {"property": "Activa", "checkbox": {"equals": True}},
+                "sorts": [{"timestamp": "created_time", "direction": "descending"}]
+            }
+            res = requests.post(url, headers=headers, json=payload)
+            if res.status_code == 200:
+                data = res.json()["results"]
+                noticias_notion = []
+                for n in data:
+                    try:
+                        texto = n["properties"]["Mensaje"]["title"][0]["text"]["content"]
+                        noticias_notion.append(f"💠 {texto}")
+                    except: pass
+                if noticias_notion:
+                    noticias = noticias_notion # Sobreescribir con las reales
+        except: pass
+        
+    return "   |   ".join(noticias) # Unir todas en una cinta
+
 # --- LOGIN ---
 def validar_login():
     usuario = st.session_state.input_user.strip()
@@ -480,72 +540,33 @@ def play_intro_sequence():
     # CSS para Overlay a pantalla completa que flota sobre todo
     st.markdown("""
     <style>
-        @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
-        }
-        @keyframes pulse-green {
-            0% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(0, 255, 128, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0); }
-        }
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-        }
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(0, 255, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0); } }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
         
         .intro-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #050810; /* Fondo base del tema */
-            z-index: 999999; /* Encima de todo */
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            font-family: 'Courier New', monospace;
-            overflow: hidden;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(5, 8, 16, 0.95); backdrop-filter: blur(10px);
+            z-index: 999999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; font-family: 'Courier New', monospace; overflow: hidden;
         }
-        
-        /* Efecto de Scanline */
         .scanline {
             position: absolute; top: 0; left: 0; width: 100%; height: 20px;
-            background: rgba(0, 255, 128, 0.1);
-            opacity: 0.6;
-            animation: scanline 4s linear infinite;
-            pointer-events: none;
+            background: rgba(0, 255, 128, 0.1); opacity: 0.6; animation: scanline 4s linear infinite; pointer-events: none;
         }
-        
         .core-loader {
-            width: 120px; height: 120px;
-            border: 4px solid #00ff80;
-            border-radius: 50%;
+            width: 120px; height: 120px; border: 4px solid #00ff80; border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
-            animation: pulse-green 2s infinite;
-            background: rgba(0, 20, 10, 0.8);
-            margin-bottom: 30px;
+            animation: pulse-green 2s infinite; background: rgba(0, 20, 10, 0.8); margin-bottom: 30px;
         }
-        
-        .core-text {
-            font-size: 3em; color: #00ff80; font-family: 'Orbitron';
-        }
-        
+        .core-text { font-size: 3em; color: #00ff80; }
         .status-text {
-            color: #00ff80; font-size: 1.2em; text-transform: uppercase;
-            letter-spacing: 3px;
-            border-right: 3px solid #00ff80;
-            white-space: nowrap;
-            overflow: hidden;
-            animation: typing 3s steps(40, end);
-            max-width: 80%;
+            color: #00ff80; font-size: 1.2em; text-transform: uppercase; letter-spacing: 3px;
+            border-right: 3px solid #00ff80; white-space: nowrap; overflow: hidden;
+            animation: typing 3s steps(40, end); max-width: 80%;
         }
-        
-        .bar-container {
-            width: 300px; height: 6px; background: #1c2e3e; margin-top: 20px; border-radius: 3px;
-        }
-        .bar-fill {
-            height: 100%; background: #00ff80; width: 0%;
-            transition: width 0.1s;
-            box-shadow: 0 0 10px #00ff80;
-        }
+        .bar-container { width: 300px; height: 6px; background: #1c2e3e; margin-top: 20px; border-radius: 3px; }
+        .bar-fill { height: 100%; background: #00ff80; width: 0%; transition: width 0.1s; box-shadow: 0 0 10px #00ff80; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -553,13 +574,9 @@ def play_intro_sequence():
     intro_html = """
     <div class="intro-overlay">
         <div class="scanline"></div>
-        <div class="core-loader">
-            <div class="core-text">🔒</div>
-        </div>
+        <div class="core-loader"><div class="core-text">🔒</div></div>
         <div class="status-text">CONECTANDO...</div>
-        <div class="bar-container">
-            <div class="bar-fill" id="loading-bar"></div>
-        </div>
+        <div class="bar-container"><div class="bar-fill" id="loading-bar"></div></div>
         <script>
             let bar = document.getElementById('loading-bar');
             let width = 0;
@@ -613,11 +630,21 @@ if not st.session_state.jugador:
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # --- SECUENCIA DE INTRODUCCIÓN (SOLO UNA VEZ AL LOGIN) ---
+    # --- SECUENCIA DE INTRODUCCIÓN ---
     if st.session_state.show_intro:
         play_intro_sequence()
         st.session_state.show_intro = False
         st.rerun()
+
+    # --- NEWS TICKER (NOTICIAS EN CINTA) ---
+    news_text = obtener_noticias()
+    st.markdown(f"""
+    <div class="ticker-wrap">
+        <div class="ticker">
+            <div class="ticker-item">{news_text}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
