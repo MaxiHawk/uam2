@@ -86,12 +86,27 @@ st.markdown("""
         .bar-fill { height: 100%; background-color: #FFD700; border-radius: 4px; box-shadow: 0 0 10px #FFD700; }
 
         /* LOG DE COMUNICACIONES */
-        .log-card {
-            background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #555;
-        }
+        .log-card { background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #555; }
         .log-header { display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa; margin-bottom: 5px; }
         .log-body { font-size: 0.95em; color: #fff; margin-bottom: 5px; }
         .log-reply { background: rgba(0, 229, 255, 0.1); padding: 8px; border-radius: 4px; font-size: 0.9em; color: #4dd0e1; margin-top: 8px; border-left: 2px solid #00e5ff; }
+
+        /* --- ENERGY CORE HUD (NUEVO) --- */
+        .energy-core {
+            background: linear-gradient(90deg, rgba(0, 96, 100, 0.6), rgba(0, 229, 255, 0.1));
+            border: 2px solid #00e5ff;
+            border-radius: 12px;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+        }
+        .energy-left { display: flex; align-items: center; gap: 15px; }
+        .energy-icon-large { width: 60px; height: 60px; filter: drop-shadow(0 0 8px #00e5ff); }
+        .energy-label { font-family: 'Orbitron'; color: #4dd0e1; font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }
+        .energy-val { font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00e5ff; line-height: 1; }
 
         @media (max-width: 768px) {
             .profile-container { margin-top: 50px; }
@@ -110,6 +125,11 @@ st.markdown("""
             .skill-cost-val { font-size: 1.4em; }
             .rank-cell { padding: 8px 5px; font-size: 0.9em; }
             .rank-cell-rank { width: 30px; font-size: 1em; }
+            /* Mobile Energy Core */
+            .energy-core { padding: 10px 15px; }
+            .energy-icon-large { width: 45px; height: 45px; }
+            .energy-val { font-size: 2.2em; }
+            .energy-label { font-size: 0.7em; }
         }
     </style>
 """, unsafe_allow_html=True)
@@ -213,16 +233,8 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
 
-    # Manejo seguro de contexto (por si no está logueado)
-    if "uni_actual" in st.session_state and st.session_state.uni_actual:
-        uni = st.session_state.uni_actual
-    else:
-        uni = "Sin Asignar"
-        
-    if "ano_actual" in st.session_state and st.session_state.ano_actual:
-        ano = st.session_state.ano_actual
-    else:
-        ano = "Sin Año"
+    uni = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
+    ano = st.session_state.ano_actual if st.session_state.ano_actual else "Sin Año"
 
     nuevo_mensaje = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
@@ -573,7 +585,19 @@ else:
     # --- TAB 3: HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
-        st.caption(f"ENERGÍA DISPONIBLE: **{ap} AP**")
+        
+        # --- ENERGY CORE HUD (NUEVO) ---
+        core_html = f"""
+        <div class="energy-core">
+            <div class="energy-left">
+                <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
+                <div class="energy-label">ENERGÍA<br>DISPONIBLE</div>
+            </div>
+            <div class="energy-val">{ap}</div>
+        </div>
+        """
+        st.markdown(core_html, unsafe_allow_html=True)
+
         habilidades = st.session_state.habilidades_data
         if not habilidades:
             st.info("Sin datos en el Grimorio.")
