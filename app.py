@@ -6,6 +6,7 @@ import base64
 import textwrap
 import time 
 import random
+import unicodedata # NUEVA LIBRERÍA PARA LOS CARACTERES ESPECIALES
 from datetime import datetime
 import pytz
 
@@ -362,19 +363,46 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
+# --- NORMALIZADOR DE TEXTO (FIX PARA TILDES) ---
+def normalize_text(text):
+    if not text: return ""
+    return ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
+
+# --- BUSCADOR INTELIGENTE DE IMAGEN ---
 def find_squad_image(squad_name):
     if not squad_name: return None
-    clean_name = squad_name.lower().strip().replace(" ", "_")
+    
+    # 1. Originales
+    original_clean = squad_name.lower().strip().replace(" ", "_")
     parts = squad_name.split(" ")
-    keyword = parts[-1].strip()
+    original_keyword = parts[-1].strip()
+    
+    # 2. Normalizados (Sin tildes/umlauts)
+    norm_full = normalize_text(squad_name).lower().strip().replace(" ", "_")
+    norm_keyword = normalize_text(original_keyword)
+    
     candidates = [
-        f"assets/estandartes/{keyword.capitalize()}.png",
-        f"assets/estandartes/{keyword.capitalize()}.jpg",
-        f"assets/estandartes/{clean_name}.png",
-        f"assets/estandartes/{clean_name}.jpg",
-        f"assets/{clean_name}_team.png", 
-        f"assets/{clean_name}.png"
+        # Prioridad 1: Apellido Exacto (Röntgen.png)
+        f"assets/estandartes/{original_keyword.capitalize()}.png",
+        f"assets/estandartes/{original_keyword.capitalize()}.jpg",
+        
+        # Prioridad 2: Apellido Sin Tildes (Rontgen.png)
+        f"assets/estandartes/{norm_keyword.capitalize()}.png",
+        f"assets/estandartes/{norm_keyword.capitalize()}.jpg",
+        
+        # Prioridad 3: Full Name (guardián_de_röntgen.png)
+        f"assets/estandartes/{original_clean}.png",
+        f"assets/estandartes/{original_clean}.jpg",
+        
+        # Prioridad 4: Full Name Normalized (guardian_de_rontgen.png)
+        f"assets/estandartes/{norm_full}.png",
+        f"assets/estandartes/{norm_full}.jpg",
+        
+        # Legacy
+        f"assets/{original_clean}_team.png", 
+        f"assets/{original_clean}.png"
     ]
+    
     for path in candidates:
         if os.path.exists(path): return path
     return None
@@ -1231,6 +1259,7 @@ else:
     # --- TAB 5: MERCADO NEGRO (NUEVO - NOTION BASED) ---
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
+        # Texto actualizado a Valerius
         st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
         
         core_html = f"""
@@ -1244,6 +1273,7 @@ else:
         """
         st.markdown(core_html, unsafe_allow_html=True)
         
+        # Cargar datos desde Notion (o lista vacía si falla)
         market_items = st.session_state.market_data
         
         if not market_items:
