@@ -1030,4 +1030,3 @@ st.markdown("""
         PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR SUMO CARTÓGRAFO Y VALERIUS
     </div>
 """, unsafe_allow_html=True)
-""", unsafe_allow_html=True)
