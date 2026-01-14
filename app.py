@@ -989,21 +989,17 @@ else:
         st.markdown(profile_html, unsafe_allow_html=True)
         
         # --- EASTER EGG BUTTON (SYSTEM STATUS) ---
-        # Centrado perfecto: Columnas laterales grandes, central pequeña + expandir ancho
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
-            # use_container_width=True llena la columna central perfectamente
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
-                # Anti-Spam: Solo cada 60 seg
                 now = time.time()
                 if now - st.session_state.last_easter_egg > 60:
                     st.session_state.last_easter_egg = now
                     msg = random.choice(SYSTEM_MESSAGES)
                     st.toast(msg, icon="🤖")
                     
-                    if random.random() < 0.1: # 10% probabilidad de chivatazo y globos
+                    if random.random() < 0.1:
                         st.balloons()
-                        # Enviar notificación silenciosa a Valerius
                         enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
                 else:
                     st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
@@ -1062,6 +1058,29 @@ else:
             
         st.markdown("<br>", unsafe_allow_html=True)
         
+        # --- MANUAL DE CAMPO (INSTRUCCIONES) ---
+        with st.expander("📘 MANUAL DE CAMPO: REGLAS DE ENFRENTAMIENTO"):
+            st.markdown("""
+            **Bienvenido a la Red Praxis, Aspirante.**
+            
+            Aquí se forjan las leyendas de la angiografía. Para sobrevivir y ascender, debes dominar los tres recursos vitales:
+            
+            #### 1. 🟡 MasterPoints (MP) - Tu Rango
+            * **¿Qué son?** Representan tu experiencia y conocimiento técnico acumulado.
+            * **¿Cómo se ganan?** Asistencia, notas en exámenes, participación destacada.
+            * **¿Para qué sirven?** Determinan tu **Nivel de Autorización** (1 a 5) y tu posición en el Ranking. ¡Los MP nunca se gastan, solo se acumulan!
+            
+            #### 2. 🔵 AngioPoints (AP) - Tu Moneda
+            * **¿Qué son?** Créditos intercambiables en el mercado negro.
+            * **¿Cómo se ganan?** Misiones secundarias, tareas voluntarias, y encontrar "Easter Eggs".
+            * **¿Para qué sirven?** Para comprar ventajas tácticas (tiempo extra, pistas) o desbloquear habilidades especiales. ¡Cuidado, estos sí se gastan!
+            
+            #### 3. 🔴 VitaPoints (VP) - Tu Supervivencia
+            * **¿Qué son?** Tu salud académica. Empiezas con 100%.
+            * **¿Cómo se pierden?** Errores graves, inasistencias injustificadas, retrasos.
+            * **¿Qué pasa si llegan a 0?** Repruebas la misión (el curso). ¡Mantenlos altos!
+            """)
+
         c_refresh, c_logout = st.columns(2)
         with c_refresh:
             if st.button("ACTUALIZAR"):
@@ -1212,7 +1231,6 @@ else:
     # --- TAB 5: MERCADO NEGRO (NUEVO - NOTION BASED) ---
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
-        # Texto actualizado a Valerius
         st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
         
         core_html = f"""
@@ -1226,7 +1244,6 @@ else:
         """
         st.markdown(core_html, unsafe_allow_html=True)
         
-        # Cargar datos desde Notion (o lista vacía si falla)
         market_items = st.session_state.market_data
         
         if not market_items:
