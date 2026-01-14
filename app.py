@@ -1030,7 +1030,7 @@ st.markdown("""
         PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR VALERIUS
     </div>
 """, unsafe_allow_html=True)
-python
+``````python
 import streamlit as st
 import requests
 import pandas as pd
