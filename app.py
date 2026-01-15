@@ -394,29 +394,35 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v2 (Ajuste de Tamaños y Glow) ---
-def generar_tarjeta_social(badge_name, player_name, badge_path, squad_color):
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v3 (Fixes y Mejoras) ---
+def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squad_color):
     # Crear lienzo (Vertical 9:16) con fondo texturizado
     W, H = 1080, 1920
     bg_color = '#020408'
     img = Image.new('RGB', (W, H), color=bg_color)
     draw = ImageDraw.Draw(img)
-    
+
     # Textura de Fondo (Cuadrícula Cibernética sutil)
     grid_color = "#0a0f1a"
     for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
     for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
 
-    # --- AJUSTE DE FUENTES (Para evitar cortes) ---
+    # --- AJUSTE DE FUENTES (Reducción drástica para evitar cortes) ---
     try:
-        # Reducimos el título principal de 100 a 85 para que quepa bien
-        font_title_main = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 85)
-        font_badge_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 75)
-        font_sub = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 45)
-        font_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 65)
+        # Título principal reducido a 65
+        font_title_main = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 65)
+        # Nombre de la insignia reducido a 65
+        font_badge_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 65)
+        # Subtítulo "ASPIRANTE:"
+        font_sub = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 40)
+        # Nombre del jugador
+        font_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 60)
+        # Nuevo: Nombre del Escuadrón
+        font_squad = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50)
+        # Footer
         font_footer = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 30)
     except:
-        font_title_main = font_badge_name = font_sub = font_name = font_footer = ImageFont.load_default()
+        font_title_main = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
 
     # Bordes de Neón Complejos
     draw.rectangle([40, 40, W-40, H-40], outline=squad_color, width=12)
@@ -435,18 +441,16 @@ def generar_tarjeta_social(badge_name, player_name, badge_path, squad_color):
         draw.text((W//2 - offset, y_pos - offset), text, font=font, fill=glow_color, anchor="mm")
         draw.text((W//2, y_pos), text, font=font, fill=text_color, anchor="mm")
 
-    # Título Superior (Más ajustado)
-    draw_text_with_glow("INSIGNIA DESBLOQUEADA", font_title_main, 430, "white", squad_color, offset=4)
+    # Título Superior (Más ajustado y alto)
+    draw_text_with_glow("INSIGNIA DESBLOQUEADA", font_title_main, 400, "white", squad_color, offset=3)
 
-    # --- MEJORA DE GLOW CENTRAL (Más intenso y difuminado) ---
-    glow_size = 950 # Más grande
+    # --- GLOW CENTRAL ---
+    glow_size = 950
     glow_img = Image.new('RGBA', (glow_size, glow_size), (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow_img)
     sc_rgb = tuple(int(squad_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-    # Mayor opacidad (70 en vez de 40)
-    glow_rgba = sc_rgb + (70,) 
+    glow_rgba = sc_rgb + (70,)
     glow_draw.ellipse((100, 100, glow_size-100, glow_size-100), fill=glow_rgba)
-    # Aplicar desenfoque gaussiano para suavizar el borde del halo
     glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=60))
     img.paste(glow_img, (W//2 - glow_size//2, H//2 - glow_size//2), glow_img)
 
@@ -458,15 +462,19 @@ def generar_tarjeta_social(badge_name, player_name, badge_path, squad_color):
     else:
         draw.text((W//2, H//2), "🏅", font=font_title_main, fill="white", anchor="mm")
 
-    # Nombre de la Insignia
-    draw_text_with_glow(badge_name.upper(), font_badge_name, H//2 + 400, squad_color, "#000000", offset=3)
+    # Nombre de la Insignia (Más abajo)
+    draw_text_with_glow(badge_name.upper(), font_badge_name, H//2 + 420, squad_color, "#000000", offset=3)
 
-    # Textos inferiores (Aspirante)
-    draw.text((W//2, H//2 + 560), "OTORGADO AL ASPIRANTE:", font=font_sub, fill="#aaa", anchor="mm")
-    draw.text((W//2, H//2 + 640), player_name.upper(), font=font_name, fill="white", anchor="mm")
+    # --- CAMBIO DE TEXTO: NEUTRO Y ESCUADRÓN ---
+    # 1. Etiqueta Neutra
+    draw.text((W//2, H//2 + 550), "ASPIRANTE:", font=font_sub, fill="#aaa", anchor="mm")
+    # 2. Nombre del Jugador
+    draw.text((W//2, H//2 + 610), player_name.upper(), font=font_name, fill="white", anchor="mm")
+    # 3. Nombre del Escuadrón (Nuevo)
+    draw_text_with_glow(squad_name.upper(), font_squad, H//2 + 690, squad_color, "#000000", offset=2)
 
     # Footer
-    draw.text((W//2, H - 120), "PRAXIS PRIMORIS SYSTEM // v1.0", font=font_footer, fill="#555", anchor="mm")
+    draw.text((W//2, H - 100), "PRAXIS PRIMORIS SYSTEM // v1.0", font=font_footer, fill="#555", anchor="mm")
 
     # Guardar
     buf = io.BytesIO()
@@ -1165,9 +1173,14 @@ else:
                     # Color del escuadrón actual
                     squad_color = THEME['primary']
                     
-                    if st.button("GENERAR TARJETA"):
+                  if st.button("GENERAR TARJETA"):
                         with st.spinner("Renderizando holograma..."):
-                            img_buffer = generar_tarjeta_social(selected_badge, st.session_state.nombre, badge_path, squad_color)
+                            # --- NUEVO: Obtener el nombre del escuadrón ---
+                            current_squad_name = st.session_state.squad_name if st.session_state.squad_name else "Sin Escuadrón"
+                            
+                            # --- NUEVO: Pasar el nombre del escuadrón a la función ---
+                            img_buffer = generar_tarjeta_social(selected_badge, st.session_state.nombre, current_squad_name, badge_path, squad_color)
+                            
                             st.image(img_buffer, caption="Vista Previa", width=300)
                             st.download_button(
                                 label="⬇️ DESCARGAR IMAGEN",
