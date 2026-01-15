@@ -1056,8 +1056,20 @@ else:
         else:
             for item in market_items:
                 item_is_for_alumni = item['nombre'].startswith("[EX]") or item['nombre'].startswith("[ALUMNI]")
+                
+                # --- LÓGICA DE VISIBILIDAD DE BOTÓN ---
                 puede_ver_boton = True
-                if is_alumni and not item_is_for_alumni: puede_ver_boton = False
+                texto_boton_cerrado = "🔒 CERRADO"
+
+                if is_alumni:
+                    if not item_is_for_alumni:
+                        puede_ver_boton = False
+                        texto_boton_cerrado = "⛔ CICLO CERRADO"
+                else:
+                    # Estudiante Activo: Si es un item EX, lo bloqueamos para generar deseo
+                    if item_is_for_alumni:
+                        puede_ver_boton = False
+                        texto_boton_cerrado = "🔒 SOLO VETERANOS"
                 
                 with st.container():
                     puede_comprar = ap >= item['costo']
@@ -1075,7 +1087,7 @@ else:
                                         else: st.error("Error.")
                                 else: st.error("Fondos insuficientes.")
                         else:
-                            st.button("🔒 CERRADO", disabled=True, key=f"closed_{item['id']}", use_container_width=True)
+                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
