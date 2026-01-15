@@ -800,18 +800,13 @@ if not st.session_state.jugador:
 else:
     # --- LOGICA INTRO PRIORITARIA (SOLUCIÓN PANTALLA VERDE) ---
     if st.session_state.show_intro:
-        # Limpiamos CUALQUIER rastro del login
         main_placeholder.empty()
-        # Ejecutamos la animación
         play_intro_sequence()
-        # Apagamos el flag
         st.session_state.show_intro = False
-        # Recargamos la página para que ahora sí cargue el dashboard limpio
         st.rerun()
 
     # --- DASHBOARD ---
-    # Si llegamos aquí, show_intro ya es False
-    main_placeholder.empty() # Asegurar limpieza
+    main_placeholder.empty() 
 
     news_text = obtener_noticias()
     st.markdown(f"""<div class="ticker-wrap"><div class="ticker"><div class="ticker-item">{news_text}</div></div></div>""", unsafe_allow_html=True)
@@ -824,8 +819,12 @@ else:
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
+    
+    # --- MODO ALUMNI / ESPECTADOR ---
+    is_alumni = (estado_label == "Finalizado")
+
     status_color = "#00e5ff"
-    if estado_label == "Finalizado": status_color = "#ff4b4b"
+    if is_alumni: status_color = "#ff4b4b"
     elif estado_label == "Sin empezar": status_color = "#FFD700"
 
     c_head1, c_head2 = st.columns([1.2, 4.8])
@@ -1005,7 +1004,9 @@ else:
                     st.markdown(card_html, unsafe_allow_html=True)
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
-                        if desbloqueada:
+                        if is_alumni:
+                            st.button(f"⛔ CICLO CERRADO", disabled=True, key=f"alumni_hab_{hab['id']}")
+                        elif desbloqueada:
                             with st.popover("💠 PREPARAR", use_container_width=True):
                                 st.markdown(f"### ⚠️ Confirmación de Conjuro\nEstás a punto de activar **{nombre}**.\n\n⚡ Costo: **{costo} AP**")
                                 if st.button("🔥 CONFIRMAR", key=f"confirm_{hab['id']}"):
@@ -1041,6 +1042,14 @@ else:
             else: st.info("El mercado está vacío.")
         else:
             for item in market_items:
+                # Logica Híbrida: Si es Alumni, solo puede comprar items que empiecen con [ALUMNI] o [EX]
+                # Si es activo, puede comprar todo MENOS los que empiecen con [ALUMNI] o [EX] (Opcional, pero asumiremos acceso total por ahora salvo restricción)
+                item_is_for_alumni = item['nombre'].startswith("[EX]") or item['nombre'].startswith("[ALUMNI]")
+                
+                # Permisos de Compra
+                puede_ver_boton = True
+                if is_alumni and not item_is_for_alumni: puede_ver_boton = False
+                
                 with st.container():
                     puede_comprar = ap >= item['costo']
                     price_color = "#00e5ff" if puede_comprar else "#ff4444"
@@ -1048,29 +1057,37 @@ else:
                     st.markdown(market_html, unsafe_allow_html=True)
                     c1, c2 = st.columns([3, 1])
                     with c2:
-                        if st.button(f"COMPRAR", key=f"buy_{item['id']}", disabled=not puede_comprar, use_container_width=True):
-                            if puede_comprar:
-                                with st.spinner("Procesando..."):
-                                    time.sleep(1)
-                                    if enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre): st.success("✅ Enviado.")
-                                    else: st.error("Error.")
-                            else: st.error("Fondos insuficientes.")
+                        if puede_ver_boton:
+                            if st.button(f"COMPRAR", key=f"buy_{item['id']}", disabled=not puede_comprar, use_container_width=True):
+                                if puede_comprar:
+                                    with st.spinner("Procesando..."):
+                                        time.sleep(1)
+                                        if enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre): st.success("✅ Enviado.")
+                                        else: st.error("Error.")
+                                else: st.error("Fondos insuficientes.")
+                        else:
+                            st.button("🔒 CERRADO", disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
-        st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
-        with st.form("comms_form_tab", clear_on_submit=True):
-            msg_subject = st.text_input("Asunto / Razón:")
-            msg_body = st.text_area("Mensaje:")
-            if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
-                if msg_subject and msg_body:
-                    with st.spinner("Enviando..."):
-                        time.sleep(1)
-                        if enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre): 
-                            st.toast("✅ Enviado")
-                            st.rerun()
-                        else: st.error("Error.")
-                else: st.warning("Completa los campos.")
+        
+        if is_alumni:
+            st.warning("📡 Enlace de comunicaciones desactivado para Aspirantes Finalizados. Solo modo lectura.")
+        else:
+            st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
+            with st.form("comms_form_tab", clear_on_submit=True):
+                msg_subject = st.text_input("Asunto / Razón:")
+                msg_body = st.text_area("Mensaje:")
+                if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
+                    if msg_subject and msg_body:
+                        with st.spinner("Enviando..."):
+                            time.sleep(1)
+                            if enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre): 
+                                st.toast("✅ Enviado")
+                                st.rerun()
+                            else: st.error("Error.")
+                    else: st.warning("Completa los campos.")
+        
         st.markdown("---")
         st.markdown("#### 📂 BITÁCORA DE COMUNICACIONES")
         mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
