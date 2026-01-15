@@ -376,7 +376,7 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v3 (Fixes y Mejoras) ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v3.1 (Título en 2 líneas) ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squad_color):
     W, H = 1080, 1920
     bg_color = '#020408'
@@ -403,14 +403,16 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squa
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
         logo = logo.resize((200, 200))
-        img.paste(logo, (W//2 - 100, 160), logo)
+        img.paste(logo, (W//2 - 100, 140), logo) # Logo un poco más arriba
 
     def draw_text_with_glow(text, font, y_pos, text_color, glow_color, offset=3):
         draw.text((W//2 + offset, y_pos + offset), text, font=font, fill=glow_color, anchor="mm")
         draw.text((W//2 - offset, y_pos - offset), text, font=font, fill=glow_color, anchor="mm")
         draw.text((W//2, y_pos), text, font=font, fill=text_color, anchor="mm")
 
-    draw_text_with_glow("INSIGNIA DESBLOQUEADA", font_title_main, 400, "white", squad_color, offset=3)
+    # --- CAMBIO: Título en DOS LÍNEAS ---
+    draw_text_with_glow("INSIGNIA", font_title_main, 360, "white", squad_color, offset=3)
+    draw_text_with_glow("DESBLOQUEADA", font_title_main, 440, "white", squad_color, offset=3)
 
     glow_size = 950
     glow_img = Image.new('RGBA', (glow_size, glow_size), (0, 0, 0, 0))
