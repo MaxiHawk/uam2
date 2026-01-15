@@ -7,8 +7,10 @@ import textwrap
 import time 
 import random
 import unicodedata
+import io
 from datetime import datetime
 import pytz
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -63,43 +65,24 @@ SYSTEM_MESSAGES = [
 
 # --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
 SQUAD_THEMES = {
-    # TEMA DEFAULT AHORA ES VERDE ESMERALDA / NEÓN (PRAXIS PRIMORIS)
-    "Default": { 
-        "primary": "#00ff9d",   # Verde Neón
-        "glow": "rgba(0, 255, 157, 0.5)", 
-        "gradient_start": "#004d40", # Verde oscuro
-        "gradient_end": "#00bfa5",   # Turquesa
-        "text_highlight": "#69f0ae"  # Verde claro
-    },
-    
-    # 1. ROJOS / CÁLIDOS
+    "Default": { "primary": "#00ff9d", "glow": "rgba(0, 255, 157, 0.5)", "gradient_start": "#004d40", "gradient_end": "#00bfa5", "text_highlight": "#69f0ae" },
     "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
     "Vanguardia de Hales": { "primary": "#bf360c", "glow": "rgba(255, 87, 34, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#d84315", "text_highlight": "#ffab91" },
     "Herederos de Favaloro": { "primary": "#b71c1c", "glow": "rgba(255, 82, 82, 0.5)", "gradient_start": "#7f0000", "gradient_end": "#e53935", "text_highlight": "#ff8a80" },
     "Sombra de Serbinenko": { "primary": "#ff3d00", "glow": "rgba(255, 61, 0, 0.6)", "gradient_start": "#212121", "gradient_end": "#dd2c00", "text_highlight": "#ff9e80" },
     "Forjadores de Forssmann": { "primary": "#c62828", "glow": "rgba(100, 100, 100, 0.5)", "gradient_start": "#263238", "gradient_end": "#b71c1c", "text_highlight": "#eceff1" },
     "Vanguardia de Sigwart": { "primary": "#8d6e63", "glow": "rgba(141, 110, 99, 0.5)", "gradient_start": "#3e2723", "gradient_end": "#a1887f", "text_highlight": "#d7ccc8" },
-
-    # 2. AZULES / CIANES
     "Guardián de Röntgen": { "primary": "#2979ff", "glow": "rgba(41, 121, 255, 0.6)", "gradient_start": "#0d47a1", "gradient_end": "#448aff", "text_highlight": "#82b1ff" },
     "Forjadores de Palmaz": { "primary": "#00b0ff", "glow": "rgba(0, 176, 255, 0.6)", "gradient_start": "#01579b", "gradient_end": "#4fc3f7", "text_highlight": "#80d8ff" },
     "Legión de Cournand": { "primary": "#1565c0", "glow": "rgba(21, 101, 192, 0.5)", "gradient_start": "#0d47a1", "gradient_end": "#42a5f5", "text_highlight": "#90caf9" },
-
-    # 3. AMARILLOS / DORADOS
     "Catalizadores de Bernard": { "primary": "#ffab00", "glow": "rgba(255, 171, 0, 0.5)", "gradient_start": "#ff6f00", "gradient_end": "#ffca28", "text_highlight": "#ffe082" },
     "Vanguardia de Seldinger": { "primary": "#fbc02d", "glow": "rgba(251, 192, 45, 0.5)", "gradient_start": "#f57f17", "gradient_end": "#fff176", "text_highlight": "#fff59d" },
     "Escuadra de Gruentzig": { "primary": "#ffa000", "glow": "rgba(255, 160, 0, 0.5)", "gradient_start": "#ef6c00", "gradient_end": "#ffca28", "text_highlight": "#ffe0b2" },
-    
-    # 4. VERDES
     "Clan de Judkins": { "primary": "#43a047", "glow": "rgba(255, 215, 0, 0.4)", "gradient_start": "#1b5e20", "gradient_end": "#66bb6a", "text_highlight": "#ffd54f" },
-
-    # 5. VIOLETAS / ROSAS
     "Clan de Cesalpino": { "primary": "#9c27b0", "glow": "rgba(156, 39, 176, 0.5)", "gradient_start": "#4a148c", "gradient_end": "#ba68c8", "text_highlight": "#e1bee7" },
     "Compañía de Sones": { "primary": "#7b1fa2", "glow": "rgba(255, 193, 7, 0.4)", "gradient_start": "#4a148c", "gradient_end": "#8e24aa", "text_highlight": "#ffecb3" },
     "Forjadores de Dotter": { "primary": "#f06292", "glow": "rgba(240, 98, 146, 0.6)", "gradient_start": "#880e4f", "gradient_end": "#ff80ab", "text_highlight": "#f8bbd0" },
     "Legión de Guglielmi": { "primary": "#e040fb", "glow": "rgba(224, 64, 251, 0.5)", "gradient_start": "#aa00ff", "gradient_end": "#ea80fc", "text_highlight": "#f3e5f5" },
-
-    # 6. PLATA / BLANCO / NEGRO
     "Hijos de Harvey": { "primary": "#e0e0e0", "glow": "rgba(255, 255, 255, 0.4)", "gradient_start": "#424242", "gradient_end": "#bdbdbd", "text_highlight": "#f5f5f5" },
     "Vanguardia de Cribier": { "primary": "#bdbdbd", "glow": "rgba(233, 30, 99, 0.3)", "gradient_start": "#616161", "gradient_end": "#efefef", "text_highlight": "#f48fb1" },
     "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" }
@@ -152,7 +135,6 @@ current_squad = st.session_state.squad_name
 if current_squad and current_squad in SQUAD_THEMES:
     THEME = SQUAD_THEMES[current_squad]
 else:
-    # Si no hay squad (ej: login) o no se encuentra, usar Default (Verde)
     found = False
     if current_squad:
         for key in SQUAD_THEMES:
@@ -412,6 +394,61 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
+# --- GENERADOR DE IMAGEN SOCIAL (INSTAGRAM STORY) ---
+def generar_tarjeta_social(badge_name, player_name, badge_path, squad_color):
+    # Crear lienzo (Vertical 9:16)
+    W, H = 1080, 1920
+    img = Image.new('RGB', (W, H), color='#050810')
+    draw = ImageDraw.Draw(img)
+    
+    # Intentar cargar fuentes (o usar default si no existen)
+    try:
+        font_title = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 100)
+        font_sub = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 60)
+        font_name = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 50)
+    except:
+        font_title = ImageFont.load_default()
+        font_sub = ImageFont.load_default()
+        font_name = ImageFont.load_default()
+
+    # Dibujar Marcos de Neón
+    draw.rectangle([50, 50, W-50, H-50], outline=squad_color, width=15)
+    draw.rectangle([80, 80, W-80, H-80], outline="#111", width=5)
+
+    # Logo de la App (Si existe)
+    if os.path.exists("assets/logo.png"):
+        logo = Image.open("assets/logo.png").convert("RGBA")
+        logo = logo.resize((200, 200))
+        img.paste(logo, (W//2 - 100, 150), logo)
+
+    # Texto Superior
+    draw.text((W//2, 400), "INSIGNIA DESBLOQUEADA", font=font_sub, fill="white", anchor="mm")
+
+    # Imagen de la Insignia (Grande en el centro)
+    if os.path.exists(badge_path):
+        badge = Image.open(badge_path).convert("RGBA")
+        badge = badge.resize((600, 600)) # Tamaño grande
+        img.paste(badge, (W//2 - 300, H//2 - 300), badge)
+    else:
+        # Placeholder si no hay imagen
+        draw.text((W//2, H//2), "🏅", font=font_title, fill="white", anchor="mm")
+
+    # Nombre de la Insignia
+    draw.text((W//2, H//2 + 350), badge_name.upper(), font=font_title, fill=squad_color, anchor="mm")
+
+    # Otorgado A
+    draw.text((W//2, H//2 + 500), "OTORGADO AL AGENTE:", font=font_sub, fill="#aaa", anchor="mm")
+    draw.text((W//2, H//2 + 580), player_name.upper(), font=font_name, fill="white", anchor="mm")
+
+    # Footer
+    draw.text((W//2, H - 150), "PRAXIS PRIMORIS SYSTEM", font=font_name, fill="#555", anchor="mm")
+
+    # Guardar en buffer
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
 # --- FUNCIONES LÓGICAS ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
@@ -451,18 +488,26 @@ def cargar_habilidades_rol(rol_jugador):
                 try:
                     nombre_list = props.get("Habilidad", {}).get("title", [])
                     nombre = "".join([t.get("plain_text", "") for t in nombre_list]) if nombre_list else "Habilidad Sin Nombre"
+
                     costo = 0
                     if "Costo AP" in props: costo = props["Costo AP"]["number"]
                     elif "Costo" in props: costo = props["Costo"]["number"]
                     elif "Coste" in props: costo = props["Coste"]["number"]
+                    
                     nivel_req = props["Nivel Requerido"]["number"]
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
+                    
                     icon_url = None
                     if "Icono" in props:
                         files = props["Icono"].get("files", [])
-                        if files: icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
-                    habilidades.append({"id": item["id"], "nombre": nombre, "costo": costo, "nivel_req": nivel_req, "descripcion": descripcion, "icon_url": icon_url})
+                        if files:
+                            icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+
+                    habilidades.append({
+                        "id": item["id"], "nombre": nombre, "costo": costo,
+                        "nivel_req": nivel_req, "descripcion": descripcion, "icon_url": icon_url
+                    })
                 except Exception as e: pass
         return habilidades
     except: return []
@@ -470,7 +515,9 @@ def cargar_habilidades_rol(rol_jugador):
 def cargar_codice():
     if not DB_CODICE_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_CODICE_ID}/query"
-    payload = {"sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]}
+    payload = {
+        "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
+    }
     try:
         res = requests.post(url, headers=headers, json=payload)
         items = []
@@ -485,20 +532,30 @@ def cargar_codice():
                     desc = desc_list[0]["text"]["content"] if desc_list else ""
                     tipo_obj = props.get("Tipo", {}).get("select")
                     tipo = tipo_obj["name"] if tipo_obj else "Archivo"
+                    
                     url_recurso = "#"
-                    if "Enlace" in props and props["Enlace"]["url"]: url_recurso = props["Enlace"]["url"]
+                    if "Enlace" in props and props["Enlace"]["url"]:
+                        url_recurso = props["Enlace"]["url"]
                     elif "Archivo" in props:
                         files = props["Archivo"].get("files", [])
-                        if files: url_recurso = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
-                    items.append({"nombre": nombre, "nivel": nivel, "descripcion": desc, "tipo": tipo, "url": url_recurso})
+                        if files:
+                            url_recurso = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+                    
+                    items.append({
+                        "nombre": nombre, "nivel": nivel, "descripcion": desc, "tipo": tipo, "url": url_recurso
+                    })
                 except: pass
         return items
     except: return []
 
+# --- NUEVA FUNCIÓN: CARGAR MERCADO DESDE NOTION ---
 def cargar_mercado():
     if not DB_MERCADO_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MERCADO_ID}/query"
-    payload = {"filter": {"property": "Activo", "checkbox": {"equals": True}}, "sorts": [{"property": "Costo", "direction": "ascending"}]}
+    payload = {
+        "filter": {"property": "Activo", "checkbox": {"equals": True}}, # Solo mostrar items activos
+        "sorts": [{"property": "Costo", "direction": "ascending"}]
+    }
     try:
         res = requests.post(url, headers=headers, json=payload)
         items = []
@@ -506,31 +563,55 @@ def cargar_mercado():
             for r in res.json()["results"]:
                 props = r["properties"]
                 try:
+                    # Nombre
                     nom_list = props.get("Nombre", {}).get("title", [])
                     nombre = nom_list[0]["text"]["content"] if nom_list else "Item"
+                    
+                    # Costo
                     costo = props.get("Costo", {}).get("number", 0) or 0
+                    
+                    # Descripción
                     desc_list = props.get("Descripcion", {}).get("rich_text", [])
                     desc = desc_list[0]["text"]["content"] if desc_list else ""
+                    
+                    # Icono (Texto/Emoji)
                     icon_list = props.get("Icono", {}).get("rich_text", [])
                     icon = icon_list[0]["text"]["content"] if icon_list else "📦"
-                    items.append({"id": r["id"], "nombre": nombre, "costo": costo, "desc": desc, "icon": icon})
+                    
+                    # ID para la key del botón
+                    item_id = r["id"]
+                    
+                    items.append({
+                        "id": item_id,
+                        "nombre": nombre,
+                        "costo": costo,
+                        "desc": desc,
+                        "icon": icon
+                    })
                 except: pass
         return items
     except: return []
 
+# --- FUNCIÓN UNIFICADA DE MENSAJERÍA ---
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
+    
     if tipo == "HABILIDAD":
         texto_final = f"{titulo_msg} | Costo: {cuerpo_msg}"
         tipo_select = "Poder"
     elif tipo == "COMPRA":
         texto_final = f"SOLICITUD DE COMPRA: {titulo_msg} | Costo: {cuerpo_msg} AP"
         tipo_select = "Mensaje"
+    elif tipo == "SISTEMA":
+        texto_final = f"{titulo_msg} - {cuerpo_msg}"
+        tipo_select = "Mensaje" 
     else:
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
+
     uni = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
     ano = st.session_state.ano_actual if st.session_state.ano_actual else "Sin Año"
+
     nuevo_mensaje = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
         "properties": {
@@ -546,10 +627,16 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     res = requests.post(url, headers=headers, json=nuevo_mensaje)
     return res.status_code == 200
 
+# --- NUEVA FUNCIÓN: OBTENER HISTORIAL DE MIS SOLICITUDES ---
 def obtener_mis_solicitudes(jugador_nombre):
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    payload = {"filter": {"property": "Remitente", "title": {"equals": jugador_nombre}}, "sorts": [{"timestamp": "created_time", "direction": "descending"}], "page_size": 15}
+    payload = {
+        "filter": {"property": "Remitente", "title": {"equals": jugador_nombre}},
+        "sorts": [{"timestamp": "created_time", "direction": "descending"}],
+        "page_size": 15 
+    }
     res = requests.post(url, headers=headers, json=payload)
+    
     historial = []
     if res.status_code == 200:
         for r in res.json()["results"]:
@@ -557,25 +644,42 @@ def obtener_mis_solicitudes(jugador_nombre):
             try:
                 msg_list = props.get("Mensaje", {}).get("rich_text", [])
                 mensaje = msg_list[0]["text"]["content"] if msg_list else "Sin contenido"
+                
                 status_obj = props.get("Status", {}).get("select")
                 status = status_obj["name"] if status_obj else "Pendiente"
+                
                 obs_list = props.get("Observaciones", {}).get("rich_text", [])
                 obs = obs_list[0]["text"]["content"] if obs_list else None
+                
                 created = r["created_time"]
-                historial.append({"mensaje": mensaje, "status": status, "obs": obs, "fecha": created})
+                
+                historial.append({
+                    "mensaje": mensaje,
+                    "status": status,
+                    "obs": obs,
+                    "fecha": created
+                })
             except: pass
     return historial
 
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
     if not nombre_escuadron or not uni or not ano: return 0
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    payload = {"filter": {"and": [{"property": "Nombre Escuadrón", "rich_text": {"equals": nombre_escuadron}}, {"property": "Universidad", "select": {"equals": uni}}, {"property": "Año", "select": {"equals": ano}}]}}
+    payload = {
+        "filter": {
+            "and": [
+                {"property": "Nombre Escuadrón", "rich_text": {"equals": nombre_escuadron}},
+                {"property": "Universidad", "select": {"equals": uni}},
+                {"property": "Año", "select": {"equals": ano}}
+            ]
+        }
+    }
     try:
         res = requests.post(url, headers=headers, json=payload)
         total_mp = 0
         if res.status_code == 200:
-            for m in res.json()["results"]:
-                try: val = m["properties"]["MP"]["number"]; total_mp += val if val else 0
+            for miembro in res.json()["results"]:
+                try: val = miembro["properties"]["MP"]["number"]; total_mp += val if val else 0
                 except: pass
         return total_mp
     except: return 0
@@ -583,7 +687,14 @@ def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
 def cargar_ranking_filtrado(uni, ano):
     if not uni or not ano: return pd.DataFrame()
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    payload = {"filter": {"and": [{"property": "Universidad", "select": {"equals": uni}}, {"property": "Año", "select": {"equals": ano}}]}}
+    payload = {
+        "filter": {
+            "and": [
+                {"property": "Universidad", "select": {"equals": uni}},
+                {"property": "Año", "select": {"equals": ano}}
+            ]
+        }
+    }
     try:
         res = requests.post(url, headers=headers, json=payload)
         if res.status_code == 200:
@@ -597,11 +708,15 @@ def cargar_ranking_filtrado(uni, ano):
                     escuadron = esc_obj[0]["text"]["content"] if esc_obj else "Sin Escuadrón"
                     lista.append({"Aspirante": nombre, "Escuadrón": escuadron, "MasterPoints": mp})
                 except: pass
+            
             df = pd.DataFrame(lista)
-            if not df.empty: return df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
-    except: pass
+            if not df.empty:
+                df = df.sort_values(by="MasterPoints", ascending=False).reset_index(drop=True)
+            return df
+    except: return pd.DataFrame()
     return pd.DataFrame()
 
+# --- ACTUALIZACIÓN MANUAL DE DATOS ---
 def actualizar_datos_sesion():
     if "nombre" in st.session_state and st.session_state.nombre:
         url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
@@ -618,32 +733,49 @@ def actualizar_datos_sesion():
                         rol_data = props.get("Rol", {}).get("select")
                         rol_usuario = rol_data["name"] if rol_data else None
                     except: rol_usuario = None
-                    if rol_usuario: st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
+                    if rol_usuario:
+                        st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                     st.session_state.codice_data = cargar_codice()
-                    st.session_state.market_data = cargar_mercado()
+                    st.session_state.market_data = cargar_mercado() # RECARGAR MERCADO
                     st.rerun()
         except: pass
 
-@st.cache_data(ttl=600)
+# --- FUNCIÓN NOTICIAS (HÍBRIDA) ---
+@st.cache_data(ttl=600) # Guardar en caché 10 mins para no quemar la API
 def obtener_noticias():
-    noticias = ["📡 Transmisión entrante desde Sector UAM-01...", "⚠️ Tormentas de iones detectadas...", "💡 Consejo: Revisa tus Habilidades...", "🏆 El ranking se actualiza en tiempo real...", "🔐 Seguridad de la red Praxis: Estable."]
+    # 1. Noticias de respaldo (LORE POR DEFECTO)
+    noticias = [
+        "📡 Transmisión entrante desde Sector UAM-01...",
+        "⚠️ Tormentas de iones detectadas en el cuadrante norte.",
+        "💡 Consejo: Revisa tus Habilidades antes de cada misión.",
+        "🏆 El ranking se actualiza en tiempo real.",
+        "🔐 La seguridad de la red Praxis es estable."
+    ]
+    
+    # 2. Intentar leer de Notion (si existe DB_NOTICIAS_ID)
     if DB_NOTICIAS_ID:
         try:
             url = f"https://api.notion.com/v1/databases/{DB_NOTICIAS_ID}/query"
-            payload = {"filter": {"property": "Activa", "checkbox": {"equals": True}}, "sorts": [{"timestamp": "created_time", "direction": "descending"}]}
+            payload = {
+                "filter": {"property": "Activa", "checkbox": {"equals": True}},
+                "sorts": [{"timestamp": "created_time", "direction": "descending"}]
+            }
             res = requests.post(url, headers=headers, json=payload)
             if res.status_code == 200:
                 data = res.json()["results"]
-                nn = []
+                noticias_notion = []
                 for n in data:
-                    try: 
-                        t = n["properties"]["Mensaje"]["title"][0]["text"]["content"]
-                        nn.append(f"💠 {t}")
+                    try:
+                        texto = n["properties"]["Mensaje"]["title"][0]["text"]["content"]
+                        noticias_notion.append(f"💠 {texto}")
                     except: pass
-                if nn: noticias = nn
+                if noticias_notion:
+                    noticias = noticias_notion # Sobreescribir con las reales
         except: pass
-    return "   |   ".join(noticias)
+        
+    return "   |   ".join(noticias) # Unir todas en una cinta
 
+# --- LOGIN ---
 def validar_login():
     usuario = st.session_state.input_user.strip()
     clave = st.session_state.input_pass.strip()
@@ -659,12 +791,13 @@ def validar_login():
             if len(data["results"]) > 0:
                 props = data["results"][0]["properties"]
                 try:
-                    c_real = props.get("Clave", {}).get("rich_text", [])[0]["text"]["content"]
+                    c_obj = props.get("Clave", {}).get("rich_text", [])
+                    c_real = c_obj[0]["text"]["content"] if c_obj else ""
                     if clave == c_real:
                         st.session_state.jugador = props
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
-                        st.session_state.show_intro = True
+                        st.session_state.show_intro = True # ACTIVAR INTRO
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -672,31 +805,81 @@ def validar_login():
                             st.session_state.ano_actual = ano_data["name"] if ano_data else None
                             estado_data = props.get("Estado UAM", {}).get("select")
                             st.session_state.estado_uam = estado_data["name"] if estado_data else "Desconocido"
-                        except: st.session_state.uni_actual = None; st.session_state.ano_actual = None; st.session_state.estado_uam = "Desconocido"
-                        
-                        sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
-                        sq_name = sq_obj[0]["text"]["content"] if sq_obj else "Sin Escuadrón"
+                        except: 
+                            st.session_state.uni_actual = None; st.session_state.ano_actual = None
+                            st.session_state.estado_uam = "Desconocido"
+                        sq_name = "Sin Escuadrón"
+                        try:
+                            sq_obj = props.get("Nombre Escuadrón", {}).get("rich_text", [])
+                            if sq_obj: sq_name = sq_obj[0]["text"]["content"]
+                        except: pass
                         st.session_state.squad_name = sq_name
                         st.session_state.team_stats = obtener_puntaje_equipo_filtrado(sq_name, st.session_state.uni_actual, st.session_state.ano_actual)
                         st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
+                        try:
+                            rol_data = props.get("Rol", {}).get("select")
+                            rol_usuario = rol_data["name"] if rol_data else None
+                        except: rol_usuario = None
+                        if rol_usuario:
+                            st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                         
-                        rol_data = props.get("Rol", {}).get("select")
-                        rol_usuario = rol_data["name"] if rol_data else None
-                        if rol_usuario: st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                         st.session_state.codice_data = cargar_codice()
-                        st.session_state.market_data = cargar_mercado()
+                        st.session_state.market_data = cargar_mercado() # CARGAR MERCADO AL INICIO
+
                     else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
-                except: st.session_state.login_error = "Error Credenciales"
+                except Exception as e: st.session_state.login_error = f"Error Credenciales: {e}"
             else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
         else: st.session_state.login_error = "⚠️ Error de conexión"
     except Exception as e: st.session_state.login_error = f"Error técnico: {e}"
 
 def cerrar_sesion():
-    st.session_state.clear()
-    st.rerun()
+    st.session_state.jugador = None
+    st.session_state.ranking_data = None
+    st.session_state.habilidades_data = []
+    st.session_state.codice_data = []
+    st.session_state.market_data = []
+    st.session_state.uni_actual = None
+    st.session_state.ano_actual = None
+    st.session_state.estado_uam = None
 
+# --- INTRO EPIC SEQUENCE (FULLSCREEN OVERLAY) ---
 def play_intro_sequence():
     placeholder = st.empty()
+    
+    # CSS para Overlay a pantalla completa que flota sobre todo
+    st.markdown("""
+    <style>
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(0, 255, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0); } }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        
+        .intro-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(5, 8, 16, 0.95); backdrop-filter: blur(10px);
+            z-index: 999999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; font-family: 'Courier New', monospace; overflow: hidden;
+        }
+        .scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 20px;
+            background: rgba(0, 255, 128, 0.1); opacity: 0.6; animation: scanline 4s linear infinite; pointer-events: none;
+        }
+        .core-loader {
+            width: 120px; height: 120px; border: 4px solid #00ff80; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            animation: pulse-green 2s infinite; background: rgba(0, 20, 10, 0.8); margin-bottom: 30px;
+        }
+        .core-text { font-size: 3em; color: #00ff80; }
+        .status-text {
+            color: #00ff80; font-size: 1.2em; text-transform: uppercase; letter-spacing: 3px;
+            border-right: 3px solid #00ff80; white-space: nowrap; overflow: hidden;
+            animation: typing 3s steps(40, end); max-width: 80%;
+        }
+        .bar-container { width: 300px; height: 6px; background: #1c2e3e; margin-top: 20px; border-radius: 3px; }
+        .bar-fill { height: 100%; background: #00ff80; width: 0%; transition: width 0.1s; box-shadow: 0 0 10px #00ff80; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # HTML del Overlay
     intro_html = """
     <div class="intro-overlay">
         <div class="scanline"></div>
@@ -713,8 +896,9 @@ def play_intro_sequence():
         </script>
     </div>
     """
+    
     placeholder.markdown(intro_html, unsafe_allow_html=True)
-    time.sleep(3.5)
+    time.sleep(3.5) # Esperar a que la "animación" visual termine
     placeholder.empty()
 
 # ================= UI PRINCIPAL =================
@@ -745,19 +929,31 @@ if not st.session_state.jugador:
                         with st.spinner("Enviando señal de auxilio..."):
                             time.sleep(1)
                             ok = enviar_solicitud("MENSAJE", "SOLICITUD DE RESET", f"El usuario {reset_user} solicita cambio de clave.", reset_user)
-                            if ok: st.success("✅ Solicitud enviada.")
-                            else: st.error("Error de conexión.")
-                    else: st.warning("Ingresa tu nombre.")
+                            if ok:
+                                st.success("✅ Solicitud enviada. Contacta a tu profesor.")
+                            else:
+                                st.error("Error al conectar con la base de datos.")
+                    else:
+                        st.warning("Ingresa tu nombre de usuario.")
+
     if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
+    # --- SECUENCIA DE INTRODUCCIÓN ---
     if st.session_state.show_intro:
         play_intro_sequence()
         st.session_state.show_intro = False
         st.rerun()
 
+    # --- NEWS TICKER (NOTICIAS EN CINTA) ---
     news_text = obtener_noticias()
-    st.markdown(f"""<div class="ticker-wrap"><div class="ticker"><div class="ticker-item">{news_text}</div></div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="ticker-wrap">
+        <div class="ticker">
+            <div class="ticker-item">{news_text}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
@@ -767,19 +963,24 @@ else:
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
+    
     status_color = "#00e5ff"
     if estado_label == "Finalizado": status_color = "#ff4b4b"
     elif estado_label == "Sin empezar": status_color = "#FFD700"
 
+    # Header
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
         if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px {THEME['glow']};'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
+        
         header_html = textwrap.dedent(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid {THEME['primary']}; padding: 10px; border-radius: 0 10px 10px 0;">
                 <div style="font-family: 'Orbitron', sans-serif; color: {THEME['text_highlight']}; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px {THEME['glow']};">🌌 MULTIVERSO DETECTADO</div>
-                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px {THEME['glow']}; line-height: 1.1; margin-bottom: 8px;">{uni_label.upper()}</div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px {THEME['glow']}; line-height: 1.1; margin-bottom: 8px;">
+                    {uni_label.upper()}
+                </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
                     <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
@@ -789,38 +990,75 @@ else:
         st.markdown(header_html, unsafe_allow_html=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
+
+    # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
     tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "📡 COMUNICACIONES"])
     
+    # --- TAB 1: PERFIL ---
     with tab_perfil:
         avatar_url = None
         try:
             f_list = p.get("Avatar", {}).get("files", [])
-            if f_list: avatar_url = f_list[0].get("file", {}).get("url") or f_list[0].get("external", {}).get("url")
+            if f_list:
+                if "file" in f_list[0]: avatar_url = f_list[0]["file"]["url"]
+                elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
         except: pass
         try: rol = p.get("Rol", {}).get("select")["name"]
         except: rol = "Sin Rol"
         skuad = st.session_state.squad_name
+        
         img_path = find_squad_image(skuad)
         b64_badge = get_img_as_base64(img_path) if img_path else ""
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
+        # PROGRESO NIVEL
         prog_act, prog_total, prog_pct, faltantes, is_max = calcular_progreso_nivel(mp)
+        
+        # HTML BARRA DE PROGRESO
         if is_max:
-            progress_html = f"""<div class="level-progress-wrapper"><div class="level-progress-bg"><div class="level-progress-fill" style="width: 100%; background: #FFD700; box-shadow: 0 0 15px #FFD700;"></div></div><div class="level-progress-text" style="color: #FFD700;"><strong>¡NIVEL MÁXIMO ALCANZADO!</strong></div></div>"""
+            progress_html = f"""
+            <div class="level-progress-wrapper">
+                <div class="level-progress-bg">
+                    <div class="level-progress-fill" style="width: 100%; background: #FFD700; box-shadow: 0 0 15px #FFD700;"></div>
+                </div>
+                <div class="level-progress-text" style="color: #FFD700;"><strong>¡NIVEL MÁXIMO ALCANZADO!</strong></div>
+            </div>
+            """
         else:
-            progress_html = f"""<div class="level-progress-wrapper"><div class="level-progress-bg"><div class="level-progress-fill" style="width: {prog_pct}%;"></div></div><div class="level-progress-text">Faltan <strong>{faltantes} MP</strong> para el siguiente rango</div></div>"""
+            progress_html = f"""
+            <div class="level-progress-wrapper">
+                <div class="level-progress-bg">
+                    <div class="level-progress-fill" style="width: {prog_pct}%;"></div>
+                </div>
+                <div class="level-progress-text">Faltan <strong>{faltantes} MP</strong> para el siguiente rango</div>
+            </div>
+            """
 
         squad_html = ""
         if b64_badge:
             squad_html = f"""<div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;"><div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div><img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,0,0,0.6));"><div style="color:{THEME['text_highlight']}; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div></div>"""
         
         avatar_div = f'<img src="{avatar_url}" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'
-        profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
+        
+        profile_html = f"""
+        <div class="profile-container">
+            <div class="profile-avatar-wrapper">{avatar_div}</div>
+            <div class="profile-content">
+                <div class="profile-name">{st.session_state.nombre}</div>
+                <div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div>
+                <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
+                {progress_html}
+                {squad_html}
+            </div>
+        </div>
+        """.replace('\n', '')
+        
         st.markdown(profile_html, unsafe_allow_html=True)
         
+        # --- EASTER EGG BUTTON (SYSTEM STATUS) ---
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
@@ -829,27 +1067,52 @@ else:
                     st.session_state.last_easter_egg = now
                     msg = random.choice(SYSTEM_MESSAGES)
                     st.toast(msg, icon="🤖")
+                    
                     if random.random() < 0.1:
                         st.balloons()
                         enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
-                else: st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
+                else:
+                    st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
         
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
-        hud_html = textwrap.dedent(f"""<div class="hud-grid"><div class="hud-card" style="border-bottom: 3px solid #FFD700;"><img src="data:image/png;base64,{b64_mp}" class="hud-icon"><div class="epic-number" style="color:#FFD700;">{mp}</div><div class="hud-label">MasterPoints</div></div><div class="hud-card" style="border-bottom: 3px solid #00e5ff;"><img src="data:image/png;base64,{b64_ap}" class="hud-icon"><div class="epic-number" style="color:#00e5ff;">{ap}</div><div class="hud-label">AngioPoints</div></div><div class="hud-card" style="border-bottom: 3px solid #ff4b4b;"><img src="data:image/png;base64,{b64_vp}" class="hud-icon"><div class="epic-number" style="color:#ff4b4b;">{vp}%</div><div class="hud-label">VitaPoints</div></div></div>""").replace('\n', '')
+        
+        hud_html = textwrap.dedent(f"""
+            <div class="hud-grid">
+                <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
+                    <img src="data:image/png;base64,{b64_mp}" class="hud-icon">
+                    <div class="epic-number" style="color:#FFD700;">{mp}</div>
+                    <div class="hud-label">MasterPoints</div>
+                </div>
+                <div class="hud-card" style="border-bottom: 3px solid #00e5ff;">
+                    <img src="data:image/png;base64,{b64_ap}" class="hud-icon">
+                    <div class="epic-number" style="color:#00e5ff;">{ap}</div>
+                    <div class="hud-label">AngioPoints</div>
+                </div>
+                <div class="hud-card" style="border-bottom: 3px solid #ff4b4b;">
+                    <img src="data:image/png;base64,{b64_vp}" class="hud-icon">
+                    <div class="epic-number" style="color:#ff4b4b;">{vp}%</div>
+                    <div class="hud-label">VitaPoints</div>
+                </div>
+            </div>
+        """).replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
         st.markdown("### 🏅 SALÓN DE LA FAMA")
+        
         try:
             insignias_data = p.get("Insignias", {}).get("multi_select", [])
             mis_insignias = [t["name"] for t in insignias_data]
         except: mis_insignias = []
-        if not mis_insignias: st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
+        
+        if not mis_insignias:
+            st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
         else:
             badge_html = '<div class="badge-grid">'
             for i, badge_name in enumerate(mis_insignias):
                 modal_id = f"badge-modal-{i}"
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
+                
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
@@ -857,14 +1120,44 @@ else:
                 else:
                     content_html = '<div style="font-size:40px;">🏅</div>'
                     holo_html = '<div style="font-size:100px;">🏅</div>'
+
                 badge_html += f'<div class="badge-wrapper"><input type="checkbox" id="{modal_id}" class="badge-toggle"><label for="{modal_id}" class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></label><div class="badge-hologram-wrapper"><label for="{modal_id}" class="badge-close-backdrop"></label><div class="holo-content">{holo_html}<div class="holo-title">{badge_name}</div><div class="holo-desc">INSIGNIA DESBLOQUEADA</div><label for="{modal_id}" class="holo-close-btn">CERRAR</label></div></div></div>'
+            
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
+            
         st.markdown("<br>", unsafe_allow_html=True)
         
+        # --- SECCIÓN COMPARTIR (HOLO-TRANSMISIÓN) ---
+        if mis_insignias:
+            with st.expander("📲 CENTRO DE HOLO-TRANSMISIÓN (COMPARTIR)"):
+                st.caption("Genera una tarjeta oficial de tus logros para tus redes.")
+                
+                selected_badge = st.selectbox("Selecciona insignia:", mis_insignias)
+                
+                if selected_badge:
+                    badge_path = BADGE_MAP.get(selected_badge, DEFAULT_BADGE)
+                    # Color del escuadrón actual
+                    squad_color = THEME['primary']
+                    
+                    if st.button("GENERAR TARJETA"):
+                        with st.spinner("Renderizando holograma..."):
+                            img_buffer = generar_tarjeta_social(selected_badge, st.session_state.nombre, badge_path, squad_color)
+                            st.image(img_buffer, caption="Vista Previa", width=300)
+                            st.download_button(
+                                label="⬇️ DESCARGAR IMAGEN",
+                                data=img_buffer,
+                                file_name=f"Praxis_Logro_{selected_badge}.png",
+                                mime="image/png"
+                            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- MANUAL DE CAMPO (INSTRUCCIONES) ---
         with st.expander("📘 MANUAL DE CAMPO: REGLAS DE ENFRENTAMIENTO"):
             st.markdown("""
             **Bienvenido a la Red Praxis, Aspirante.**
+            
             Aquí se forjan las leyendas de la orden de los AngioMasters. Para sobrevivir y ascender, debes dominar los tres recursos vitales:
             
             #### 1. 🟡 MasterPoints (MP) - Tu Rango
@@ -885,9 +1178,12 @@ else:
 
         c_refresh, c_logout = st.columns(2)
         with c_refresh:
-            if st.button("ACTUALIZAR"): actualizar_datos_sesion()
+            if st.button("ACTUALIZAR"):
+                actualizar_datos_sesion()
         with c_logout:
-            if st.button("DESCONECTAR"): cerrar_sesion()
+            if st.button("DESCONECTAR"):
+                cerrar_sesion()
+                st.rerun()
 
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
@@ -903,6 +1199,7 @@ else:
                 pct = (points / max_mp) * 100
                 table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
             st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
+            
             st.markdown("### 🛡️ TOP ESCUADRONES")
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
             if not df_squads.empty:
@@ -915,7 +1212,8 @@ else:
                     pct = (points / max_squad_mp) * 100
                     squad_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{squad_name}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
                 st.markdown(f"""<table class="rank-table">{squad_rows}</table>""", unsafe_allow_html=True)
-            else: st.info("Sin datos de escuadrones.")
+            else:
+                st.info("Sin datos de escuadrones.")
         else:
             st.info(f"Sin datos en el sector {uni_label}.")
             if st.button("🔄 Refrescar Señal"):
@@ -924,109 +1222,229 @@ else:
 
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
-        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val">{ap}</div></div>"""
+        
+        core_html = f"""
+        <div class="energy-core">
+            <div class="energy-left">
+                <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
+                <div class="energy-label">ENERGÍA<br>DISPONIBLE</div>
+            </div>
+            <div class="energy-val">{ap}</div>
+        </div>
+        """
         st.markdown(core_html, unsafe_allow_html=True)
+
         habilidades = st.session_state.habilidades_data
-        if not habilidades: st.info("Sin datos en el Grimorio.")
+        if not habilidades:
+            st.info("Sin datos en el Grimorio.")
         else:
             for hab in habilidades:
-                nombre, costo = hab["nombre"], hab["costo"]
-                desbloqueada, puede_pagar = nivel_num >= hab["nivel_req"], ap >= costo
+                nombre = hab["nombre"]
+                costo = hab["costo"]
+                nivel_req = hab["nivel_req"]
+                desc = hab["descripcion"]
+                icon_url = hab.get("icon_url")
+                
+                desbloqueada = nivel_num >= nivel_req
+                puede_pagar = ap >= costo
+                
                 with st.container():
                     border_color = THEME['primary'] if desbloqueada else "#1c2630"
-                    opacity, grayscale = ("1", "") if desbloqueada else ("0.5", "filter: grayscale(100%);")
-                    banner_html = f'<img src="{hab.get("icon_url")}" class="skill-banner-img">' if hab.get("icon_url") else '<div class="skill-banner-placeholder">💠</div>'
+                    opacity = "1" if desbloqueada else "0.5"
+                    grayscale = "" if desbloqueada else "filter: grayscale(100%);"
+                    
+                    banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
                     ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
-                    card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{hab["descripcion"]}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
+
+                    card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{desc}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
+                    
                     st.markdown(card_html, unsafe_allow_html=True)
+                    
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
                         if desbloqueada:
                             with st.popover("💠 PREPARAR", use_container_width=True):
-                                st.markdown(f"### ⚠️ Confirmación de Conjuro\nEstás a punto de activar **{nombre}**.\n\n⚡ Costo: **{costo} AP**")
-                                if st.button("🔥 CONFIRMAR", key=f"confirm_{hab['id']}"):
+                                st.markdown(f"### ⚠️ Confirmación de Conjuro")
+                                st.markdown(f"Estás a punto de activar **{nombre}**.")
+                                st.info(f"⚡ Costo de Energía: **{costo} AP**")
+                                st.warning("El Sumo Cartógrafo revisará tu solicitud antes de que surta efecto.")
+                                
+                                if st.button("🔥 CONFIRMAR CONJURO", key=f"confirm_{hab['id']}"):
                                     if puede_pagar:
-                                        with st.spinner("Canalizando..."):
-                                            time.sleep(1)
-                                            if enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre): st.toast("✅ Solicitud Enviada")
-                                            else: st.error("Error de enlace.")
+                                        with st.spinner("Canalizando energía..."):
+                                            time.sleep(1.5)
+                                            exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
+                                            if exito:
+                                                st.toast(f"✅ Solicitud Enviada: {nombre}", icon="💠")
+                                            else: 
+                                                st.error("Error de enlace.")
                                     else: st.toast("❌ Energía Insuficiente", icon="⚠️")
-                        else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
+                        else:
+                            nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
+                            st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
 
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
         st.caption("Documentos clasificados recuperados de la Era Dorada.")
+        
         codice_items = st.session_state.codice_data
-        if not codice_items: st.info("Sin registros en el Códice.")
+        
+        if not codice_items:
+            st.info("Sin registros en el Códice. Esperando desencriptación...")
         else:
             for item in codice_items:
-                unlocked = nivel_num >= item["nivel"]
-                lock_class, lock_icon = ("", "🔓") if unlocked else ("locked", "🔒")
-                action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>' if unlocked else f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
-                card_html = f"""<div class="codex-card {lock_class}"><div class="codex-icon">📄</div><div class="codex-info"><div class="codex-title">{item["nombre"]} {lock_icon}</div><div class="codex-desc">{item["descripcion"]}</div></div><div class="codex-action">{action_html}</div></div>"""
+                nivel_req = item["nivel"]
+                unlocked = nivel_num >= nivel_req
+                
+                tipo_icon = "📄"
+                if "Video" in item["tipo"]: tipo_icon = "🎥"
+                elif "Secreto" in item["tipo"]: tipo_icon = "🗝️"
+                
+                lock_class = "" if unlocked else "locked"
+                lock_icon = "🔓" if unlocked else "🔒"
+                
+                action_html = ""
+                if unlocked:
+                    action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
+                else:
+                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {nivel_req} REQ.</span>'
+
+                card_html = f"""
+                <div class="codex-card {lock_class}">
+                    <div class="codex-icon">{tipo_icon}</div>
+                    <div class="codex-info">
+                        <div class="codex-title">{item["nombre"]} {lock_icon}</div>
+                        <div class="codex-desc">{item["descripcion"]}</div>
+                    </div>
+                    <div class="codex-action">
+                        {action_html}
+                    </div>
+                </div>
+                """
                 st.markdown(card_html, unsafe_allow_html=True)
     
+    # --- TAB 5: MERCADO NEGRO (NUEVO - NOTION BASED) ---
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
+        # Texto actualizado a Valerius
         st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
-        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">SALDO<br>ACTUAL</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
+        
+        core_html = f"""
+        <div class="energy-core">
+            <div class="energy-left">
+                <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
+                <div class="energy-label">SALDO<br>ACTUAL</div>
+            </div>
+            <div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div>
+        </div>
+        """
         st.markdown(core_html, unsafe_allow_html=True)
+        
+        # Cargar datos desde Notion (o lista vacía si falla)
         market_items = st.session_state.market_data
+        
         if not market_items:
-            if not DB_MERCADO_ID: st.warning("⚠️ Base de datos de Mercado no configurada.")
-            else: st.info("El mercado está vacío.")
+            if not DB_MERCADO_ID:
+                st.warning("⚠️ Mantenimiento: No se ha configurado la base de datos del Mercado.")
+            else:
+                st.info("El mercado está vacío por ahora. Vuelve más tarde.")
         else:
             for item in market_items:
                 with st.container():
                     puede_comprar = ap >= item['costo']
                     price_color = "#00e5ff" if puede_comprar else "#ff4444"
-                    market_html = f"""<div class="market-card"><div class="market-icon">{item['icon']}</div><div class="market-info"><div class="market-title">{item['nombre']}</div><div class="market-desc">{item['desc']}</div></div><div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">{item['costo']}<span>AP</span></div></div>"""
+                    
+                    market_html = f"""
+                    <div class="market-card">
+                        <div class="market-icon">{item['icon']}</div>
+                        <div class="market-info">
+                            <div class="market-title">{item['nombre']}</div>
+                            <div class="market-desc">{item['desc']}</div>
+                        </div>
+                        <div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">
+                            {item['costo']}
+                            <span>AP</span>
+                        </div>
+                    </div>
+                    """
                     st.markdown(market_html, unsafe_allow_html=True)
+                    
                     c1, c2 = st.columns([3, 1])
                     with c2:
                         if st.button(f"COMPRAR", key=f"buy_{item['id']}", disabled=not puede_comprar, use_container_width=True):
                             if puede_comprar:
-                                with st.spinner("Procesando..."):
+                                with st.spinner("Transfiriendo créditos encriptados..."):
                                     time.sleep(1)
-                                    if enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre): st.success("✅ Enviado.")
-                                    else: st.error("Error.")
-                            else: st.error("Fondos insuficientes.")
+                                    exito = enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre)
+                                    if exito:
+                                        st.success("✅ Transacción enviada. Espera aprobación.")
+                                    else:
+                                        st.error("Error en la red. Intenta de nuevo.")
+                            else:
+                                st.error("Fondos insuficientes.")
 
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
+        
         with st.form("comms_form_tab", clear_on_submit=True):
-            msg_subject = st.text_input("Asunto / Razón:")
-            msg_body = st.text_area("Mensaje:")
+            msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
+            msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
+            
             if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
                 if msg_subject and msg_body:
-                    with st.spinner("Enviando..."):
-                        time.sleep(1)
-                        if enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre): 
-                            st.toast("✅ Enviado")
+                    with st.spinner("Estableciendo enlace encriptado con la base..."):
+                        time.sleep(1.5) 
+                        ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
+                        if ok:
+                            st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
+                            time.sleep(1)
                             st.rerun()
-                        else: st.error("Error.")
-                else: st.warning("Completa los campos.")
+                        else:
+                            st.error("❌ Error de señal. Verifica las columnas en Notion.")
+                else:
+                    st.warning("⚠️ Debes llenar Asunto y Mensaje.")
+        
         st.markdown("---")
         st.markdown("#### 📂 BITÁCORA DE COMUNICACIONES")
+        
         mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
-        if not mi_historial: st.caption("No hay registros.")
+        
+        if not mi_historial:
+            st.caption("No hay registros de comunicaciones previas.")
         else:
             for item in mi_historial:
-                status_color, icon = ("#999", "⏳")
-                if item["status"] == "Aprobado": status_color, icon = "#00e676", "✅"
-                elif item["status"] == "Rechazado": status_color, icon = "#ff1744", "❌"
-                elif item["status"] == "Respuesta": status_color, icon = "#00e5ff", "📩"
-                try: 
+                status_color = "#999"
+                icon = "⏳"
+                if item["status"] == "Aprobado":
+                    status_color = "#00e676"; icon = "✅"
+                elif item["status"] == "Rechazado":
+                    status_color = "#ff1744"; icon = "❌"
+                elif item["status"] == "Respuesta":
+                    status_color = "#00e5ff"; icon = "📩"
+                
+                try:
                     utc_dt = datetime.fromisoformat(item['fecha'].replace('Z', '+00:00'))
-                    fecha_str = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
+                    chile_tz = pytz.timezone('America/Santiago')
+                    local_dt = utc_dt.astimezone(chile_tz)
+                    fecha_str = local_dt.strftime("%d/%m/%Y %H:%M")
                 except: fecha_str = "Fecha desc."
-                log_html = f"""<div class="log-card" style="border-left-color: {status_color};"><div class="log-header"><span>{fecha_str}</span><span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span></div><div class="log-body">{item['mensaje']}</div>{f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}</div>"""
+
+                log_html = f"""
+                <div class="log-card" style="border-left-color: {status_color};">
+                    <div class="log-header">
+                        <span>{fecha_str}</span>
+                        <span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span>
+                    </div>
+                    <div class="log-body">{item['mensaje']}</div>
+                    {f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}
+                </div>
+                """
                 st.markdown(log_html, unsafe_allow_html=True)
 
 # --- FOOTER UNIVERSAL (SIEMPRE VISIBLE AL FINAL) ---
 st.markdown("""
     <div class="footer">
-        PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR SUMO CARTÓGRAFO Y VALERIUS
+        PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR VALERIUS
     </div>
 """, unsafe_allow_html=True)
