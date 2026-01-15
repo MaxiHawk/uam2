@@ -376,24 +376,18 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v6 ("Golden Elite" - Oro Sólido) ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v6 ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
-    # --- COLORES ---
-    neon_color = "#00ff9d" # Verde Neón para estructura y energía
-    gold_color = "#FFD700" # Dorado Sólido para textos principales
-
+    neon_color = "#00ff9d"
+    gold_color = "#FFD700"
     W, H = 1080, 1920
-    # Fondo oscuro
     bg_color = '#010204'
     img = Image.new('RGB', (W, H), color=bg_color)
     draw = ImageDraw.Draw(img)
-
-    # Cuadrícula sutil
     grid_color = "#080c14"
     for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
     for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
 
-    # --- TIPOGRAFÍA ---
     try:
         font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50)
         font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)
@@ -405,18 +399,16 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     except:
         font_title_small = font_title_big = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
 
-    # --- MARCO NEÓN VERDE ---
     offset_frame = 45
     draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=neon_color, width=10)
     draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
-
+    
     node_radius = 20
     corners = [(offset_frame, offset_frame), (W-offset_frame, offset_frame), (offset_frame, H-offset_frame), (W-offset_frame, H-offset_frame)]
     for cx, cy in corners:
         draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=neon_color)
         draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=neon_color, width=4)
 
-    # --- LOGO SUPERIOR (Glow Verde) ---
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
         logo = logo.resize((180, 180))
@@ -425,20 +417,16 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
         img.paste(logo_glow, (W//2 - 90, 130), logo_mask)
         img.paste(logo, (W//2 - 90, 130), logo)
 
-    # --- TÍTULOS SUPERIORES (DORADO SÓLIDO) ---
-    # Dibujamos directamente con el color dorado, sin bordes ni sombras extra.
     draw.text((W//2, 340), "INSIGNIA", font=font_title_small, fill=gold_color, anchor="mm")
     draw.text((W//2, 415), "DESBLOQUEADA", font=font_title_big, fill=gold_color, anchor="mm")
 
-    # --- NÚCLEO DE ENERGÍA VERDE ---
     glow_size = 1000
     glow_img_wide = Image.new('RGBA', (glow_size, glow_size), (0,0,0,0))
     glow_draw_wide = ImageDraw.Draw(glow_img_wide)
     nc_rgb = tuple(int(neon_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-
     glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=nc_rgb + (50,))
     glow_img_wide = glow_img_wide.filter(ImageFilter.GaussianBlur(radius=90))
-
+    
     core_size = 600
     glow_img_core = Image.new('RGBA', (core_size, core_size), (0,0,0,0))
     glow_draw_core = ImageDraw.Draw(glow_img_core)
@@ -448,7 +436,6 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     img.paste(glow_img_wide, (W//2 - glow_size//2, H//2 - glow_size//2 - 50), glow_img_wide)
     img.paste(glow_img_core, (W//2 - core_size//2, H//2 - core_size//2 - 50), glow_img_core)
 
-    # Imagen de la Insignia
     badge_y_center = H//2 - 50
     if os.path.exists(badge_path):
         badge = Image.open(badge_path).convert("RGBA")
@@ -457,17 +444,12 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     else:
         draw.text((W//2, badge_y_center), "🏅", font=font_badge_name, fill="white", anchor="mm")
 
-    # --- NOMBRE DE LA MISIÓN (DORADO SÓLIDO GIGANTE) ---
     draw.text((W//2, badge_y_center + 450), badge_name.upper(), font=font_badge_name, fill=gold_color, anchor="mm")
-
-    # --- DATOS INFERIORES ---
+    
     base_y_info = badge_y_center + 600
     draw.text((W//2, base_y_info), "ASPIRANTE:", font=font_sub, fill="#888888", anchor="mm")
     draw.text((W//2, base_y_info + 70), player_name.upper(), font=font_name, fill="white", anchor="mm")
-    # Escuadrón (DORADO SÓLIDO)
     draw.text((W//2, base_y_info + 150), squad_name.upper(), font=font_squad, fill=gold_color, anchor="mm")
-
-    # Footer
     draw.text((W//2, H - 100), "PRAXIS PRIMORIS SYSTEM // FINAL TRANSMISSION", font=font_footer, fill="#444", anchor="mm")
 
     buf = io.BytesIO()
@@ -777,19 +759,15 @@ def play_intro_sequence():
     time.sleep(3.5)
     placeholder.empty()
 
-# ... (Todo el código anterior de funciones y configuraciones se mantiene igual) ...
+# ================= UI PRINCIPAL =================
 
-# ================= UI PRINCIPAL (REESTRUCTURADA v80.1) =================
-
-# 1. Crear un contenedor maestro para manejar el contenido dinámico y evitar fantasmas
+# 1. CONTENEDOR MAESTRO (Evita el "fantasma")
 main_placeholder = st.empty()
 
-# Lógica de Control de Flujo
 if not st.session_state.jugador:
-    # --- PANTALLA DE LOGIN ---
+    # --- PANTALLA LOGIN ---
     with main_placeholder.container():
         if os.path.exists("assets/cover.png"): st.image("assets/cover.png", use_container_width=True)
-        
         with st.container():
             c_l, c_r = st.columns([1.2, 3.8])
             with c_l:
@@ -798,9 +776,7 @@ if not st.session_state.jugador:
             with c_r:
                 st.markdown("<h3 style='margin-bottom:0;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
                 st.caption("PLATAFORMA COMPUTADORA CENTRAL")
-            
             st.markdown("<br>", unsafe_allow_html=True)
-            
             with st.form("login_form"):
                 st.markdown("##### 🔐 IDENTIFICACIÓN REQUERIDA")
                 st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
@@ -818,63 +794,49 @@ if not st.session_state.jugador:
                                 ok = enviar_solicitud("MENSAJE", "SOLICITUD DE RESET", f"El usuario {reset_user} solicita cambio de clave.", reset_user)
                                 if ok: st.success("✅ Solicitud enviada.")
                                 else: st.error("Error de conexión.")
-                        else:
-                            st.warning("Ingresa tu nombre de usuario.")
-
-        if st.session_state.login_error:
-            st.error(st.session_state.login_error)
+                        else: st.warning("Ingresa tu nombre.")
+        if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # --- USUARIO LOGUEADO ---
-    
-    # 1. ¡LIMPIEZA TÁCTICA! Borramos el contenedor del login inmediatamente
-    main_placeholder.empty()
-
-    # 2. SECUENCIA DE INTRO (Prioridad Alta)
+    # --- LOGICA INTRO PRIORITARIA (SOLUCIÓN PANTALLA VERDE) ---
     if st.session_state.show_intro:
-        play_intro_sequence() # Ejecuta la animación
-        st.session_state.show_intro = False # Desactiva el flag
-        st.rerun() # Recarga para mostrar el dashboard limpio
+        # Limpiamos CUALQUIER rastro del login
+        main_placeholder.empty()
+        # Ejecutamos la animación
+        play_intro_sequence()
+        # Apagamos el flag
+        st.session_state.show_intro = False
+        # Recargamos la página para que ahora sí cargue el dashboard limpio
+        st.rerun()
 
-    # 3. DASHBOARD PRINCIPAL
-    # News Ticker
+    # --- DASHBOARD ---
+    # Si llegamos aquí, show_intro ya es False
+    main_placeholder.empty() # Asegurar limpieza
+
     news_text = obtener_noticias()
     st.markdown(f"""<div class="ticker-wrap"><div class="ticker"><div class="ticker-item">{news_text}</div></div></div>""", unsafe_allow_html=True)
 
     p = st.session_state.jugador
-    # Safely get properties
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
     nivel_num = calcular_nivel_usuario(mp)
     nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
-    
-    # Safely get Select properties
-    try: uni_label = p.get("Universidad", {}).get("select")["name"]
-    except: uni_label = "Ubicación Desconocida"
-    
-    try: ano_label = p.get("Año", {}).get("select")["name"]
-    except: ano_label = "Ciclo ?"
-    
-    try: estado_label = p.get("Estado UAM", {}).get("select")["name"]
-    except: estado_label = "Desconocido"
-
+    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
+    ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
+    estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
     status_color = "#00e5ff"
     if estado_label == "Finalizado": status_color = "#ff4b4b"
     elif estado_label == "Sin empezar": status_color = "#FFD700"
 
-    # Header Dashboard
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
         if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=100)
     with c_head2:
         st.markdown(f"<h2 style='margin:0; font-size:1.8em; line-height:1.2; text-shadow: 0 0 10px {THEME['glow']};'>Hola, {st.session_state.nombre}</h2>", unsafe_allow_html=True)
-        
         header_html = textwrap.dedent(f"""
             <div style="margin-top: 10px; background: rgba(0, 20, 40, 0.5); border-left: 3px solid {THEME['primary']}; padding: 10px; border-radius: 0 10px 10px 0;">
                 <div style="font-family: 'Orbitron', sans-serif; color: {THEME['text_highlight']}; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 5px {THEME['glow']};">🌌 MULTIVERSO DETECTADO</div>
-                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px {THEME['glow']}; line-height: 1.1; margin-bottom: 8px;">
-                    {uni_label.upper()}
-                </div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #e0f7fa; font-size: 1.3em; font-weight: bold; text-shadow: 0 0 15px {THEME['glow']}; line-height: 1.1; margin-bottom: 8px;">{uni_label.upper()}</div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-family: 'Orbitron', sans-serif; color: #FFD700; font-size: 1em; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">⚡ BATALLA {ano_label}</span>
                     <span style="border: 1px solid {status_color}; background-color: {status_color}20; padding: 2px 8px; border-radius: 4px; color: {status_color}; font-size: 0.7em; font-weight: bold; letter-spacing: 1px;">{estado_label.upper()}</span>
@@ -884,34 +846,25 @@ else:
         st.markdown(header_html, unsafe_allow_html=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-
-    # ASSETS
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    # TABS
     tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "📡 COMUNICACIONES"])
     
-    # --- TAB PERFIL ---
     with tab_perfil:
         avatar_url = None
         try:
             f_list = p.get("Avatar", {}).get("files", [])
-            if f_list:
-                if "file" in f_list[0]: avatar_url = f_list[0]["file"]["url"]
-                elif "external" in f_list[0]: avatar_url = f_list[0]["external"]["url"]
+            if f_list: avatar_url = f_list[0].get("file", {}).get("url") or f_list[0].get("external", {}).get("url")
         except: pass
         try: rol = p.get("Rol", {}).get("select")["name"]
         except: rol = "Sin Rol"
         skuad = st.session_state.squad_name
-        
         img_path = find_squad_image(skuad)
         b64_badge = get_img_as_base64(img_path) if img_path else ""
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
         
-        # PROGRESO
         prog_act, prog_total, prog_pct, faltantes, is_max = calcular_progreso_nivel(mp)
-        
         if is_max:
             progress_html = f"""<div class="level-progress-wrapper"><div class="level-progress-bg"><div class="level-progress-fill" style="width: 100%; background: #FFD700; box-shadow: 0 0 15px #FFD700;"></div></div><div class="level-progress-text" style="color: #FFD700;"><strong>¡NIVEL MÁXIMO ALCANZADO!</strong></div></div>"""
         else:
@@ -922,23 +875,9 @@ else:
             squad_html = f"""<div style="margin-top:25px; border-top:1px solid #1c2e3e; padding-top:20px;"><div style="color:#FFD700; font-size:0.7em; letter-spacing:2px; font-weight:bold; margin-bottom:10px; font-family:'Orbitron';">PERTENECIENTE AL ESCUADRÓN</div><img src="data:image/png;base64,{b64_badge}" style="width:130px; filter:drop-shadow(0 0 15px rgba(0,0,0,0.6));"><div style="color:{THEME['text_highlight']}; font-size:1.2em; letter-spacing:3px; font-weight:bold; margin-top:10px; font-family:'Orbitron';">{skuad.upper()}</div></div>"""
         
         avatar_div = f'<img src="{avatar_url}" class="profile-avatar">' if avatar_url else '<div style="font-size:80px; line-height:140px;">👤</div>'
-        
-        profile_html = f"""
-        <div class="profile-container">
-            <div class="profile-avatar-wrapper">{avatar_div}</div>
-            <div class="profile-content">
-                <div class="profile-name">{st.session_state.nombre}</div>
-                <div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div>
-                <div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>
-                {progress_html}
-                {squad_html}
-            </div>
-        </div>
-        """.replace('\n', '')
-        
+        profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # EASTER EGG
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
@@ -947,54 +886,27 @@ else:
                     st.session_state.last_easter_egg = now
                     msg = random.choice(SYSTEM_MESSAGES)
                     st.toast(msg, icon="🤖")
-                    
                     if random.random() < 0.1:
                         st.balloons()
                         enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
-                else:
-                    st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
+                else: st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
         
-        # HUD
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
-        
-        hud_html = textwrap.dedent(f"""
-            <div class="hud-grid">
-                <div class="hud-card" style="border-bottom: 3px solid #FFD700;">
-                    <img src="data:image/png;base64,{b64_mp}" class="hud-icon">
-                    <div class="epic-number" style="color:#FFD700;">{mp}</div>
-                    <div class="hud-label">MasterPoints</div>
-                </div>
-                <div class="hud-card" style="border-bottom: 3px solid #00e5ff;">
-                    <img src="data:image/png;base64,{b64_ap}" class="hud-icon">
-                    <div class="epic-number" style="color:#00e5ff;">{ap}</div>
-                    <div class="hud-label">AngioPoints</div>
-                </div>
-                <div class="hud-card" style="border-bottom: 3px solid #ff4b4b;">
-                    <img src="data:image/png;base64,{b64_vp}" class="hud-icon">
-                    <div class="epic-number" style="color:#ff4b4b;">{vp}%</div>
-                    <div class="hud-label">VitaPoints</div>
-                </div>
-            </div>
-        """).replace('\n', '')
+        hud_html = textwrap.dedent(f"""<div class="hud-grid"><div class="hud-card" style="border-bottom: 3px solid #FFD700;"><img src="data:image/png;base64,{b64_mp}" class="hud-icon"><div class="epic-number" style="color:#FFD700;">{mp}</div><div class="hud-label">MasterPoints</div></div><div class="hud-card" style="border-bottom: 3px solid #00e5ff;"><img src="data:image/png;base64,{b64_ap}" class="hud-icon"><div class="epic-number" style="color:#00e5ff;">{ap}</div><div class="hud-label">AngioPoints</div></div><div class="hud-card" style="border-bottom: 3px solid #ff4b4b;"><img src="data:image/png;base64,{b64_vp}" class="hud-icon"><div class="epic-number" style="color:#ff4b4b;">{vp}%</div><div class="hud-label">VitaPoints</div></div></div>""").replace('\n', '')
         st.markdown(hud_html, unsafe_allow_html=True)
         
-        # INSIGNIAS
         st.markdown("### 🏅 SALÓN DE LA FAMA")
-        
         try:
             insignias_data = p.get("Insignias", {}).get("multi_select", [])
             mis_insignias = [t["name"] for t in insignias_data]
         except: mis_insignias = []
-        
-        if not mis_insignias:
-            st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
+        if not mis_insignias: st.caption("Aún no tienes insignias en tu historial. ¡Sigue completando misiones!")
         else:
             badge_html = '<div class="badge-grid">'
             for i, badge_name in enumerate(mis_insignias):
                 modal_id = f"badge-modal-{i}"
                 img_path = BADGE_MAP.get(badge_name, DEFAULT_BADGE)
-                
                 if os.path.exists(img_path):
                     b64_badge = get_img_as_base64(img_path)
                     content_html = f'<img src="data:image/png;base64,{b64_badge}" class="badge-img">'
@@ -1002,43 +914,27 @@ else:
                 else:
                     content_html = '<div style="font-size:40px;">🏅</div>'
                     holo_html = '<div style="font-size:100px;">🏅</div>'
-
                 badge_html += f'<div class="badge-wrapper"><input type="checkbox" id="{modal_id}" class="badge-toggle"><label for="{modal_id}" class="badge-card"><div class="badge-img-container">{content_html}</div><div class="badge-name">{badge_name}</div></label><div class="badge-hologram-wrapper"><label for="{modal_id}" class="badge-close-backdrop"></label><div class="holo-content">{holo_html}<div class="holo-title">{badge_name}</div><div class="holo-desc">INSIGNIA DESBLOQUEADA</div><label for="{modal_id}" class="holo-close-btn">CERRAR</label></div></div></div>'
-            
             badge_html += '</div>'
             st.markdown(badge_html, unsafe_allow_html=True)
-            
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # HOLO-TRANSMISION
         if mis_insignias:
             with st.expander("📲 CENTRO DE HOLO-TRANSMISIÓN (COMPARTIR)"):
                 st.caption("Genera una tarjeta oficial de tus logros para tus redes.")
-                
                 selected_badge = st.selectbox("Selecciona insignia:", mis_insignias)
-                
                 if selected_badge:
                     badge_path = BADGE_MAP.get(selected_badge, DEFAULT_BADGE)
-                    
                     if st.button("GENERAR TARJETA"):
                         with st.spinner("Renderizando holograma..."):
                             current_squad_name = st.session_state.squad_name if st.session_state.squad_name else "Sin Escuadrón"
-                            
                             img_buffer = generar_tarjeta_social(selected_badge, st.session_state.nombre, current_squad_name, badge_path)
-                            
                             st.image(img_buffer, caption="Vista Previa", width=300)
-                            st.download_button(
-                                label="⬇️ DESCARGAR IMAGEN",
-                                data=img_buffer,
-                                file_name=f"Praxis_Logro_{selected_badge}.png",
-                                mime="image/png"
-                            )
+                            st.download_button(label="⬇️ DESCARGAR IMAGEN", data=img_buffer, file_name=f"Praxis_Logro_{selected_badge}.png", mime="image/png")
 
-        # MANUAL
         with st.expander("📘 MANUAL DE CAMPO: REGLAS DE ENFRENTAMIENTO"):
             st.markdown("""
             **Bienvenido a la Red Praxis, Aspirante.**
-            
             Aquí se forjan las leyendas de la orden de los AngioMasters. Para sobrevivir y ascender, debes dominar los tres recursos vitales:
             
             #### 1. 🟡 MasterPoints (MP) - Tu Rango
@@ -1057,16 +953,6 @@ else:
             * **¿Qué pasa si llegan a 0?** Deberás realizar tareas, trabajos, etc., para poder revivir nuevamente. ¡Mantenlos altos!
             """)
 
-        c_refresh, c_logout = st.columns(2)
-        with c_refresh:
-            if st.button("ACTUALIZAR"):
-                actualizar_datos_sesion()
-        with c_logout:
-            if st.button("DESCONECTAR"):
-                cerrar_sesion()
-                st.rerun()
-
-    # --- TAB RANKING ---
     with tab_ranking:
         st.markdown(f"### ⚔️ TOP ASPIRANTES")
         df = st.session_state.ranking_data
@@ -1081,7 +967,6 @@ else:
                 pct = (points / max_mp) * 100
                 table_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{name}</div><div style="color:#aaa; font-size:0.8em; margin-top:2px;">{squad}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
             st.markdown(f"""<table class="rank-table">{table_rows}</table>""", unsafe_allow_html=True)
-            
             st.markdown("### 🛡️ TOP ESCUADRONES")
             df_squads = df.groupby("Escuadrón")["MasterPoints"].sum().reset_index().sort_values(by="MasterPoints", ascending=False)
             if not df_squads.empty:
@@ -1094,238 +979,124 @@ else:
                     pct = (points / max_squad_mp) * 100
                     squad_rows += f"""<tr class="rank-row"><td class="rank-cell rank-cell-rank">{rank}</td><td class="rank-cell"><div style="font-weight:bold; font-size:1.1em; color:#fff;">{squad_name}</div></td><td class="rank-cell rank-cell-last"><div style="display:flex; flex-direction:column; gap:5px;"><div style="text-align:right; font-family:'Orbitron'; color:#FFD700; font-weight:bold; font-size:1.1em;">{points}</div><div class="bar-bg"><div class="bar-fill" style="width:{pct}%;"></div></div></div></td></tr>"""
                 st.markdown(f"""<table class="rank-table">{squad_rows}</table>""", unsafe_allow_html=True)
-            else:
-                st.info("Sin datos de escuadrones.")
+            else: st.info("Sin datos de escuadrones.")
         else:
             st.info(f"Sin datos en el sector {uni_label}.")
             if st.button("🔄 Refrescar Señal"):
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    # --- TAB HABILIDADES ---
     with tab_habilidades:
         st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
-        
-        core_html = f"""
-        <div class="energy-core">
-            <div class="energy-left">
-                <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
-                <div class="energy-label">ENERGÍA<br>DISPONIBLE</div>
-            </div>
-            <div class="energy-val">{ap}</div>
-        </div>
-        """
+        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
-
         habilidades = st.session_state.habilidades_data
-        if not habilidades:
-            st.info("Sin datos en el Grimorio.")
+        if not habilidades: st.info("Sin datos en el Grimorio.")
         else:
             for hab in habilidades:
-                nombre = hab["nombre"]
-                costo = hab["costo"]
-                nivel_req = hab["nivel_req"]
-                desc = hab["descripcion"]
-                icon_url = hab.get("icon_url")
-                
-                desbloqueada = nivel_num >= nivel_req
-                puede_pagar = ap >= costo
-                
+                nombre, costo = hab["nombre"], hab["costo"]
+                desbloqueada, puede_pagar = nivel_num >= hab["nivel_req"], ap >= costo
                 with st.container():
                     border_color = THEME['primary'] if desbloqueada else "#1c2630"
-                    opacity = "1" if desbloqueada else "0.5"
-                    grayscale = "" if desbloqueada else "filter: grayscale(100%);"
-                    
-                    banner_html = f'<img src="{icon_url}" class="skill-banner-img">' if icon_url else '<div class="skill-banner-placeholder">💠</div>'
+                    opacity, grayscale = ("1", "") if desbloqueada else ("0.5", "filter: grayscale(100%);")
+                    banner_html = f'<img src="{hab.get("icon_url")}" class="skill-banner-img">' if hab.get("icon_url") else '<div class="skill-banner-placeholder">💠</div>'
                     ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
-
-                    card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{desc}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
-                    
+                    card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{hab["descripcion"]}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
                     st.markdown(card_html, unsafe_allow_html=True)
-                    
                     c_btn, _ = st.columns([1, 2])
                     with c_btn:
                         if desbloqueada:
                             with st.popover("💠 PREPARAR", use_container_width=True):
-                                st.markdown(f"### ⚠️ Confirmación de Conjuro")
-                                st.markdown(f"Estás a punto de activar **{nombre}**.")
-                                st.info(f"⚡ Costo de Energía: **{costo} AP**")
-                                st.warning("El Sumo Cartógrafo revisará tu solicitud antes de que surta efecto.")
-                                
-                                if st.button("🔥 CONFIRMAR CONJURO", key=f"confirm_{hab['id']}"):
+                                st.markdown(f"### ⚠️ Confirmación de Conjuro\nEstás a punto de activar **{nombre}**.\n\n⚡ Costo: **{costo} AP**")
+                                if st.button("🔥 CONFIRMAR", key=f"confirm_{hab['id']}"):
                                     if puede_pagar:
-                                        with st.spinner("Canalizando energía..."):
-                                            time.sleep(1.5)
-                                            exito = enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre)
-                                            if exito:
-                                                st.toast(f"✅ Solicitud Enviada: {nombre}", icon="💠")
-                                            else: 
-                                                st.error("Error de enlace.")
+                                        with st.spinner("Canalizando..."):
+                                            time.sleep(1)
+                                            if enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre): st.toast("✅ Solicitud Enviada")
+                                            else: st.error("Error de enlace.")
                                     else: st.toast("❌ Energía Insuficiente", icon="⚠️")
-                        else:
-                            nombre_req = NOMBRES_NIVELES.get(nivel_req, f"Nivel {nivel_req}")
-                            st.button(f"🔒 Req: {nombre_req}", disabled=True, key=f"lk_{hab['id']}")
+                        else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
 
-    # --- TAB CODICE ---
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
         st.caption("Documentos clasificados recuperados de la Era Dorada.")
-        
         codice_items = st.session_state.codice_data
-        
-        if not codice_items:
-            st.info("Sin registros en el Códice. Esperando desencriptación...")
+        if not codice_items: st.info("Sin registros en el Códice.")
         else:
             for item in codice_items:
-                nivel_req = item["nivel"]
-                unlocked = nivel_num >= nivel_req
-                
-                tipo_icon = "📄"
-                if "Video" in item["tipo"]: tipo_icon = "🎥"
-                elif "Secreto" in item["tipo"]: tipo_icon = "🗝️"
-                
-                lock_class = "" if unlocked else "locked"
-                lock_icon = "🔓" if unlocked else "🔒"
-                
-                action_html = ""
-                if unlocked:
-                    action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
-                else:
-                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {nivel_req} REQ.</span>'
-
-                card_html = f"""
-                <div class="codex-card {lock_class}">
-                    <div class="codex-icon">{tipo_icon}</div>
-                    <div class="codex-info">
-                        <div class="codex-title">{item["nombre"]} {lock_icon}</div>
-                        <div class="codex-desc">{item["descripcion"]}</div>
-                    </div>
-                    <div class="codex-action">
-                        {action_html}
-                    </div>
-                </div>
-                """
+                unlocked = nivel_num >= item["nivel"]
+                lock_class, lock_icon = ("", "🔓") if unlocked else ("locked", "🔒")
+                action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>' if unlocked else f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
+                card_html = f"""<div class="codex-card {lock_class}"><div class="codex-icon">📄</div><div class="codex-info"><div class="codex-title">{item["nombre"]} {lock_icon}</div><div class="codex-desc">{item["descripcion"]}</div></div><div class="codex-action">{action_html}</div></div>"""
                 st.markdown(card_html, unsafe_allow_html=True)
     
-    # --- TAB MERCADO ---
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
-        # Texto actualizado a Valerius
         st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
-        
-        core_html = f"""
-        <div class="energy-core">
-            <div class="energy-left">
-                <img src="data:image/png;base64,{b64_ap}" class="energy-icon-large">
-                <div class="energy-label">SALDO<br>ACTUAL</div>
-            </div>
-            <div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div>
-        </div>
-        """
+        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">SALDO<br>ACTUAL</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
-        
-        # Cargar datos desde Notion (o lista vacía si falla)
         market_items = st.session_state.market_data
-        
         if not market_items:
-            if not DB_MERCADO_ID:
-                st.warning("⚠️ Mantenimiento: No se ha configurado la base de datos del Mercado.")
-            else:
-                st.info("El mercado está vacío por ahora. Vuelve más tarde.")
+            if not DB_MERCADO_ID: st.warning("⚠️ Base de datos de Mercado no configurada.")
+            else: st.info("El mercado está vacío.")
         else:
             for item in market_items:
                 with st.container():
                     puede_comprar = ap >= item['costo']
                     price_color = "#00e5ff" if puede_comprar else "#ff4444"
-                    
-                    market_html = f"""
-                    <div class="market-card">
-                        <div class="market-icon">{item['icon']}</div>
-                        <div class="market-info">
-                            <div class="market-title">{item['nombre']}</div>
-                            <div class="market-desc">{item['desc']}</div>
-                        </div>
-                        <div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">
-                            {item['costo']}
-                            <span>AP</span>
-                        </div>
-                    </div>
-                    """
+                    market_html = f"""<div class="market-card"><div class="market-icon">{item['icon']}</div><div class="market-info"><div class="market-title">{item['nombre']}</div><div class="market-desc">{item['desc']}</div></div><div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">{item['costo']}<span>AP</span></div></div>"""
                     st.markdown(market_html, unsafe_allow_html=True)
-                    
                     c1, c2 = st.columns([3, 1])
                     with c2:
                         if st.button(f"COMPRAR", key=f"buy_{item['id']}", disabled=not puede_comprar, use_container_width=True):
                             if puede_comprar:
-                                with st.spinner("Transfiriendo créditos encriptados..."):
+                                with st.spinner("Procesando..."):
                                     time.sleep(1)
-                                    exito = enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre)
-                                    if exito:
-                                        st.success("✅ Transacción enviada. Espera aprobación.")
-                                    else:
-                                        st.error("Error en la red. Intenta de nuevo.")
-                            else:
-                                st.error("Fondos insuficientes.")
+                                    if enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre): st.success("✅ Enviado.")
+                                    else: st.error("Error.")
+                            else: st.error("Fondos insuficientes.")
 
-    # --- TAB COMMS ---
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         st.info("Utiliza este canal para reportar problemas, solicitar revisiones o comunicarte con el alto mando.")
-        
         with st.form("comms_form_tab", clear_on_submit=True):
-            msg_subject = st.text_input("Asunto / Razón:", placeholder="Ej: Duda sobre mi puntaje")
-            msg_body = st.text_area("Mensaje:", placeholder="Escribe aquí tu reporte...")
-            
+            msg_subject = st.text_input("Asunto / Razón:")
+            msg_body = st.text_area("Mensaje:")
             if st.form_submit_button("📡 TRANSMITIR MENSAJE"):
                 if msg_subject and msg_body:
-                    with st.spinner("Estableciendo enlace encriptado con la base..."):
-                        time.sleep(1.5) 
-                        ok = enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre)
-                        if ok:
-                            st.toast("✅ Transmisión Enviada y recibida en la Central.", icon="📡")
-                            time.sleep(1)
+                    with st.spinner("Enviando..."):
+                        time.sleep(1)
+                        if enviar_solicitud("MENSAJE", msg_subject, msg_body, st.session_state.nombre): 
+                            st.toast("✅ Enviado")
                             st.rerun()
-                        else:
-                            st.error("❌ Error de señal. Verifica las columnas en Notion.")
-                else:
-                    st.warning("⚠️ Debes llenar Asunto y Mensaje.")
-        
+                        else: st.error("Error.")
+                else: st.warning("Completa los campos.")
         st.markdown("---")
         st.markdown("#### 📂 BITÁCORA DE COMUNICACIONES")
-        
         mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
-        
-        if not mi_historial:
-            st.caption("No hay registros de comunicaciones previas.")
+        if not mi_historial: st.caption("No hay registros.")
         else:
             for item in mi_historial:
-                status_color = "#999"
-                icon = "⏳"
-                if item["status"] == "Aprobado":
-                    status_color = "#00e676"; icon = "✅"
-                elif item["status"] == "Rechazado":
-                    status_color = "#ff1744"; icon = "❌"
-                elif item["status"] == "Respuesta":
-                    status_color = "#00e5ff"; icon = "📩"
-                
-                try:
+                status_color, icon = ("#999", "⏳")
+                if item["status"] == "Aprobado": status_color, icon = "#00e676", "✅"
+                elif item["status"] == "Rechazado": status_color, icon = "#ff1744", "❌"
+                elif item["status"] == "Respuesta": status_color, icon = "#00e5ff", "📩"
+                try: 
                     utc_dt = datetime.fromisoformat(item['fecha'].replace('Z', '+00:00'))
-                    chile_tz = pytz.timezone('America/Santiago')
-                    local_dt = utc_dt.astimezone(chile_tz)
-                    fecha_str = local_dt.strftime("%d/%m/%Y %H:%M")
+                    fecha_str = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
                 except: fecha_str = "Fecha desc."
-
-                log_html = f"""
-                <div class="log-card" style="border-left-color: {status_color};">
-                    <div class="log-header">
-                        <span>{fecha_str}</span>
-                        <span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span>
-                    </div>
-                    <div class="log-body">{item['mensaje']}</div>
-                    {f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}
-                </div>
-                """
+                log_html = f"""<div class="log-card" style="border-left-color: {status_color};"><div class="log-header"><span>{fecha_str}</span><span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span></div><div class="log-body">{item['mensaje']}</div>{f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}</div>"""
                 st.markdown(log_html, unsafe_allow_html=True)
+
+    # --- BOTONES GLOBALES Y FOOTER (FUERA DE LAS TABS) ---
+    st.markdown("---")
+    c_refresh, c_logout = st.columns(2)
+    with c_refresh:
+        if st.button("ACTUALIZAR DATOS", use_container_width=True):
+            actualizar_datos_sesion()
+    with c_logout:
+        if st.button("DESCONECTAR", use_container_width=True):
+            cerrar_sesion()
 
 # --- FOOTER UNIVERSAL (SIEMPRE VISIBLE AL FINAL) ---
 st.markdown("""
