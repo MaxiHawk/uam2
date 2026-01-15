@@ -10,7 +10,7 @@ import unicodedata
 import io
 from datetime import datetime
 import pytz
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -51,7 +51,7 @@ SYSTEM_MESSAGES = [
     "📡 Enlace neuronal estable. Latencia: 0.04ms",
     "🛡️ Escudos de deflexión al 100%.",
     "👁️ Valerius está observando tu progreso...",
-    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...",
+    "⚠️ Anomalía detectada en el Sector FLUX. Ignorando...",
     "💉 Niveles de contraste en sangre: Óptimos.",
     "💠 Sincronización con la Matriz completada.",
     "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?",
@@ -394,88 +394,81 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA (INSTAGRAM STORY) ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v2 (Ajuste de Tamaños y Glow) ---
 def generar_tarjeta_social(badge_name, player_name, badge_path, squad_color):
-    # Crear lienzo (Vertical 9:16) con un fondo base oscuro
+    # Crear lienzo (Vertical 9:16) con fondo texturizado
     W, H = 1080, 1920
     bg_color = '#020408'
     img = Image.new('RGB', (W, H), color=bg_color)
     draw = ImageDraw.Draw(img)
     
-    # --- MEJORA 1: Textura de Fondo (Cuadrícula Cibernética) ---
+    # Textura de Fondo (Cuadrícula Cibernética sutil)
     grid_color = "#0a0f1a"
-    for x in range(0, W, 60):
-        draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
-    for y in range(0, H, 60):
-        draw.line([(0, y), (W, y)], fill=grid_color, width=2)
+    for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
+    for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
 
-    # Intentar cargar fuentes (Ajustadas para mejor jerarquía)
+    # --- AJUSTE DE FUENTES (Para evitar cortes) ---
     try:
-        # Intenta usar variantes más gruesas si las tienes, si no, usa la estándar
-        font_title_main = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 100)
+        # Reducimos el título principal de 100 a 85 para que quepa bien
+        font_title_main = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 85)
         font_badge_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 75)
         font_sub = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 45)
         font_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 65)
-        font_footer = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 35)
+        font_footer = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 30)
     except:
-        # Fallback
         font_title_main = font_badge_name = font_sub = font_name = font_footer = ImageFont.load_default()
 
-    # --- MEJORA 2: Bordes de Neón Complejos ---
-    # Borde exterior grueso (Color del Escuadrón)
+    # Bordes de Neón Complejos
     draw.rectangle([40, 40, W-40, H-40], outline=squad_color, width=12)
-    # Borde intermedio oscuro (Separador)
     draw.rectangle([55, 55, W-55, H-55], outline="#050810", width=8)
-    # Borde interior fino (Luz concentrada)
     draw.rectangle([65, 65, W-65, H-65], outline=squad_color, width=3)
 
-    # Logo de la App
+    # Logo (Un poco más arriba)
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
-        logo = logo.resize((220, 220))
-        img.paste(logo, (W//2 - 110, 180), logo)
+        logo = logo.resize((200, 200))
+        img.paste(logo, (W//2 - 100, 160), logo)
 
-    # --- MEJORA 3: Texto con Efecto "Glow" (Sombra de color) ---
+    # Función auxiliar para texto con "Glow"
     def draw_text_with_glow(text, font, y_pos, text_color, glow_color, offset=3):
-        # Dibujar "sombra" (glow)
         draw.text((W//2 + offset, y_pos + offset), text, font=font, fill=glow_color, anchor="mm")
         draw.text((W//2 - offset, y_pos - offset), text, font=font, fill=glow_color, anchor="mm")
-        # Dibujar texto principal
         draw.text((W//2, y_pos), text, font=font, fill=text_color, anchor="mm")
 
-    # Texto Superior (Title) - Con Glow del Escuadrón
-    draw_text_with_glow("INSIGNIA DESBLOQUEADA", font_title_main, 480, "white", squad_color, offset=4)
+    # Título Superior (Más ajustado)
+    draw_text_with_glow("INSIGNIA DESBLOQUEADA", font_title_main, 430, "white", squad_color, offset=4)
 
-    # --- MEJORA 4: Resplandor Central detrás de la Insignia ---
-    glow_size = 750
+    # --- MEJORA DE GLOW CENTRAL (Más intenso y difuminado) ---
+    glow_size = 950 # Más grande
     glow_img = Image.new('RGBA', (glow_size, glow_size), (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow_img)
-    # Convertir color hex a RGB para añadir transparencia
     sc_rgb = tuple(int(squad_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-    glow_rgba = sc_rgb + (40,) # 40 es la transparencia (alpha)
-    glow_draw.ellipse((0, 0, glow_size, glow_size), fill=glow_rgba)
-    # Pegar el resplandor en el centro
+    # Mayor opacidad (70 en vez de 40)
+    glow_rgba = sc_rgb + (70,) 
+    glow_draw.ellipse((100, 100, glow_size-100, glow_size-100), fill=glow_rgba)
+    # Aplicar desenfoque gaussiano para suavizar el borde del halo
+    glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=60))
     img.paste(glow_img, (W//2 - glow_size//2, H//2 - glow_size//2), glow_img)
 
-    # Imagen de la Insignia
+    # Imagen de la Insignia (Centrada y grande)
     if os.path.exists(badge_path):
         badge = Image.open(badge_path).convert("RGBA")
-        badge = badge.resize((600, 600))
-        img.paste(badge, (W//2 - 300, H//2 - 300), badge)
+        badge = badge.resize((650, 650))
+        img.paste(badge, (W//2 - 325, H//2 - 325), badge)
     else:
         draw.text((W//2, H//2), "🏅", font=font_title_main, fill="white", anchor="mm")
 
-    # Nombre de la Insignia (Color del Escuadrón con sombra negra para contraste)
-    draw_text_with_glow(badge_name.upper(), font_badge_name, H//2 + 380, squad_color, "#000000", offset=3)
+    # Nombre de la Insignia
+    draw_text_with_glow(badge_name.upper(), font_badge_name, H//2 + 400, squad_color, "#000000", offset=3)
 
-    # --- CAMBIO DE TEXTO: "ASPIRANTE" ---
-    draw.text((W//2, H//2 + 550), "OTORGADO AL ASPIRANTE:", font=font_sub, fill="#aaa", anchor="mm")
-    draw.text((W//2, H//2 + 630), player_name.upper(), font=font_name, fill="white", anchor="mm")
+    # Textos inferiores (Aspirante)
+    draw.text((W//2, H//2 + 560), "OTORGADO AL ASPIRANTE:", font=font_sub, fill="#aaa", anchor="mm")
+    draw.text((W//2, H//2 + 640), player_name.upper(), font=font_name, fill="white", anchor="mm")
 
     # Footer
     draw.text((W//2, H - 120), "PRAXIS PRIMORIS SYSTEM // v1.0", font=font_footer, fill="#555", anchor="mm")
 
-    # Guardar en buffer
+    # Guardar
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
