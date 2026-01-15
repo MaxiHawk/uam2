@@ -376,8 +376,11 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v4.1 (Hotfix Máscara) ---
-def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squad_color):
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v5 (Tema Verde Neón y Doble Borde) ---
+def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
+    # --- DEFINICIÓN DEL NUEVO COLOR NEÓN PRAXIS ---
+    neon_color = "#00ff9d" # Verde Neón Intenso
+
     W, H = 1080, 1920
     # Fondo más oscuro para mayor contraste
     bg_color = '#010204'
@@ -391,8 +394,8 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squa
 
     # --- TIPOGRAFÍA JERÁRQUICA ---
     try:
-        font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50) 
-        font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)   
+        font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50)
+        font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)
         font_badge_name = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 115)
         font_sub = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 35)
         font_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 70)
@@ -401,57 +404,58 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squa
     except:
         font_title_small = font_title_big = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
 
-    # --- MARCO DINÁMICO CON NODOS DE ESQUINA ---
+    # --- MARCO DINÁMICO CON NODOS DE ESQUINA (Usando el nuevo color) ---
     offset_frame = 45
-    draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=squad_color, width=10)
+    draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=neon_color, width=10)
     draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
-    
+
     node_radius = 20
     corners = [(offset_frame, offset_frame), (W-offset_frame, offset_frame), (offset_frame, H-offset_frame), (W-offset_frame, H-offset_frame)]
     for cx, cy in corners:
-        draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=squad_color)
-        draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=squad_color, width=4)
+        draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=neon_color)
+        draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=neon_color, width=4)
 
-    # --- LOGO SUPERIOR (FIXED) ---
+    # --- LOGO SUPERIOR CON GLOW VERDE ---
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
         logo = logo.resize((180, 180))
-        
-        # 1. Extraer la máscara alfa del logo original (La forma del logo)
-        logo_mask = logo.split()[-1] 
-        
-        # 2. Crear el brillo coloreado
-        logo_glow = ImageOps.colorize(logo_mask.convert("L"), black="black", white=squad_color)
-        
-        # 3. Pegar usando la MÁSCARA ORIGINAL (Aquí estaba el error)
-        img.paste(logo_glow, (W//2 - 90, 130), logo_mask) 
-        
-        # 4. Pegar el logo original encima
+        logo_mask = logo.split()[-1]
+        # Usamos el nuevo color verde para el brillo del logo
+        logo_glow = ImageOps.colorize(logo_mask.convert("L"), black="black", white=neon_color)
+        img.paste(logo_glow, (W//2 - 90, 130), logo_mask)
         img.paste(logo, (W//2 - 90, 130), logo)
 
-    # Función de texto con glow
-    def draw_text_with_glow(text, font, y_pos, text_color, glow_color, offset_x=4, offset_y=4):
-        draw.text((W//2 + offset_x, y_pos + offset_y), text, font=font, fill=glow_color, anchor="mm")
-        draw.text((W//2 - offset_x, y_pos - offset_y), text, font=font, fill=glow_color, anchor="mm")
+    # --- NUEVA FUNCIÓN DE TEXTO CON DOBLE BORDE LIMPIO ---
+    def draw_text_with_double_border(text, font, y_pos, text_color, border_color, bg_color_for_outline, border_width=4):
+        # 1. Borde Exterior (Color de fondo para "recortar")
+        for dx in range(-border_width-2, border_width+3):
+            for dy in range(-border_width-2, border_width+3):
+                draw.text((W//2 + dx, y_pos + dy), text, font=font, fill=bg_color_for_outline, anchor="mm")
+        # 2. Borde Interior (Color Neón)
+        for dx in range(-border_width, border_width+1):
+            for dy in range(-border_width, border_width+1):
+                draw.text((W//2 + dx, y_pos + dy), text, font=font, fill=border_color, anchor="mm")
+        # 3. Texto Principal (Blanco)
         draw.text((W//2, y_pos), text, font=font, fill=text_color, anchor="mm")
 
-    # Títulos Superiores
-    draw_text_with_glow("INSIGNIA", font_title_small, 340, "#bbbbbb", squad_color, offset_x=2, offset_y=2)
-    draw_text_with_glow("DESBLOQUEADA", font_title_big, 415, "white", squad_color, offset_x=5, offset_y=5)
+    # Títulos Superiores (Con el nuevo efecto y color)
+    draw_text_with_double_border("INSIGNIA", font_title_small, 340, "white", neon_color, bg_color, border_width=3)
+    draw_text_with_double_border("DESBLOQUEADA", font_title_big, 415, "white", neon_color, bg_color, border_width=4)
 
-    # --- NÚCLEO DE ENERGÍA "CALIENTE" ---
+    # --- NÚCLEO DE ENERGÍA "CALIENTE" VERDE ---
     glow_size = 1000
     glow_img_wide = Image.new('RGBA', (glow_size, glow_size), (0,0,0,0))
     glow_draw_wide = ImageDraw.Draw(glow_img_wide)
-    sc_rgb = tuple(int(squad_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-    
-    glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=sc_rgb + (50,))
+    # Convertir el nuevo color verde a RGB
+    nc_rgb = tuple(int(neon_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+
+    glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=nc_rgb + (50,))
     glow_img_wide = glow_img_wide.filter(ImageFilter.GaussianBlur(radius=90))
-    
+
     core_size = 600
     glow_img_core = Image.new('RGBA', (core_size, core_size), (0,0,0,0))
     glow_draw_core = ImageDraw.Draw(glow_img_core)
-    glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=sc_rgb + (120,))
+    glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=nc_rgb + (120,))
     glow_img_core = glow_img_core.filter(ImageFilter.GaussianBlur(radius=40))
 
     img.paste(glow_img_wide, (W//2 - glow_size//2, H//2 - glow_size//2 - 50), glow_img_wide)
@@ -466,14 +470,15 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squa
     else:
         draw.text((W//2, badge_y_center), "🏅", font=font_badge_name, fill="white", anchor="mm")
 
-    # --- EL HÉROE: NOMBRE DE LA MISIÓN ---
-    draw_text_with_glow(badge_name.upper(), font_badge_name, badge_y_center + 450, "white", squad_color, offset_x=6, offset_y=6)
+    # --- EL HÉROE: NOMBRE DE LA MISIÓN (Doble Borde Verde) ---
+    draw_text_with_double_border(badge_name.upper(), font_badge_name, badge_y_center + 450, "white", neon_color, bg_color, border_width=5)
 
     # --- DATOS INFERIORES ---
     base_y_info = badge_y_center + 600
     draw.text((W//2, base_y_info), "ASPIRANTE:", font=font_sub, fill="#888888", anchor="mm")
     draw.text((W//2, base_y_info + 70), player_name.upper(), font=font_name, fill="white", anchor="mm")
-    draw_text_with_glow(squad_name.upper(), font_squad, base_y_info + 150, squad_color, "#000000", offset_x=3, offset_y=3)
+    # Escuadrón también con el nuevo efecto y color
+    draw_text_with_double_border(squad_name.upper(), font_squad, base_y_info + 150, "white", neon_color, bg_color, border_width=3)
 
     # Footer
     draw.text((W//2, H - 100), "PRAXIS PRIMORIS SYSTEM // FINAL TRANSMISSION", font=font_footer, fill="#444", anchor="mm")
