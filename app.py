@@ -376,7 +376,7 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v4 (Nivel Legendario) ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v4.1 (Hotfix Máscara) ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squad_color):
     W, H = 1080, 1920
     # Fondo más oscuro para mayor contraste
@@ -391,102 +391,88 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path, squa
 
     # --- TIPOGRAFÍA JERÁRQUICA ---
     try:
-        # Intenta cargar variantes más gruesas (Black/Bold) para impacto
-        font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50) # "INSIGNIA"
-        font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)   # "DESBLOQUEADA"
-        # EL HÉROE: Nombre de la misión GIGANTE
+        font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50) 
+        font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)   
         font_badge_name = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 115)
-        # Etiquetas secundarias más pequeñas
         font_sub = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 35)
-        # Nombre jugador destacado
         font_name = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 70)
         font_squad = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 55)
         font_footer = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 30)
     except:
-        # Fallback seguro
         font_title_small = font_title_big = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
 
     # --- MARCO DINÁMICO CON NODOS DE ESQUINA ---
     offset_frame = 45
-    # Borde principal
     draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=squad_color, width=10)
     draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
     
-    # Dibujar Nodos en las esquinas para romper las líneas rectas
     node_radius = 20
-    corners = [
-        (offset_frame, offset_frame), # Top-Left
-        (W-offset_frame, offset_frame), # Top-Right
-        (offset_frame, H-offset_frame), # Bottom-Left
-        (W-offset_frame, H-offset_frame) # Bottom-Right
-    ]
+    corners = [(offset_frame, offset_frame), (W-offset_frame, offset_frame), (offset_frame, H-offset_frame), (W-offset_frame, H-offset_frame)]
     for cx, cy in corners:
-        # Halo exterior del nodo
         draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=squad_color)
-        # Centro oscuro del nodo
         draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=squad_color, width=4)
 
-    # Logo Superior (Ajustado)
+    # --- LOGO SUPERIOR (FIXED) ---
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
         logo = logo.resize((180, 180))
-        # Añadir un sutil resplandor al logo mismo (opcional, simple)
-        logo_glow = ImageOps.colorize(logo.split()[-1].convert("L"), black="black", white=squad_color)
-        img.paste(logo_glow, (W//2 - 90, 130), logo_glow) # Pegar glow primero sutilmente
+        
+        # 1. Extraer la máscara alfa del logo original (La forma del logo)
+        logo_mask = logo.split()[-1] 
+        
+        # 2. Crear el brillo coloreado
+        logo_glow = ImageOps.colorize(logo_mask.convert("L"), black="black", white=squad_color)
+        
+        # 3. Pegar usando la MÁSCARA ORIGINAL (Aquí estaba el error)
+        img.paste(logo_glow, (W//2 - 90, 130), logo_mask) 
+        
+        # 4. Pegar el logo original encima
         img.paste(logo, (W//2 - 90, 130), logo)
 
-    # Función de texto con glow mejorada
+    # Función de texto con glow
     def draw_text_with_glow(text, font, y_pos, text_color, glow_color, offset_x=4, offset_y=4):
-        # Sombra/Glow más fuerte
         draw.text((W//2 + offset_x, y_pos + offset_y), text, font=font, fill=glow_color, anchor="mm")
         draw.text((W//2 - offset_x, y_pos - offset_y), text, font=font, fill=glow_color, anchor="mm")
-        # Texto principal
         draw.text((W//2, y_pos), text, font=font, fill=text_color, anchor="mm")
 
-    # Títulos Superiores (Jerarquía de tamaños)
+    # Títulos Superiores
     draw_text_with_glow("INSIGNIA", font_title_small, 340, "#bbbbbb", squad_color, offset_x=2, offset_y=2)
     draw_text_with_glow("DESBLOQUEADA", font_title_big, 415, "white", squad_color, offset_x=5, offset_y=5)
 
-    # --- NÚCLEO DE ENERGÍA "CALIENTE" (Doble capa de Glow) ---
+    # --- NÚCLEO DE ENERGÍA "CALIENTE" ---
     glow_size = 1000
-    # Capa 1: Halo amplio y suave
     glow_img_wide = Image.new('RGBA', (glow_size, glow_size), (0,0,0,0))
     glow_draw_wide = ImageDraw.Draw(glow_img_wide)
     sc_rgb = tuple(int(squad_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+    
     glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=sc_rgb + (50,))
     glow_img_wide = glow_img_wide.filter(ImageFilter.GaussianBlur(radius=90))
     
-    # Capa 2: Núcleo central intenso y caliente
     core_size = 600
     glow_img_core = Image.new('RGBA', (core_size, core_size), (0,0,0,0))
     glow_draw_core = ImageDraw.Draw(glow_img_core)
-    glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=sc_rgb + (120,)) # Más opaco
-    glow_img_core = glow_img_core.filter(ImageFilter.GaussianBlur(radius=40)) # Menos blur
+    glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=sc_rgb + (120,))
+    glow_img_core = glow_img_core.filter(ImageFilter.GaussianBlur(radius=40))
 
-    # Componer glows
     img.paste(glow_img_wide, (W//2 - glow_size//2, H//2 - glow_size//2 - 50), glow_img_wide)
     img.paste(glow_img_core, (W//2 - core_size//2, H//2 - core_size//2 - 50), glow_img_core)
 
-    # Imagen de la Insignia (Grande y centrada en el núcleo)
+    # Imagen de la Insignia
     badge_y_center = H//2 - 50
     if os.path.exists(badge_path):
         badge = Image.open(badge_path).convert("RGBA")
-        badge = badge.resize((700, 700)) # Más grande
+        badge = badge.resize((700, 700))
         img.paste(badge, (W//2 - 350, badge_y_center - 350), badge)
     else:
         draw.text((W//2, badge_y_center), "🏅", font=font_badge_name, fill="white", anchor="mm")
 
-    # --- EL HÉROE: NOMBRE DE LA MISIÓN GIGANTE ---
-    # Usamos un glow blanco intenso para que destaque al máximo sobre el fondo de color
+    # --- EL HÉROE: NOMBRE DE LA MISIÓN ---
     draw_text_with_glow(badge_name.upper(), font_badge_name, badge_y_center + 450, "white", squad_color, offset_x=6, offset_y=6)
 
-    # --- DATOS INFERIORES (Reorganizados y reequilibrados) ---
+    # --- DATOS INFERIORES ---
     base_y_info = badge_y_center + 600
-    # Etiqueta más pequeña y oscura
     draw.text((W//2, base_y_info), "ASPIRANTE:", font=font_sub, fill="#888888", anchor="mm")
-    # Nombre más grande
     draw.text((W//2, base_y_info + 70), player_name.upper(), font=font_name, fill="white", anchor="mm")
-    # Escuadrón con glow
     draw_text_with_glow(squad_name.upper(), font_squad, base_y_info + 150, squad_color, "#000000", offset_x=3, offset_y=3)
 
     # Footer
