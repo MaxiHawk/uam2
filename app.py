@@ -1025,9 +1025,22 @@ else:
         if not codice_items: st.info("Sin registros en el Códice.")
         else:
             for item in codice_items:
-                unlocked = nivel_num >= item["nivel"]
-                lock_class, lock_icon = ("", "🔓") if unlocked else ("locked", "🔒")
-                action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>' if unlocked else f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
+                # --- LOGICA DE BLOQUEO CODICE ---
+                item_is_for_alumni = item["nombre"].startswith("[EX]") or item["nombre"].startswith("[ALUMNI]")
+                
+                if is_alumni and not item_is_for_alumni:
+                    # Alumni restringido
+                    lock_class, lock_icon = ("locked", "🔒")
+                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">⛔ CICLO CERRADO</span>'
+                elif nivel_num < item["nivel"]:
+                    # Nivel insuficiente
+                    lock_class, lock_icon = ("locked", "🔒")
+                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
+                else:
+                    # Desbloqueado
+                    lock_class, lock_icon = ("", "🔓")
+                    action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
+
                 card_html = f"""<div class="codex-card {lock_class}"><div class="codex-icon">📄</div><div class="codex-info"><div class="codex-title">{item["nombre"]} {lock_icon}</div><div class="codex-desc">{item["descripcion"]}</div></div><div class="codex-action">{action_html}</div></div>"""
                 st.markdown(card_html, unsafe_allow_html=True)
     
@@ -1042,11 +1055,7 @@ else:
             else: st.info("El mercado está vacío.")
         else:
             for item in market_items:
-                # Logica Híbrida: Si es Alumni, solo puede comprar items que empiecen con [ALUMNI] o [EX]
-                # Si es activo, puede comprar todo MENOS los que empiecen con [ALUMNI] o [EX] (Opcional, pero asumiremos acceso total por ahora salvo restricción)
                 item_is_for_alumni = item['nombre'].startswith("[EX]") or item['nombre'].startswith("[ALUMNI]")
-                
-                # Permisos de Compra
                 puede_ver_boton = True
                 if is_alumni and not item_is_for_alumni: puede_ver_boton = False
                 
@@ -1070,7 +1079,6 @@ else:
 
     with tab_comms:
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
-        
         if is_alumni:
             st.warning("📡 Enlace de comunicaciones desactivado para Aspirantes Finalizados. Solo modo lectura.")
         else:
@@ -1087,7 +1095,6 @@ else:
                                 st.rerun()
                             else: st.error("Error.")
                     else: st.warning("Completa los campos.")
-        
         st.markdown("---")
         st.markdown("#### 📂 BITÁCORA DE COMUNICACIONES")
         mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
