@@ -945,7 +945,7 @@ else:
                     if st.button("GENERAR TARJETA"):
                         with st.spinner("Renderizando holograma..."):
                             current_squad_name = st.session_state.squad_name if st.session_state.squad_name else "Sin Escuadrón"
-                            img_buffer = generar_tarjeta_social(selected_badge, st.session_state.nombre, current_squad_name, badge_path, squad_color)
+                            img_buffer = generar_tarjeta_social(selected_badge, st.session_state.nombre, current_squad_name, badge_path)
                             st.image(img_buffer, caption="Vista Previa", width=300)
                             st.download_button(
                                 label="⬇️ DESCARGAR IMAGEN",
