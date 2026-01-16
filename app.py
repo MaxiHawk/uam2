@@ -8,7 +8,7 @@ import time
 import random
 import unicodedata
 import io
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
@@ -63,7 +63,6 @@ SYSTEM_MESSAGES = [
     "🎲 Tira los dados, el destino aguarda."
 ]
 
-# --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
 SQUAD_THEMES = {
     "Default": { "primary": "#00ff9d", "glow": "rgba(0, 255, 157, 0.5)", "gradient_start": "#004d40", "gradient_end": "#00bfa5", "text_highlight": "#69f0ae" },
     "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
@@ -122,8 +121,10 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
+# NUEVOS ESTADOS PARA FLUJO TRIVIA (V92.0)
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
-if "balloons_trigger" not in st.session_state: st.session_state.balloons_trigger = False # Control estricto de globos
+if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
+if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
 
 # Logout automático
 if st.session_state.get("jugador") is not None:
@@ -197,6 +198,14 @@ st.markdown(f"""
         }}
         .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
         
+        .feedback-box {{
+            background: rgba(0,0,0,0.5); border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 15px;
+        }}
+        .feedback-correct {{ border: 2px solid #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.3); }}
+        .feedback-wrong {{ border: 2px solid #ff1744; box-shadow: 0 0 20px rgba(255, 23, 68, 0.3); }}
+        .feedback-title {{ font-family: 'Orbitron'; font-size: 1.8em; margin-bottom: 10px; font-weight: bold; }}
+        .feedback-text {{ font-size: 1.1em; color: #ddd; }}
+
         /* POPUP STYLES */
         .popup-container {{
             background: linear-gradient(135deg, rgba(10,20,30,0.95), rgba(0,5,10,0.98));
@@ -510,6 +519,12 @@ def cargar_pregunta_aleatoria():
             if results:
                 q_data = random.choice(results)
                 props = q_data["properties"]
+                
+                # Obtener explicación si existe
+                explicacion = ""
+                if "Explicacion" in props and props["Explicacion"]["rich_text"]:
+                    explicacion = props["Explicacion"]["rich_text"][0]["text"]["content"]
+                
                 return {
                     "id": q_data["id"],
                     "pregunta": props["Pregunta"]["title"][0]["text"]["content"],
@@ -517,7 +532,8 @@ def cargar_pregunta_aleatoria():
                     "opcion_b": props["Opcion B"]["rich_text"][0]["text"]["content"],
                     "opcion_c": props["Opcion C"]["rich_text"][0]["text"]["content"],
                     "correcta": props["Correcta"]["select"]["name"],
-                    "recompensa": props["Recompensa"]["number"]
+                    "recompensa": props["Recompensa"]["number"],
+                    "explicacion": explicacion
                 }
     except: pass
     return None
@@ -527,10 +543,9 @@ def procesar_recalibracion(ap_reward):
     page_id = st.session_state.player_page_id
     url = f"https://api.notion.com/v1/pages/{page_id}"
     
-    # FECHA Y HORA ACTUAL (Chile)
     chile_tz = pytz.timezone('America/Santiago')
     now_chile = datetime.now(chile_tz)
-    now_iso = now_chile.isoformat() # Guardar formato ISO completo
+    now_iso = now_chile.isoformat() 
     
     payload = {"properties": {"AP": {"number": new_ap}, "Ultima Recalibracion": {"date": {"start": now_iso}}}}
     try:
@@ -862,7 +877,9 @@ def validar_login():
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
                         st.session_state.popup_shown = False
-                        st.session_state.balloons_trigger = False # Reiniciar trigger
+                        # RESETEAR ESTADOS TRIVIA
+                        st.session_state.trivia_feedback_mode = False 
+                        st.session_state.trivia_question = None
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -987,7 +1004,9 @@ else:
                 try:
                     if "T" in raw_date_popup:
                         utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
-                        fecha_popup = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
+                        chile_tz = pytz.timezone('America/Santiago')
+                        local_dt = utc_dt.astimezone(chile_tz)
+                        fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
                     else:
                         fecha_popup = datetime.strptime(raw_date_popup, "%Y-%m-%d").strftime("%d/%m/%Y")
                 except: fecha_popup = raw_date_popup
@@ -1028,6 +1047,7 @@ else:
 
     tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "📡 COMUNICACIONES"])
     
+    # ... (Otras Tabs) ...
     with tab_perfil:
         avatar_url = None
         try:
@@ -1261,7 +1281,7 @@ else:
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
-    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V91.0) ---
+    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V92.0 - Feedback Mode) ---
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
         st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
@@ -1270,53 +1290,71 @@ else:
         can_play = True
         msg_wait = ""
         
-        # Obtener fecha/hora ultima jugada
         last_play_str = None
         try:
             recal_prop = p.get("Ultima Recalibracion")
             if recal_prop:
-                last_play_str = recal_prop.get("date", {}).get("start") # Puede ser YYYY-MM-DD o ISO
+                last_play_str = recal_prop.get("date", {}).get("start") 
         except: last_play_str = None
 
         if last_play_str:
             chile_tz = pytz.timezone('America/Santiago')
             now_chile = datetime.now(chile_tz)
-            
-            # Parsear fecha de Notion
             try:
                 if "T" in last_play_str:
                     last_play_dt = datetime.fromisoformat(last_play_str.replace('Z', '+00:00'))
-                    # Convertir a Chile para comparar peras con peras
                     last_play_dt = last_play_dt.astimezone(chile_tz)
                 else:
-                    # Si solo es fecha YYYY-MM-DD, asumimos medianoche de ese día en Chile
                     dt_naive = datetime.strptime(last_play_str, "%Y-%m-%d")
                     last_play_dt = chile_tz.localize(dt_naive)
                 
-                # Calcular Delta
                 diff = now_chile - last_play_dt
-                if diff.total_seconds() < 86400: # Menos de 24 horas
+                if diff.total_seconds() < 86400: # 24 horas
                     can_play = False
-                    # Calcular tiempo restante
                     remaining = timedelta(hours=24) - diff
                     hours, remainder = divmod(remaining.seconds, 3600)
                     minutes, seconds = divmod(remainder, 60)
                     msg_wait = f"{hours}h {minutes}m"
-            except: 
-                # Si hay error parseando, por seguridad asumimos que puede jugar para no bloquear
-                can_play = True
+            except: can_play = True
 
-        # Renderizar Estado
         if is_alumni:
             st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
+        
+        # --- MODO FEEDBACK: MOSTRAR RESULTADO ---
+        elif st.session_state.trivia_feedback_mode:
+            res = st.session_state.trivia_last_result
+            if res['correct']:
+                st.balloons()
+                st.markdown(f"""
+                <div class="feedback-box feedback-correct">
+                    <div class="feedback-title" style="color: #00e676;">✅ ¡SISTEMAS ESTABILIZADOS!</div>
+                    <div class="feedback-text">Has aportado coherencia a la red.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
+                    <br>
+                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="feedback-box feedback-wrong">
+                    <div class="feedback-title" style="color: #ff1744;">❌ ERROR DE COHERENCIA</div>
+                    <div class="feedback-text">Datos corruptos detectados. La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
+                    <br>
+                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
+                st.session_state.trivia_feedback_mode = False
+                st.session_state.trivia_question = None
+                actualizar_datos_sesion() # Esto recargará y mostrará el Timer
+
+        # --- MODO BLOQUEADO (TIMER) ---
         elif not can_play:
             st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
-            # Barras decorativas
             st.progress(100)
+
+        # --- MODO JUEGO ---
         else:
-            # MOSTRAR JUEGO
-            
-            # Cargar pregunta si no hay
             if not st.session_state.trivia_question:
                 with st.spinner("Escaneando sectores corruptos..."):
                     q = cargar_pregunta_aleatoria()
@@ -1325,34 +1363,32 @@ else:
             
             if st.session_state.trivia_question:
                 q = st.session_state.trivia_question
-                
                 st.markdown(f"""<div class="trivia-container"><div class="trivia-question">{q['pregunta']}</div></div>""", unsafe_allow_html=True)
                 
-                # Mostrar Globos solo si se activa el trigger
-                if st.session_state.balloons_trigger:
-                    st.balloons()
-                    st.session_state.balloons_trigger = False # Apagar inmediatamente
-
                 col_a, col_b, col_c = st.columns(3)
                 
-                def check_answer(selected_option):
-                    if selected_option == q['correcta']:
-                        st.toast(f"✅ ¡CORRECTO! +{q['recompensa']} AP", icon="🎉")
-                        st.session_state.balloons_trigger = True # Activar globos para el reload
-                        procesar_recalibracion(q['recompensa']) # Registrar éxito
-                    else:
-                        st.error("❌ ERROR DE COHERENCIA. Datos rechazados.")
-                        procesar_recalibracion(0) # Registrar fallo (bloquea 24h)
+                def handle_choice(choice):
+                    is_correct = (choice == q['correcta'])
+                    reward = q['recompensa'] if is_correct else 0
                     
-                    st.session_state.trivia_question = None # Limpiar pregunta
-                    actualizar_datos_sesion() # Recargar todo
+                    # 1. Guardar estado para el feedback
+                    st.session_state.trivia_feedback_mode = True
+                    st.session_state.trivia_last_result = {
+                        "correct": is_correct,
+                        "reward": reward,
+                        "correct_option": q['correcta'],
+                        "explanation": q.get("explicacion", "")
+                    }
+                    
+                    # 2. Escribir en Notion INMEDIATAMENTE (para evitar F5 cheat)
+                    procesar_recalibracion(reward)
 
                 with col_a:
-                    if st.button(f"A) {q['opcion_a']}", use_container_width=True): check_answer("A")
+                    if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
                 with col_b:
-                    if st.button(f"B) {q['opcion_b']}", use_container_width=True): check_answer("B")
+                    if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
                 with col_c:
-                    if st.button(f"C) {q['opcion_c']}", use_container_width=True): check_answer("C")
+                    if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
 
     with tab_comms:
         st.markdown("### 📡 TRANSMISIONES DE VALERIUS")
