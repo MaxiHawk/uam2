@@ -8,7 +8,7 @@ import time
 import random
 import unicodedata
 import io
-from datetime import datetime
+from datetime import datetime, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
@@ -21,7 +21,8 @@ try:
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
     DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
     DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
-    DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None) 
+    DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None)
+    DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None) # NUEVO
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -33,9 +34,7 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-# TIEMPO DE INACTIVIDAD (15 mins)
 SESSION_TIMEOUT = 900 
-
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
 # --- DICCIONARIO DE NIVELES ---
@@ -47,7 +46,6 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- FRASES DEL SISTEMA (EASTER EGG) ---
 SYSTEM_MESSAGES = [
     "📡 Enlace neuronal estable. Latencia: 0.04ms",
     "🛡️ Escudos de deflexión al 100%.",
@@ -64,7 +62,6 @@ SYSTEM_MESSAGES = [
     "🎲 Tira los dados, el destino aguarda."
 ]
 
-# --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
 SQUAD_THEMES = {
     "Default": { "primary": "#00ff9d", "glow": "rgba(0, 255, 157, 0.5)", "gradient_start": "#004d40", "gradient_end": "#00bfa5", "text_highlight": "#69f0ae" },
     "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
@@ -89,7 +86,6 @@ SQUAD_THEMES = {
     "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" }
 }
 
-# --- 🖼️ DICCIONARIO DE INSIGNIAS ---
 BADGE_MAP = {
     "Misión 1": "assets/insignias/mision_1.png",
     "Misión 2": "assets/insignias/mision_2.png",
@@ -108,6 +104,7 @@ DEFAULT_BADGE = "assets/insignias/default.png"
 
 # --- ESTADO DE SESIÓN ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
+if "player_page_id" not in st.session_state: st.session_state.player_page_id = None # NUEVO: ID de la página del jugador para updates
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
 if "show_intro" not in st.session_state: st.session_state.show_intro = False
 if "popup_shown" not in st.session_state: st.session_state.popup_shown = False
@@ -123,6 +120,9 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
+# NUEVOS ESTADOS PARA TRIVIA
+if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
+if "trivia_answered" not in st.session_state: st.session_state.trivia_answered = False
 
 # Logout automático
 if st.session_state.get("jugador") is not None:
@@ -184,6 +184,18 @@ st.markdown(f"""
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
+        /* TRIVIA STYLES */
+        .trivia-container {{
+            background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9));
+            border: 2px solid #e040fb;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(224, 64, 251, 0.3);
+            margin-bottom: 20px;
+        }}
+        .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
+        
         /* POPUP STYLES */
         .popup-container {{
             background: linear-gradient(135deg, rgba(10,20,30,0.95), rgba(0,5,10,0.98));
@@ -395,7 +407,6 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7.1 ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     neon_color = "#00ff9d"
     gold_color = "#FFD700"
@@ -486,7 +497,121 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     buf.seek(0)
     return buf
 
-# --- FUNCIONES LÓGICAS ---
+# --- LÓGICA TRIVIA Y ANUNCIOS ---
+def cargar_pregunta_aleatoria():
+    if not DB_TRIVIA_ID: return None
+    url = f"https://api.notion.com/v1/databases/{DB_TRIVIA_ID}/query"
+    payload = {"filter": {"property": "Activa", "checkbox": {"equals": True}}}
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results:
+                q_data = random.choice(results)
+                props = q_data["properties"]
+                return {
+                    "id": q_data["id"],
+                    "pregunta": props["Pregunta"]["title"][0]["text"]["content"],
+                    "opcion_a": props["Opcion A"]["rich_text"][0]["text"]["content"],
+                    "opcion_b": props["Opcion B"]["rich_text"][0]["text"]["content"],
+                    "opcion_c": props["Opcion C"]["rich_text"][0]["text"]["content"],
+                    "correcta": props["Correcta"]["select"]["name"],
+                    "recompensa": props["Recompensa"]["number"]
+                }
+    except: pass
+    return None
+
+def procesar_recalibracion(ap_reward):
+    # 1. Actualizar AP
+    new_ap = (st.session_state.jugador["AP"]["number"] or 0) + ap_reward
+    page_id = st.session_state.player_page_id
+    
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    today_iso = date.today().isoformat()
+    
+    payload = {
+        "properties": {
+            "AP": {"number": new_ap},
+            "Ultima Recalibracion": {"date": {"start": today_iso}}
+        }
+    }
+    
+    try:
+        res = requests.patch(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            return True
+    except: pass
+    return False
+
+# --- LÓGICA DE FILTRADO INTELIGENTE (ANUNCIOS) ---
+def cargar_anuncios():
+    if not DB_ANUNCIOS_ID: return []
+    url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
+    payload = {
+        "filter": {"property": "Activo", "checkbox": {"equals": True}},
+        "sorts": [{"property": "Fecha", "direction": "descending"}]
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        anuncios = []
+        if res.status_code == 200:
+            for r in res.json()["results"]:
+                props = r["properties"]
+                try:
+                    titulo = props["Nombre"]["title"][0]["text"]["content"]
+                    contenido = props["Mensaje"]["rich_text"][0]["text"]["content"]
+                    fecha = props["Fecha"]["date"]["start"]
+                    prio = "Normal"
+                    if "Prioridad" in props and props["Prioridad"]["select"]:
+                        prio = props["Prioridad"]["select"]["name"]
+                    
+                    uni_target = "Todas"
+                    if "Universidad" in props:
+                        if props["Universidad"]["type"] == "select" and props["Universidad"]["select"]:
+                            uni_target = props["Universidad"]["select"]["name"]
+                        elif props["Universidad"]["type"] == "multi_select" and props["Universidad"]["multi_select"]:
+                            uni_target = [x["name"] for x in props["Universidad"]["multi_select"]]
+                    
+                    year_target = "Todas"
+                    if "Año" in props:
+                        if props["Año"]["type"] == "select" and props["Año"]["select"]:
+                            year_target = props["Año"]["select"]["name"]
+                        elif props["Año"]["type"] == "multi_select" and props["Año"]["multi_select"]:
+                            year_target = [x["name"] for x in props["Año"]["multi_select"]]
+
+                    anuncios.append({
+                        "titulo": titulo, 
+                        "contenido": contenido, 
+                        "fecha": fecha, 
+                        "prioridad": prio,
+                        "universidad": uni_target,
+                        "año": year_target
+                    })
+                except: pass
+        return anuncios
+    except: return []
+
+def es_anuncio_relevante(anuncio, user_uni, user_year, is_alumni):
+    target_uni = anuncio.get("universidad", "Todas")
+    match_uni = False
+    if isinstance(target_uni, list):
+        if "Todas" in target_uni or user_uni in target_uni: match_uni = True
+    elif target_uni == "Todas" or target_uni == user_uni:
+        match_uni = True
+    if not match_uni: return False
+
+    target_year = anuncio.get("año", "Todas")
+    match_year = False
+    if not target_year: target_year = "Todas"
+    if isinstance(target_year, list):
+        if "Todas" in target_year or user_year in target_year: match_year = True
+    elif target_year == "Todas" or target_year == user_year:
+        match_year = True
+    if not match_year: return False
+
+    return True
+
+# --- FUNCIONES BASE ---
 def calcular_nivel_usuario(mp):
     if mp <= 50: return 1
     elif mp <= 150: return 2
@@ -588,83 +713,6 @@ def cargar_mercado():
                 except: pass
         return items
     except: return []
-
-# --- FUNCIONES ANUNCIOS ---
-def cargar_anuncios():
-    if not DB_ANUNCIOS_ID: return []
-    url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
-    payload = {
-        "filter": {"property": "Activo", "checkbox": {"equals": True}},
-        "sorts": [{"property": "Fecha", "direction": "descending"}]
-    }
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        anuncios = []
-        if res.status_code == 200:
-            for r in res.json()["results"]:
-                props = r["properties"]
-                try:
-                    titulo = props["Nombre"]["title"][0]["text"]["content"]
-                    contenido = props["Mensaje"]["rich_text"][0]["text"]["content"]
-                    fecha = props["Fecha"]["date"]["start"]
-                    prio = "Normal"
-                    if "Prioridad" in props and props["Prioridad"]["select"]:
-                        prio = props["Prioridad"]["select"]["name"]
-                    
-                    # --- NUEVO: OBTENER PROPIEDADES DE SEGMENTACIÓN ---
-                    uni_target = "Todas"
-                    if "Universidad" in props:
-                        if props["Universidad"]["type"] == "select" and props["Universidad"]["select"]:
-                            uni_target = props["Universidad"]["select"]["name"]
-                        elif props["Universidad"]["type"] == "multi_select" and props["Universidad"]["multi_select"]:
-                            uni_target = [x["name"] for x in props["Universidad"]["multi_select"]]
-                    
-                    year_target = "Todas"
-                    if "Año" in props:
-                        if props["Año"]["type"] == "select" and props["Año"]["select"]:
-                            year_target = props["Año"]["select"]["name"]
-                        elif props["Año"]["type"] == "multi_select" and props["Año"]["multi_select"]:
-                            year_target = [x["name"] for x in props["Año"]["multi_select"]]
-
-                    anuncios.append({
-                        "titulo": titulo, 
-                        "contenido": contenido, 
-                        "fecha": fecha, 
-                        "prioridad": prio,
-                        "universidad": uni_target,
-                        "año": year_target
-                    })
-                except: pass
-        return anuncios
-    except: return []
-
-# --- HELPER DE FILTRADO INTELIGENTE (POPUP & TAB) ---
-def es_anuncio_relevante(anuncio, user_uni, user_year, is_alumni):
-    # 1. Filtro Universidad
-    target_uni = anuncio.get("universidad", "Todas")
-    match_uni = False
-    if isinstance(target_uni, list):
-        if "Todas" in target_uni or user_uni in target_uni: match_uni = True
-    elif target_uni == "Todas" or target_uni == user_uni:
-        match_uni = True
-    
-    if not match_uni: return False
-
-    # 2. Filtro Año / Generación
-    target_year = anuncio.get("año", "Todas")
-    match_year = False
-    
-    # Si target_year está vacío o no existe, asumimos "Todas" o "Actual" por seguridad
-    if not target_year: target_year = "Todas"
-
-    if isinstance(target_year, list):
-        if "Todas" in target_year or user_year in target_year: match_year = True
-    elif target_year == "Todas" or target_year == user_year:
-        match_year = True
-    
-    if not match_year: return False
-
-    return True
 
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
@@ -806,11 +854,14 @@ def validar_login():
         if res.status_code == 200:
             data = res.json()
             if len(data["results"]) > 0:
-                props = data["results"][0]["properties"]
+                result_obj = data["results"][0]
+                props = result_obj["properties"]
+                page_id = result_obj["id"] # Capturar ID para escribir
                 try:
                     c_real = props.get("Clave", {}).get("rich_text", [])[0]["text"]["content"]
                     if clave == c_real:
                         st.session_state.jugador = props
+                        st.session_state.player_page_id = page_id # Guardar ID
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
@@ -870,11 +921,9 @@ def play_intro_sequence():
 
 # ================= UI PRINCIPAL =================
 
-# 1. CONTENEDOR MAESTRO (Evita el "fantasma")
 main_placeholder = st.empty()
 
 if not st.session_state.jugador:
-    # --- PANTALLA LOGIN ---
     with main_placeholder.container():
         if os.path.exists("assets/cover.png"): st.image("assets/cover.png", use_container_width=True)
         with st.container():
@@ -891,7 +940,6 @@ if not st.session_state.jugador:
                 st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
                 st.text_input("Password:", type="password", key="input_pass")
                 st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
-            
             with st.expander("🆘 ¿Problemas de Acceso?"):
                 st.caption("Si olvidaste tu clave, solicita un reinicio al comando.")
                 with st.form("reset_form", clear_on_submit=True):
@@ -907,14 +955,12 @@ if not st.session_state.jugador:
         if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    # --- LOGICA INTRO PRIORITARIA (SOLUCIÓN PANTALLA VERDE) ---
     if st.session_state.show_intro:
         main_placeholder.empty()
         play_intro_sequence()
         st.session_state.show_intro = False
         st.rerun()
 
-    # --- DASHBOARD ---
     main_placeholder.empty() 
 
     p = st.session_state.jugador
@@ -925,38 +971,28 @@ else:
     uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
-    
     is_alumni = (estado_label == "Finalizado")
-    status_color = "#00e5ff"
-    if is_alumni: status_color = "#ff4b4b"
-    elif estado_label == "Sin empezar": status_color = "#FFD700"
+    status_color = "#ff4b4b" if is_alumni else "#00e5ff"
+    if estado_label == "Sin empezar": status_color = "#FFD700"
 
-    # --- POPUP ANUNCIO INTELIGENTE (BÚSQUEDA RECURSIVA DE RELEVANCIA) ---
+    # --- POPUP ANUNCIO INTELIGENTE ---
     if not st.session_state.popup_shown and st.session_state.anuncios_data:
-        # Si es Alumni, NO mostramos popup (por defecto, para no molestar)
-        # Si quisieras enviar algo a Alumni, podrías cambiar esta lógica aquí.
         if not is_alumni:
             anuncio_para_mostrar = None
-            
-            # Buscamos el PRIMER anuncio que coincida con la Universidad y Año del usuario
             for anuncio in st.session_state.anuncios_data:
                 if es_anuncio_relevante(anuncio, uni_label, ano_label, is_alumni):
                     anuncio_para_mostrar = anuncio
-                    break # ¡Encontrado! Dejamos de buscar
+                    break
             
             if anuncio_para_mostrar:
                 st.session_state.popup_shown = True
-                
                 raw_date_popup = anuncio_para_mostrar['fecha']
                 try:
                     if "T" in raw_date_popup:
                         utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
-                        chile_tz = pytz.timezone('America/Santiago')
-                        local_dt = utc_dt.astimezone(chile_tz)
-                        fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
+                        fecha_popup = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
                     else:
-                        dt_obj = datetime.strptime(raw_date_popup, "%Y-%m-%d")
-                        fecha_popup = dt_obj.strftime("%d/%m/%Y")
+                        fecha_popup = datetime.strptime(raw_date_popup, "%Y-%m-%d").strftime("%d/%m/%Y")
                 except: fecha_popup = raw_date_popup
 
                 with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
@@ -969,6 +1005,9 @@ else:
                     """, unsafe_allow_html=True)
                     if st.button("ENTENDIDO, CERRAR ENLACE"):
                         st.rerun()
+
+    news_text = obtener_noticias()
+    st.markdown(f"""<div class="ticker-wrap"><div class="ticker"><div class="ticker-item">{news_text}</div></div></div>""", unsafe_allow_html=True)
 
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
@@ -990,9 +1029,14 @@ else:
     st.markdown("<br><br>", unsafe_allow_html=True)
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "📡 COMUNICACIONES"])
+    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "📡 COMUNICACIONES"])
     
+    # ... (TABS PERFIL, RANKING, HABILIDADES, CODICE, MERCADO - IDÉNTICAS AL ANTERIOR) ...
+    # RESUMIDO PARA AHORRAR ESPACIO, COPIAR DEL BLOQUE ANTERIOR SI ES NECESARIO, 
+    # PERO AQUÍ ESTÁ LA LÓGICA DE ORÁCULO NUEVA:
+
     with tab_perfil:
+        # (Código Perfil igual a v89.0)
         avatar_url = None
         try:
             f_list = p.get("Avatar", {}).get("files", [])
@@ -1005,8 +1049,8 @@ else:
         b64_badge = get_img_as_base64(img_path) if img_path else ""
         try: vp = int(p.get("VP", {}).get("number", 1))
         except: vp = 0
-        
         prog_act, prog_total, prog_pct, faltantes, is_max = calcular_progreso_nivel(mp)
+        
         if is_max:
             progress_html = f"""<div class="level-progress-wrapper"><div class="level-progress-bg"><div class="level-progress-fill" style="width: 100%; background: #FFD700; box-shadow: 0 0 15px #FFD700;"></div></div><div class="level-progress-text" style="color: #FFD700;"><strong>¡NIVEL MÁXIMO ALCANZADO!</strong></div></div>"""
         else:
@@ -1225,11 +1269,69 @@ else:
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
+    # --- NUEVA TAB: ORÁCULO DE VALERIUS ---
+    with tab_trivia:
+        st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
+        st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
+        
+        # 1. VERIFICAR SI YA JUGÓ HOY
+        jugo_hoy = False
+        today_iso = date.today().isoformat()
+        last_play = p.get("Ultima Recalibracion", {}).get("date", {}).get("start")
+        if last_play == today_iso: jugo_hoy = True
+        
+        if is_alumni:
+            st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
+        elif jugo_hoy:
+            st.success("✅ SISTEMAS RECALIBRADOS. Tu aporte ha sido registrado hoy. Vuelve mañana.")
+            st.balloons()
+        else:
+            # 2. CARGAR PREGUNTA (Solo si no ha jugado y no tiene una cargada)
+            if not st.session_state.trivia_question:
+                with st.spinner("Escaneando sectores corruptos..."):
+                    q = cargar_pregunta_aleatoria()
+                    if q: st.session_state.trivia_question = q
+                    else: st.info("Sistemas al 100%. No se requieren reparaciones hoy.")
+            
+            # 3. MOSTRAR PREGUNTA
+            if st.session_state.trivia_question:
+                q = st.session_state.trivia_question
+                
+                st.markdown(f"""
+                <div class="trivia-container">
+                    <div class="trivia-question">{q['pregunta']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Botones de Respuesta
+                col_a, col_b, col_c = st.columns(3)
+                
+                def check_answer(selected_option):
+                    if selected_option == q['correcta']:
+                        st.toast(f"✅ ¡CORRECTO! +{q['recompensa']} AP", icon="🎉")
+                        # Actualizar AP en Notion + Fecha
+                        procesar_recalibracion(q['recompensa'])
+                        # Limpiar estado para mañana
+                        st.session_state.trivia_question = None
+                        actualizar_datos_sesion() # Refrescar todo
+                    else:
+                        st.error("❌ ERROR DE COHERENCIA. Datos rechazados.")
+                        # Marcar como jugado hoy (0 puntos) para que no repita
+                        procesar_recalibracion(0) 
+                        st.session_state.trivia_question = None
+                        actualizar_datos_sesion()
+
+                with col_a:
+                    if st.button(f"A) {q['opcion_a']}", use_container_width=True): check_answer("A")
+                with col_b:
+                    if st.button(f"B) {q['opcion_b']}", use_container_width=True): check_answer("B")
+                with col_c:
+                    if st.button(f"C) {q['opcion_c']}", use_container_width=True): check_answer("C")
+
     with tab_comms:
         st.markdown("### 📡 TRANSMISIONES DE VALERIUS")
         anuncios = st.session_state.anuncios_data
         
-        # FILTRAR ANUNCIOS PARA BANDEJA DE ENTRADA (Misma lógica que popup)
         anuncios_visibles = []
         if anuncios:
             for anuncio in anuncios:
