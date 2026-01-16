@@ -376,18 +376,41 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v6 ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7 (Fondo Personalizado) ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     neon_color = "#00ff9d"
     gold_color = "#FFD700"
     W, H = 1080, 1920
+    
+    # 1. Crear lienzo base
     bg_color = '#010204'
     img = Image.new('RGB', (W, H), color=bg_color)
     draw = ImageDraw.Draw(img)
-    grid_color = "#080c14"
-    for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
-    for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
 
+    # 2. LOGICA DE FONDO (Background Personalizado)
+    # Busca 'social_bg.png' o 'social_bg.jpg' en assets
+    bg_custom_path = None
+    if os.path.exists("assets/social_bg.png"): bg_custom_path = "assets/social_bg.png"
+    elif os.path.exists("assets/social_bg.jpg"): bg_custom_path = "assets/social_bg.jpg"
+
+    if bg_custom_path:
+        # Si existe imagen, la cargamos y ajustamos
+        bg_img = Image.open(bg_custom_path).convert("RGBA")
+        bg_img = bg_img.resize((W, H)) # Forzar ajuste al lienzo
+        img.paste(bg_img, (0, 0))
+        
+        # APLICAR CAPA OSCURA (Vital para que el texto se lea)
+        # (0, 0, 0, 180) -> 180 de 255 es aprox 70% de oscuridad. Ajusta si quieres más luz.
+        overlay = Image.new('RGBA', (W, H), (0, 0, 0, 180)) 
+        img.paste(overlay, (0, 0), overlay)
+        
+    else:
+        # Si NO existe, usamos la cuadrícula clásica
+        grid_color = "#080c14"
+        for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
+        for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
+
+    # --- TIPOGRAFÍA ---
     try:
         font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50)
         font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)
@@ -399,6 +422,7 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     except:
         font_title_small = font_title_big = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
 
+    # --- MARCO NEÓN ---
     offset_frame = 45
     draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=neon_color, width=10)
     draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
@@ -409,6 +433,7 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
         draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=neon_color)
         draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=neon_color, width=4)
 
+    # --- LOGO SUPERIOR ---
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
         logo = logo.resize((180, 180))
@@ -417,9 +442,11 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
         img.paste(logo_glow, (W//2 - 90, 130), logo_mask)
         img.paste(logo, (W//2 - 90, 130), logo)
 
+    # Textos Superiores
     draw.text((W//2, 340), "INSIGNIA", font=font_title_small, fill=gold_color, anchor="mm")
     draw.text((W//2, 415), "DESBLOQUEADA", font=font_title_big, fill=gold_color, anchor="mm")
 
+    # --- NÚCLEO DE ENERGÍA ---
     glow_size = 1000
     glow_img_wide = Image.new('RGBA', (glow_size, glow_size), (0,0,0,0))
     glow_draw_wide = ImageDraw.Draw(glow_img_wide)
@@ -436,6 +463,7 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     img.paste(glow_img_wide, (W//2 - glow_size//2, H//2 - glow_size//2 - 50), glow_img_wide)
     img.paste(glow_img_core, (W//2 - core_size//2, H//2 - core_size//2 - 50), glow_img_core)
 
+    # Imagen de la Insignia
     badge_y_center = H//2 - 50
     if os.path.exists(badge_path):
         badge = Image.open(badge_path).convert("RGBA")
@@ -444,6 +472,7 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     else:
         draw.text((W//2, badge_y_center), "🏅", font=font_badge_name, fill="white", anchor="mm")
 
+    # Textos Inferiores
     draw.text((W//2, badge_y_center + 450), badge_name.upper(), font=font_badge_name, fill=gold_color, anchor="mm")
     
     base_y_info = badge_y_center + 600
