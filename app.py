@@ -21,7 +21,6 @@ try:
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
     DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
     DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
-    # NUEVO: Base de datos de Anuncios/Popups
     DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None) 
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
@@ -111,14 +110,14 @@ DEFAULT_BADGE = "assets/insignias/default.png"
 if "jugador" not in st.session_state: st.session_state.jugador = None
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
 if "show_intro" not in st.session_state: st.session_state.show_intro = False
-if "popup_shown" not in st.session_state: st.session_state.popup_shown = False # NUEVO: Control de Popup
+if "popup_shown" not in st.session_state: st.session_state.popup_shown = False
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
 if "codice_data" not in st.session_state: st.session_state.codice_data = [] 
 if "market_data" not in st.session_state: st.session_state.market_data = []
-if "anuncios_data" not in st.session_state: st.session_state.anuncios_data = [] # NUEVO: Cache anuncios
+if "anuncios_data" not in st.session_state: st.session_state.anuncios_data = [] 
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
@@ -590,11 +589,10 @@ def cargar_mercado():
         return items
     except: return []
 
-# --- NUEVAS FUNCIONES PARA ANUNCIOS ---
+# --- FUNCIONES ANUNCIOS ---
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
-    # Traemos solo los activos y ordenamos por fecha descendente
     payload = {
         "filter": {"property": "Activo", "checkbox": {"equals": True}},
         "sorts": [{"property": "Fecha", "direction": "descending"}]
@@ -609,7 +607,6 @@ def cargar_anuncios():
                     titulo = props["Nombre"]["title"][0]["text"]["content"]
                     contenido = props["Mensaje"]["rich_text"][0]["text"]["content"]
                     fecha = props["Fecha"]["date"]["start"]
-                    # Prioridad (Opcional)
                     prio = "Normal"
                     if "Prioridad" in props and props["Prioridad"]["select"]:
                         prio = props["Prioridad"]["select"]["name"]
@@ -721,7 +718,7 @@ def actualizar_datos_sesion():
                     if rol_usuario: st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                     st.session_state.codice_data = cargar_codice()
                     st.session_state.market_data = cargar_mercado()
-                    st.session_state.anuncios_data = cargar_anuncios() # Refrescamos anuncios
+                    st.session_state.anuncios_data = cargar_anuncios()
                     st.rerun()
         except: pass
 
@@ -766,8 +763,7 @@ def validar_login():
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
-                        st.session_state.popup_shown = False # Reiniciar popup al login
-                        
+                        st.session_state.popup_shown = False
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -788,7 +784,7 @@ def validar_login():
                         if rol_usuario: st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                         st.session_state.codice_data = cargar_codice()
                         st.session_state.market_data = cargar_mercado()
-                        st.session_state.anuncios_data = cargar_anuncios() # Cargar anuncios al login
+                        st.session_state.anuncios_data = cargar_anuncios()
                     else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
                 except: st.session_state.login_error = "Error Credenciales"
             else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
@@ -870,18 +866,30 @@ else:
     # --- DASHBOARD ---
     main_placeholder.empty() 
 
-    # --- POPUP ANUNCIO (Mostrar solo una vez por sesión y si hay anuncios) ---
+    # --- POPUP ANUNCIO ---
     if not st.session_state.popup_shown and st.session_state.anuncios_data:
-        ultimo_anuncio = st.session_state.anuncios_data[0] # El más reciente
-        st.session_state.popup_shown = True # Marcar como mostrado
+        ultimo_anuncio = st.session_state.anuncios_data[0]
+        st.session_state.popup_shown = True
         
-        # Renderizar Popup Modal
+        # PROCESAR FECHA POPUP
+        raw_date_popup = ultimo_anuncio['fecha']
+        try:
+            if "T" in raw_date_popup:
+                utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
+                chile_tz = pytz.timezone('America/Santiago')
+                local_dt = utc_dt.astimezone(chile_tz)
+                fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
+            else:
+                dt_obj = datetime.strptime(raw_date_popup, "%Y-%m-%d")
+                fecha_popup = dt_obj.strftime("%d/%m/%Y")
+        except: fecha_popup = raw_date_popup
+
         with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
             st.markdown(f"""
             <div class="popup-container">
                 <div class="popup-title">{ultimo_anuncio['titulo']}</div>
                 <div class="popup-body">{ultimo_anuncio['contenido']}</div>
-                <div class="popup-date">FECHA ESTELAR: {ultimo_anuncio['fecha']}</div>
+                <div class="popup-date">FECHA ESTELAR: {fecha_popup}</div>
             </div>
             """, unsafe_allow_html=True)
             if st.button("ENTENDIDO, CERRAR ENLACE"):
@@ -899,9 +907,7 @@ else:
     ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
     estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
     
-    # --- MODO ALUMNI / ESPECTADOR ---
     is_alumni = (estado_label == "Finalizado")
-
     status_color = "#00e5ff"
     if is_alumni: status_color = "#ff4b4b"
     elif estado_label == "Sin empezar": status_color = "#FFD700"
@@ -1104,19 +1110,15 @@ else:
         if not codice_items: st.info("Sin registros en el Códice.")
         else:
             for item in codice_items:
-                # --- LOGICA DE BLOQUEO CODICE ---
                 item_is_for_alumni = item["nombre"].startswith("[EX]") or item["nombre"].startswith("[ALUMNI]")
                 
                 if is_alumni and not item_is_for_alumni:
-                    # Alumni restringido
                     lock_class, lock_icon = ("locked", "🔒")
                     action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">⛔ CICLO CERRADO</span>'
                 elif nivel_num < item["nivel"]:
-                    # Nivel insuficiente
                     lock_class, lock_icon = ("locked", "🔒")
                     action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
                 else:
-                    # Desbloqueado
                     lock_class, lock_icon = ("", "🔓")
                     action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
 
@@ -1135,8 +1137,6 @@ else:
         else:
             for item in market_items:
                 item_is_for_alumni = item['nombre'].startswith("[EX]") or item['nombre'].startswith("[ALUMNI]")
-                
-                # --- LÓGICA DE VISIBILIDAD DE BOTÓN (V84.0) ---
                 puede_ver_boton = True
                 texto_boton_cerrado = "🔒 CERRADO"
 
@@ -1145,7 +1145,6 @@ else:
                         puede_ver_boton = False
                         texto_boton_cerrado = "⛔ CICLO CERRADO"
                 else:
-                    # Estudiante Activo: Si es un item EX, lo bloqueamos
                     if item_is_for_alumni:
                         puede_ver_boton = False
                         texto_boton_cerrado = "🔒 SOLO VETERANOS"
@@ -1169,18 +1168,30 @@ else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_comms:
-        # --- SECCIÓN BANDEJA DE ENTRADA DE ANUNCIOS ---
-        st.markdown("### 📡 TRANSMISIONES DEL COMANDO")
+        st.markdown("### 📡 TRANSMISIONES DE VALERIUS")
         anuncios = st.session_state.anuncios_data
         if not anuncios:
             st.info("Sin transmisiones recientes.")
         else:
             for anuncio in anuncios:
+                # --- PROCESAMIENTO FECHA CHILE ---
+                raw_date = anuncio['fecha']
+                try:
+                    if "T" in raw_date:
+                        utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+                        chile_tz = pytz.timezone('America/Santiago')
+                        local_dt = utc_dt.astimezone(chile_tz)
+                        fecha_display = local_dt.strftime("%d/%m/%Y %H:%M")
+                    else:
+                        dt_obj = datetime.strptime(raw_date, "%Y-%m-%d")
+                        fecha_display = dt_obj.strftime("%d/%m/%Y")
+                except: fecha_display = raw_date
+
                 with st.container():
                     st.markdown(f"""
                     <div style="background: rgba(0, 50, 50, 0.3); border-left: 4px solid var(--primary-color); padding: 15px; border-radius: 5px; margin-bottom: 10px;">
                         <div style="color: var(--primary-color); font-weight: bold; font-family: 'Orbitron'; font-size: 1.1em;">{anuncio['titulo']}</div>
-                        <div style="color: #aaa; font-size: 0.8em; margin-bottom: 5px;">{anuncio['fecha']}</div>
+                        <div style="color: #aaa; font-size: 0.8em; margin-bottom: 5px;">{fecha_display}</div>
                         <div style="color: #fff;">{anuncio['contenido']}</div>
                     </div>
                     """, unsafe_allow_html=True)
