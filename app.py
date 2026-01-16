@@ -22,7 +22,7 @@ try:
     DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
     DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
     DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None)
-    DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None) # NUEVO
+    DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None) 
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -104,7 +104,7 @@ DEFAULT_BADGE = "assets/insignias/default.png"
 
 # --- ESTADO DE SESIÓN ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
-if "player_page_id" not in st.session_state: st.session_state.player_page_id = None # NUEVO: ID de la página del jugador para updates
+if "player_page_id" not in st.session_state: st.session_state.player_page_id = None 
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
 if "show_intro" not in st.session_state: st.session_state.show_intro = False
 if "popup_shown" not in st.session_state: st.session_state.popup_shown = False
@@ -120,7 +120,6 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
-# NUEVOS ESTADOS PARA TRIVIA
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_answered" not in st.session_state: st.session_state.trivia_answered = False
 
@@ -407,6 +406,7 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7.1 ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     neon_color = "#00ff9d"
     gold_color = "#FFD700"
@@ -522,24 +522,14 @@ def cargar_pregunta_aleatoria():
     return None
 
 def procesar_recalibracion(ap_reward):
-    # 1. Actualizar AP
     new_ap = (st.session_state.jugador["AP"]["number"] or 0) + ap_reward
     page_id = st.session_state.player_page_id
-    
     url = f"https://api.notion.com/v1/pages/{page_id}"
     today_iso = date.today().isoformat()
-    
-    payload = {
-        "properties": {
-            "AP": {"number": new_ap},
-            "Ultima Recalibracion": {"date": {"start": today_iso}}
-        }
-    }
-    
+    payload = {"properties": {"AP": {"number": new_ap}, "Ultima Recalibracion": {"date": {"start": today_iso}}}}
     try:
         res = requests.patch(url, headers=headers, json=payload)
-        if res.status_code == 200:
-            return True
+        if res.status_code == 200: return True
     except: pass
     return False
 
@@ -975,24 +965,32 @@ else:
     status_color = "#ff4b4b" if is_alumni else "#00e5ff"
     if estado_label == "Sin empezar": status_color = "#FFD700"
 
-    # --- POPUP ANUNCIO INTELIGENTE ---
+    # --- POPUP ANUNCIO INTELIGENTE (BÚSQUEDA RECURSIVA DE RELEVANCIA) ---
     if not st.session_state.popup_shown and st.session_state.anuncios_data:
+        # Si es Alumni, NO mostramos popup (por defecto, para no molestar)
+        # Si quisieras enviar algo a Alumni, podrías cambiar esta lógica aquí.
         if not is_alumni:
             anuncio_para_mostrar = None
+            
+            # Buscamos el PRIMER anuncio que coincida con la Universidad y Año del usuario
             for anuncio in st.session_state.anuncios_data:
                 if es_anuncio_relevante(anuncio, uni_label, ano_label, is_alumni):
                     anuncio_para_mostrar = anuncio
-                    break
+                    break # ¡Encontrado! Dejamos de buscar
             
             if anuncio_para_mostrar:
                 st.session_state.popup_shown = True
+                
                 raw_date_popup = anuncio_para_mostrar['fecha']
                 try:
                     if "T" in raw_date_popup:
                         utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
-                        fecha_popup = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
+                        chile_tz = pytz.timezone('America/Santiago')
+                        local_dt = utc_dt.astimezone(chile_tz)
+                        fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
                     else:
-                        fecha_popup = datetime.strptime(raw_date_popup, "%Y-%m-%d").strftime("%d/%m/%Y")
+                        dt_obj = datetime.strptime(raw_date_popup, "%Y-%m-%d")
+                        fecha_popup = dt_obj.strftime("%d/%m/%Y")
                 except: fecha_popup = raw_date_popup
 
                 with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
@@ -1277,7 +1275,17 @@ else:
         # 1. VERIFICAR SI YA JUGÓ HOY
         jugo_hoy = False
         today_iso = date.today().isoformat()
-        last_play = p.get("Ultima Recalibracion", {}).get("date", {}).get("start")
+        
+        # --- HOTFIX NULIDAD (v90.1) ---
+        last_play = None
+        try:
+            # Obtener propiedad de forma segura con .get() encadenado
+            recal_prop = p.get("Ultima Recalibracion")
+            if recal_prop:
+                last_play = recal_prop.get("date", {}).get("start")
+        except: 
+            last_play = None # Si falla, asumimos que no ha jugado
+
         if last_play == today_iso: jugo_hoy = True
         
         if is_alumni:
