@@ -376,7 +376,7 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7 (Fondo Personalizado) ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7.1 (Fondo Personalizado SIN Marco Redundante) ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     neon_color = "#00ff9d"
     gold_color = "#FFD700"
@@ -400,15 +400,28 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
         img.paste(bg_img, (0, 0))
         
         # APLICAR CAPA OSCURA (Vital para que el texto se lea)
-        # (0, 0, 0, 180) -> 180 de 255 es aprox 70% de oscuridad. Ajusta si quieres más luz.
-        overlay = Image.new('RGBA', (W, H), (0, 0, 0, 180)) 
+        # (0, 0, 0, 150) -> Ajustado a un poco menos oscuro para que se note más el fondo
+        overlay = Image.new('RGBA', (W, H), (0, 0, 0, 150)) 
         img.paste(overlay, (0, 0), overlay)
         
     else:
-        # Si NO existe, usamos la cuadrícula clásica
+        # --- FALLBACK: Si NO existe fondo personalizado, dibujamos el default ---
+        
+        # Cuadrícula de fondo
         grid_color = "#080c14"
         for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
         for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
+
+        # MARCO NEÓN (Solo se dibuja si NO hay fondo personalizado)
+        offset_frame = 45
+        draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=neon_color, width=10)
+        draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
+        
+        node_radius = 20
+        corners = [(offset_frame, offset_frame), (W-offset_frame, offset_frame), (offset_frame, H-offset_frame), (W-offset_frame, H-offset_frame)]
+        for cx, cy in corners:
+            draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=neon_color)
+            draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=neon_color, width=4)
 
     # --- TIPOGRAFÍA ---
     try:
@@ -421,17 +434,6 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
         font_footer = ImageFont.truetype("assets/fonts/Orbitron-Regular.ttf", 30)
     except:
         font_title_small = font_title_big = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
-
-    # --- MARCO NEÓN ---
-    offset_frame = 45
-    draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=neon_color, width=10)
-    draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
-    
-    node_radius = 20
-    corners = [(offset_frame, offset_frame), (W-offset_frame, offset_frame), (offset_frame, H-offset_frame), (W-offset_frame, H-offset_frame)]
-    for cx, cy in corners:
-        draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=neon_color)
-        draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=neon_color, width=4)
 
     # --- LOGO SUPERIOR ---
     if os.path.exists("assets/logo.png"):
@@ -446,18 +448,21 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     draw.text((W//2, 340), "INSIGNIA", font=font_title_small, fill=gold_color, anchor="mm")
     draw.text((W//2, 415), "DESBLOQUEADA", font=font_title_big, fill=gold_color, anchor="mm")
 
-    # --- NÚCLEO DE ENERGÍA ---
+    # --- NÚCLEO DE ENERGÍA (GLOW CENTRAL) ---
+    # Se mantiene para darle un "pop" a la insignia sobre el fondo oscuro
     glow_size = 1000
     glow_img_wide = Image.new('RGBA', (glow_size, glow_size), (0,0,0,0))
     glow_draw_wide = ImageDraw.Draw(glow_img_wide)
     nc_rgb = tuple(int(neon_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-    glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=nc_rgb + (50,))
+    # Hacemos el glow un poco más sutil
+    glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=nc_rgb + (40,)) 
     glow_img_wide = glow_img_wide.filter(ImageFilter.GaussianBlur(radius=90))
     
     core_size = 600
     glow_img_core = Image.new('RGBA', (core_size, core_size), (0,0,0,0))
     glow_draw_core = ImageDraw.Draw(glow_img_core)
-    glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=nc_rgb + (120,))
+    # Glow central más sutil también
+    glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=nc_rgb + (100,))
     glow_img_core = glow_img_core.filter(ImageFilter.GaussianBlur(radius=40))
 
     img.paste(glow_img_wide, (W//2 - glow_size//2, H//2 - glow_size//2 - 50), glow_img_wide)
