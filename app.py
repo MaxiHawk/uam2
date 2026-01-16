@@ -8,7 +8,7 @@ import time
 import random
 import unicodedata
 import io
-from datetime import datetime, date
+from datetime import datetime, timedelta
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
@@ -46,6 +46,7 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
+# --- FRASES DEL SISTEMA (EASTER EGG) ---
 SYSTEM_MESSAGES = [
     "📡 Enlace neuronal estable. Latencia: 0.04ms",
     "🛡️ Escudos de deflexión al 100%.",
@@ -62,6 +63,7 @@ SYSTEM_MESSAGES = [
     "🎲 Tira los dados, el destino aguarda."
 ]
 
+# --- 🎨 TEMAS DE ESCUADRÓN (20 EQUIPOS) ---
 SQUAD_THEMES = {
     "Default": { "primary": "#00ff9d", "glow": "rgba(0, 255, 157, 0.5)", "gradient_start": "#004d40", "gradient_end": "#00bfa5", "text_highlight": "#69f0ae" },
     "Legión de los Egipcios": { "primary": "#d32f2f", "glow": "rgba(255, 215, 0, 0.5)", "gradient_start": "#8b0000", "gradient_end": "#ff5252", "text_highlight": "#ffc107" },
@@ -121,7 +123,7 @@ if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
-if "trivia_answered" not in st.session_state: st.session_state.trivia_answered = False
+if "balloons_trigger" not in st.session_state: st.session_state.balloons_trigger = False # Control estricto de globos
 
 # Logout automático
 if st.session_state.get("jugador") is not None:
@@ -406,7 +408,6 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7.1 ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     neon_color = "#00ff9d"
     gold_color = "#FFD700"
@@ -525,8 +526,13 @@ def procesar_recalibracion(ap_reward):
     new_ap = (st.session_state.jugador["AP"]["number"] or 0) + ap_reward
     page_id = st.session_state.player_page_id
     url = f"https://api.notion.com/v1/pages/{page_id}"
-    today_iso = date.today().isoformat()
-    payload = {"properties": {"AP": {"number": new_ap}, "Ultima Recalibracion": {"date": {"start": today_iso}}}}
+    
+    # FECHA Y HORA ACTUAL (Chile)
+    chile_tz = pytz.timezone('America/Santiago')
+    now_chile = datetime.now(chile_tz)
+    now_iso = now_chile.isoformat() # Guardar formato ISO completo
+    
+    payload = {"properties": {"AP": {"number": new_ap}, "Ultima Recalibracion": {"date": {"start": now_iso}}}}
     try:
         res = requests.patch(url, headers=headers, json=payload)
         if res.status_code == 200: return True
@@ -846,16 +852,17 @@ def validar_login():
             if len(data["results"]) > 0:
                 result_obj = data["results"][0]
                 props = result_obj["properties"]
-                page_id = result_obj["id"] # Capturar ID para escribir
+                page_id = result_obj["id"]
                 try:
                     c_real = props.get("Clave", {}).get("rich_text", [])[0]["text"]["content"]
                     if clave == c_real:
                         st.session_state.jugador = props
-                        st.session_state.player_page_id = page_id # Guardar ID
+                        st.session_state.player_page_id = page_id
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
                         st.session_state.popup_shown = False
+                        st.session_state.balloons_trigger = False # Reiniciar trigger
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -965,32 +972,24 @@ else:
     status_color = "#ff4b4b" if is_alumni else "#00e5ff"
     if estado_label == "Sin empezar": status_color = "#FFD700"
 
-    # --- POPUP ANUNCIO INTELIGENTE (BÚSQUEDA RECURSIVA DE RELEVANCIA) ---
+    # --- POPUP ANUNCIO INTELIGENTE ---
     if not st.session_state.popup_shown and st.session_state.anuncios_data:
-        # Si es Alumni, NO mostramos popup (por defecto, para no molestar)
-        # Si quisieras enviar algo a Alumni, podrías cambiar esta lógica aquí.
         if not is_alumni:
             anuncio_para_mostrar = None
-            
-            # Buscamos el PRIMER anuncio que coincida con la Universidad y Año del usuario
             for anuncio in st.session_state.anuncios_data:
                 if es_anuncio_relevante(anuncio, uni_label, ano_label, is_alumni):
                     anuncio_para_mostrar = anuncio
-                    break # ¡Encontrado! Dejamos de buscar
+                    break
             
             if anuncio_para_mostrar:
                 st.session_state.popup_shown = True
-                
                 raw_date_popup = anuncio_para_mostrar['fecha']
                 try:
                     if "T" in raw_date_popup:
                         utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
-                        chile_tz = pytz.timezone('America/Santiago')
-                        local_dt = utc_dt.astimezone(chile_tz)
-                        fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
+                        fecha_popup = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
                     else:
-                        dt_obj = datetime.strptime(raw_date_popup, "%Y-%m-%d")
-                        fecha_popup = dt_obj.strftime("%d/%m/%Y")
+                        fecha_popup = datetime.strptime(raw_date_popup, "%Y-%m-%d").strftime("%d/%m/%Y")
                 except: fecha_popup = raw_date_popup
 
                 with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
@@ -1029,12 +1028,7 @@ else:
 
     tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "📡 COMUNICACIONES"])
     
-    # ... (TABS PERFIL, RANKING, HABILIDADES, CODICE, MERCADO - IDÉNTICAS AL ANTERIOR) ...
-    # RESUMIDO PARA AHORRAR ESPACIO, COPIAR DEL BLOQUE ANTERIOR SI ES NECESARIO, 
-    # PERO AQUÍ ESTÁ LA LÓGICA DE ORÁCULO NUEVA:
-
     with tab_perfil:
-        # (Código Perfil igual a v89.0)
         avatar_url = None
         try:
             f_list = p.get("Avatar", {}).get("files", [])
@@ -1267,67 +1261,91 @@ else:
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
-    # --- NUEVA TAB: ORÁCULO DE VALERIUS ---
+    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V91.0) ---
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
         st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
         
-        # 1. VERIFICAR SI YA JUGÓ HOY
-        jugo_hoy = False
-        today_iso = date.today().isoformat()
+        # 1. VERIFICAR TIEMPO REAL
+        can_play = True
+        msg_wait = ""
         
-        # --- HOTFIX NULIDAD (v90.1) ---
-        last_play = None
+        # Obtener fecha/hora ultima jugada
+        last_play_str = None
         try:
-            # Obtener propiedad de forma segura con .get() encadenado
             recal_prop = p.get("Ultima Recalibracion")
             if recal_prop:
-                last_play = recal_prop.get("date", {}).get("start")
-        except: 
-            last_play = None # Si falla, asumimos que no ha jugado
+                last_play_str = recal_prop.get("date", {}).get("start") # Puede ser YYYY-MM-DD o ISO
+        except: last_play_str = None
 
-        if last_play == today_iso: jugo_hoy = True
-        
+        if last_play_str:
+            chile_tz = pytz.timezone('America/Santiago')
+            now_chile = datetime.now(chile_tz)
+            
+            # Parsear fecha de Notion
+            try:
+                if "T" in last_play_str:
+                    last_play_dt = datetime.fromisoformat(last_play_str.replace('Z', '+00:00'))
+                    # Convertir a Chile para comparar peras con peras
+                    last_play_dt = last_play_dt.astimezone(chile_tz)
+                else:
+                    # Si solo es fecha YYYY-MM-DD, asumimos medianoche de ese día en Chile
+                    dt_naive = datetime.strptime(last_play_str, "%Y-%m-%d")
+                    last_play_dt = chile_tz.localize(dt_naive)
+                
+                # Calcular Delta
+                diff = now_chile - last_play_dt
+                if diff.total_seconds() < 86400: # Menos de 24 horas
+                    can_play = False
+                    # Calcular tiempo restante
+                    remaining = timedelta(hours=24) - diff
+                    hours, remainder = divmod(remaining.seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    msg_wait = f"{hours}h {minutes}m"
+            except: 
+                # Si hay error parseando, por seguridad asumimos que puede jugar para no bloquear
+                can_play = True
+
+        # Renderizar Estado
         if is_alumni:
             st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
-        elif jugo_hoy:
-            st.success("✅ SISTEMAS RECALIBRADOS. Tu aporte ha sido registrado hoy. Vuelve mañana.")
-            st.balloons()
+        elif not can_play:
+            st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
+            # Barras decorativas
+            st.progress(100)
         else:
-            # 2. CARGAR PREGUNTA (Solo si no ha jugado y no tiene una cargada)
+            # MOSTRAR JUEGO
+            
+            # Cargar pregunta si no hay
             if not st.session_state.trivia_question:
                 with st.spinner("Escaneando sectores corruptos..."):
                     q = cargar_pregunta_aleatoria()
                     if q: st.session_state.trivia_question = q
                     else: st.info("Sistemas al 100%. No se requieren reparaciones hoy.")
             
-            # 3. MOSTRAR PREGUNTA
             if st.session_state.trivia_question:
                 q = st.session_state.trivia_question
                 
-                st.markdown(f"""
-                <div class="trivia-container">
-                    <div class="trivia-question">{q['pregunta']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div class="trivia-container"><div class="trivia-question">{q['pregunta']}</div></div>""", unsafe_allow_html=True)
                 
-                # Botones de Respuesta
+                # Mostrar Globos solo si se activa el trigger
+                if st.session_state.balloons_trigger:
+                    st.balloons()
+                    st.session_state.balloons_trigger = False # Apagar inmediatamente
+
                 col_a, col_b, col_c = st.columns(3)
                 
                 def check_answer(selected_option):
                     if selected_option == q['correcta']:
                         st.toast(f"✅ ¡CORRECTO! +{q['recompensa']} AP", icon="🎉")
-                        # Actualizar AP en Notion + Fecha
-                        procesar_recalibracion(q['recompensa'])
-                        # Limpiar estado para mañana
-                        st.session_state.trivia_question = None
-                        actualizar_datos_sesion() # Refrescar todo
+                        st.session_state.balloons_trigger = True # Activar globos para el reload
+                        procesar_recalibracion(q['recompensa']) # Registrar éxito
                     else:
                         st.error("❌ ERROR DE COHERENCIA. Datos rechazados.")
-                        # Marcar como jugado hoy (0 puntos) para que no repita
-                        procesar_recalibracion(0) 
-                        st.session_state.trivia_question = None
-                        actualizar_datos_sesion()
+                        procesar_recalibracion(0) # Registrar fallo (bloquea 24h)
+                    
+                    st.session_state.trivia_question = None # Limpiar pregunta
+                    actualizar_datos_sesion() # Recargar todo
 
                 with col_a:
                     if st.button(f"A) {q['opcion_a']}", use_container_width=True): check_answer("A")
