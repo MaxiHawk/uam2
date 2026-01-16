@@ -21,6 +21,8 @@ try:
     DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
     DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
     DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
+    # NUEVO: Base de datos de Anuncios/Popups
+    DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None) 
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -109,12 +111,14 @@ DEFAULT_BADGE = "assets/insignias/default.png"
 if "jugador" not in st.session_state: st.session_state.jugador = None
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
 if "show_intro" not in st.session_state: st.session_state.show_intro = False
+if "popup_shown" not in st.session_state: st.session_state.popup_shown = False # NUEVO: Control de Popup
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "login_error" not in st.session_state: st.session_state.login_error = None
 if "ranking_data" not in st.session_state: st.session_state.ranking_data = None
 if "habilidades_data" not in st.session_state: st.session_state.habilidades_data = []
 if "codice_data" not in st.session_state: st.session_state.codice_data = [] 
 if "market_data" not in st.session_state: st.session_state.market_data = []
+if "anuncios_data" not in st.session_state: st.session_state.anuncios_data = [] # NUEVO: Cache anuncios
 if "uni_actual" not in st.session_state: st.session_state.uni_actual = None
 if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
@@ -180,6 +184,22 @@ st.markdown(f"""
         .energy-core, .rank-table, .log-card, .skill-card-container, .codex-card, .market-card {{
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
+
+        /* POPUP STYLES */
+        .popup-container {{
+            background: linear-gradient(135deg, rgba(10,20,30,0.95), rgba(0,5,10,0.98));
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 30px var(--glow-color);
+            position: relative;
+            animation: slide-in 0.5s ease-out;
+        }}
+        @keyframes slide-in {{ 0% {{ transform: translateY(-20px); opacity: 0; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
+        .popup-title {{ font-family: 'Orbitron'; font-size: 1.5em; color: var(--text-highlight); margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }}
+        .popup-body {{ font-size: 1em; color: #fff; line-height: 1.5; margin-bottom: 15px; }}
+        .popup-date {{ font-size: 0.7em; color: #888; text-align: right; font-style: italic; }}
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
@@ -376,54 +396,38 @@ def find_squad_image(squad_name):
         if os.path.exists(path): return path
     return None
 
-# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7.1 (Fondo Personalizado SIN Marco Redundante) ---
+# --- GENERADOR DE IMAGEN SOCIAL ÉPICA v7.1 ---
 def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     neon_color = "#00ff9d"
     gold_color = "#FFD700"
     W, H = 1080, 1920
-    
-    # 1. Crear lienzo base
     bg_color = '#010204'
     img = Image.new('RGB', (W, H), color=bg_color)
     draw = ImageDraw.Draw(img)
 
-    # 2. LOGICA DE FONDO (Background Personalizado)
-    # Busca 'social_bg.png' o 'social_bg.jpg' en assets
     bg_custom_path = None
     if os.path.exists("assets/social_bg.png"): bg_custom_path = "assets/social_bg.png"
     elif os.path.exists("assets/social_bg.jpg"): bg_custom_path = "assets/social_bg.jpg"
 
     if bg_custom_path:
-        # Si existe imagen, la cargamos y ajustamos
         bg_img = Image.open(bg_custom_path).convert("RGBA")
-        bg_img = bg_img.resize((W, H)) # Forzar ajuste al lienzo
+        bg_img = bg_img.resize((W, H))
         img.paste(bg_img, (0, 0))
-        
-        # APLICAR CAPA OSCURA (Vital para que el texto se lea)
-        # (0, 0, 0, 150) -> Ajustado a un poco menos oscuro para que se note más el fondo
         overlay = Image.new('RGBA', (W, H), (0, 0, 0, 150)) 
         img.paste(overlay, (0, 0), overlay)
-        
     else:
-        # --- FALLBACK: Si NO existe fondo personalizado, dibujamos el default ---
-        
-        # Cuadrícula de fondo
         grid_color = "#080c14"
         for x in range(0, W, 60): draw.line([(x, 0), (x, H)], fill=grid_color, width=2)
         for y in range(0, H, 60): draw.line([(0, y), (W, y)], fill=grid_color, width=2)
-
-        # MARCO NEÓN (Solo se dibuja si NO hay fondo personalizado)
         offset_frame = 45
         draw.rectangle([offset_frame, offset_frame, W-offset_frame, H-offset_frame], outline=neon_color, width=10)
         draw.rectangle([offset_frame+15, offset_frame+15, W-(offset_frame+15), H-(offset_frame+15)], outline="#0a0f1a", width=6)
-        
         node_radius = 20
         corners = [(offset_frame, offset_frame), (W-offset_frame, offset_frame), (offset_frame, H-offset_frame), (W-offset_frame, H-offset_frame)]
         for cx, cy in corners:
             draw.ellipse((cx-node_radius-5, cy-node_radius-5, cx+node_radius+5, cy+node_radius+5), fill=neon_color)
             draw.ellipse((cx-node_radius, cy-node_radius, cx+node_radius, cy+node_radius), fill=bg_color, outline=neon_color, width=4)
 
-    # --- TIPOGRAFÍA ---
     try:
         font_title_small = ImageFont.truetype("assets/fonts/Orbitron-Bold.ttf", 50)
         font_title_big = ImageFont.truetype("assets/fonts/Orbitron-Black.ttf", 80)
@@ -435,7 +439,6 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     except:
         font_title_small = font_title_big = font_badge_name = font_sub = font_name = font_squad = font_footer = ImageFont.load_default()
 
-    # --- LOGO SUPERIOR ---
     if os.path.exists("assets/logo.png"):
         logo = Image.open("assets/logo.png").convert("RGBA")
         logo = logo.resize((180, 180))
@@ -444,31 +447,25 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
         img.paste(logo_glow, (W//2 - 90, 130), logo_mask)
         img.paste(logo, (W//2 - 90, 130), logo)
 
-    # Textos Superiores
     draw.text((W//2, 340), "INSIGNIA", font=font_title_small, fill=gold_color, anchor="mm")
     draw.text((W//2, 415), "DESBLOQUEADA", font=font_title_big, fill=gold_color, anchor="mm")
 
-    # --- NÚCLEO DE ENERGÍA (GLOW CENTRAL) ---
-    # Se mantiene para darle un "pop" a la insignia sobre el fondo oscuro
     glow_size = 1000
     glow_img_wide = Image.new('RGBA', (glow_size, glow_size), (0,0,0,0))
     glow_draw_wide = ImageDraw.Draw(glow_img_wide)
     nc_rgb = tuple(int(neon_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-    # Hacemos el glow un poco más sutil
-    glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=nc_rgb + (40,)) 
+    glow_draw_wide.ellipse((50, 50, glow_size-50, glow_size-50), fill=nc_rgb + (40,))
     glow_img_wide = glow_img_wide.filter(ImageFilter.GaussianBlur(radius=90))
     
     core_size = 600
     glow_img_core = Image.new('RGBA', (core_size, core_size), (0,0,0,0))
     glow_draw_core = ImageDraw.Draw(glow_img_core)
-    # Glow central más sutil también
     glow_draw_core.ellipse((20, 20, core_size-20, core_size-20), fill=nc_rgb + (100,))
     glow_img_core = glow_img_core.filter(ImageFilter.GaussianBlur(radius=40))
 
     img.paste(glow_img_wide, (W//2 - glow_size//2, H//2 - glow_size//2 - 50), glow_img_wide)
     img.paste(glow_img_core, (W//2 - core_size//2, H//2 - core_size//2 - 50), glow_img_core)
 
-    # Imagen de la Insignia
     badge_y_center = H//2 - 50
     if os.path.exists(badge_path):
         badge = Image.open(badge_path).convert("RGBA")
@@ -477,7 +474,6 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     else:
         draw.text((W//2, badge_y_center), "🏅", font=font_badge_name, fill="white", anchor="mm")
 
-    # Textos Inferiores
     draw.text((W//2, badge_y_center + 450), badge_name.upper(), font=font_badge_name, fill=gold_color, anchor="mm")
     
     base_y_info = badge_y_center + 600
@@ -594,6 +590,34 @@ def cargar_mercado():
         return items
     except: return []
 
+# --- NUEVAS FUNCIONES PARA ANUNCIOS ---
+def cargar_anuncios():
+    if not DB_ANUNCIOS_ID: return []
+    url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
+    # Traemos solo los activos y ordenamos por fecha descendente
+    payload = {
+        "filter": {"property": "Activo", "checkbox": {"equals": True}},
+        "sorts": [{"property": "Fecha", "direction": "descending"}]
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        anuncios = []
+        if res.status_code == 200:
+            for r in res.json()["results"]:
+                props = r["properties"]
+                try:
+                    titulo = props["Nombre"]["title"][0]["text"]["content"]
+                    contenido = props["Mensaje"]["rich_text"][0]["text"]["content"]
+                    fecha = props["Fecha"]["date"]["start"]
+                    # Prioridad (Opcional)
+                    prio = "Normal"
+                    if "Prioridad" in props and props["Prioridad"]["select"]:
+                        prio = props["Prioridad"]["select"]["name"]
+                    anuncios.append({"titulo": titulo, "contenido": contenido, "fecha": fecha, "prioridad": prio})
+                except: pass
+        return anuncios
+    except: return []
+
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
     if tipo == "HABILIDAD":
@@ -697,6 +721,7 @@ def actualizar_datos_sesion():
                     if rol_usuario: st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                     st.session_state.codice_data = cargar_codice()
                     st.session_state.market_data = cargar_mercado()
+                    st.session_state.anuncios_data = cargar_anuncios() # Refrescamos anuncios
                     st.rerun()
         except: pass
 
@@ -741,6 +766,8 @@ def validar_login():
                         st.session_state.nombre = usuario
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
+                        st.session_state.popup_shown = False # Reiniciar popup al login
+                        
                         try:
                             uni_data = props.get("Universidad", {}).get("select")
                             st.session_state.uni_actual = uni_data["name"] if uni_data else None
@@ -761,6 +788,7 @@ def validar_login():
                         if rol_usuario: st.session_state.habilidades_data = cargar_habilidades_rol(rol_usuario)
                         st.session_state.codice_data = cargar_codice()
                         st.session_state.market_data = cargar_mercado()
+                        st.session_state.anuncios_data = cargar_anuncios() # Cargar anuncios al login
                     else: st.session_state.login_error = "❌ CLAVE INCORRECTA"
                 except: st.session_state.login_error = "Error Credenciales"
             else: st.session_state.login_error = "❌ USUARIO NO ENCONTRADO"
@@ -841,6 +869,23 @@ else:
 
     # --- DASHBOARD ---
     main_placeholder.empty() 
+
+    # --- POPUP ANUNCIO (Mostrar solo una vez por sesión y si hay anuncios) ---
+    if not st.session_state.popup_shown and st.session_state.anuncios_data:
+        ultimo_anuncio = st.session_state.anuncios_data[0] # El más reciente
+        st.session_state.popup_shown = True # Marcar como mostrado
+        
+        # Renderizar Popup Modal
+        with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
+            st.markdown(f"""
+            <div class="popup-container">
+                <div class="popup-title">{ultimo_anuncio['titulo']}</div>
+                <div class="popup-body">{ultimo_anuncio['contenido']}</div>
+                <div class="popup-date">FECHA ESTELAR: {ultimo_anuncio['fecha']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("ENTENDIDO, CERRAR ENLACE"):
+                st.rerun()
 
     news_text = obtener_noticias()
     st.markdown(f"""<div class="ticker-wrap"><div class="ticker"><div class="ticker-item">{news_text}</div></div></div>""", unsafe_allow_html=True)
@@ -1091,7 +1136,7 @@ else:
             for item in market_items:
                 item_is_for_alumni = item['nombre'].startswith("[EX]") or item['nombre'].startswith("[ALUMNI]")
                 
-                # --- LÓGICA DE VISIBILIDAD DE BOTÓN ---
+                # --- LÓGICA DE VISIBILIDAD DE BOTÓN (V84.0) ---
                 puede_ver_boton = True
                 texto_boton_cerrado = "🔒 CERRADO"
 
@@ -1100,7 +1145,7 @@ else:
                         puede_ver_boton = False
                         texto_boton_cerrado = "⛔ CICLO CERRADO"
                 else:
-                    # Estudiante Activo: Si es un item EX, lo bloqueamos para generar deseo
+                    # Estudiante Activo: Si es un item EX, lo bloqueamos
                     if item_is_for_alumni:
                         puede_ver_boton = False
                         texto_boton_cerrado = "🔒 SOLO VETERANOS"
@@ -1124,6 +1169,24 @@ else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_comms:
+        # --- SECCIÓN BANDEJA DE ENTRADA DE ANUNCIOS ---
+        st.markdown("### 📡 TRANSMISIONES DEL COMANDO")
+        anuncios = st.session_state.anuncios_data
+        if not anuncios:
+            st.info("Sin transmisiones recientes.")
+        else:
+            for anuncio in anuncios:
+                with st.container():
+                    st.markdown(f"""
+                    <div style="background: rgba(0, 50, 50, 0.3); border-left: 4px solid var(--primary-color); padding: 15px; border-radius: 5px; margin-bottom: 10px;">
+                        <div style="color: var(--primary-color); font-weight: bold; font-family: 'Orbitron'; font-size: 1.1em;">{anuncio['titulo']}</div>
+                        <div style="color: #aaa; font-size: 0.8em; margin-bottom: 5px;">{anuncio['fecha']}</div>
+                        <div style="color: #fff;">{anuncio['contenido']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
         st.markdown("### 📨 ENLACE DIRECTO AL COMANDO")
         if is_alumni:
             st.warning("📡 Enlace de comunicaciones desactivado para Aspirantes Finalizados. Solo modo lectura.")
