@@ -610,7 +610,22 @@ def cargar_anuncios():
                     prio = "Normal"
                     if "Prioridad" in props and props["Prioridad"]["select"]:
                         prio = props["Prioridad"]["select"]["name"]
-                    anuncios.append({"titulo": titulo, "contenido": contenido, "fecha": fecha, "prioridad": prio})
+                    
+                    # NUEVO: Obtener Universidad objetivo
+                    uni_target = "Todas"
+                    if "Universidad" in props and props["Universidad"]["select"]:
+                        uni_target = props["Universidad"]["select"]["name"]
+                    elif "Universidad" in props and props["Universidad"]["multi_select"]:
+                         # Si es multi-select, tomamos el primero o un string
+                         uni_target = [x["name"] for x in props["Universidad"]["multi_select"]]
+
+                    anuncios.append({
+                        "titulo": titulo, 
+                        "contenido": contenido, 
+                        "fecha": fecha, 
+                        "prioridad": prio,
+                        "universidad": uni_target
+                    })
                 except: pass
         return anuncios
     except: return []
@@ -866,38 +881,6 @@ else:
     # --- DASHBOARD ---
     main_placeholder.empty() 
 
-    # --- POPUP ANUNCIO ---
-    if not st.session_state.popup_shown and st.session_state.anuncios_data:
-        ultimo_anuncio = st.session_state.anuncios_data[0]
-        st.session_state.popup_shown = True
-        
-        # PROCESAR FECHA POPUP
-        raw_date_popup = ultimo_anuncio['fecha']
-        try:
-            if "T" in raw_date_popup:
-                utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
-                chile_tz = pytz.timezone('America/Santiago')
-                local_dt = utc_dt.astimezone(chile_tz)
-                fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
-            else:
-                dt_obj = datetime.strptime(raw_date_popup, "%Y-%m-%d")
-                fecha_popup = dt_obj.strftime("%d/%m/%Y")
-        except: fecha_popup = raw_date_popup
-
-        with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
-            st.markdown(f"""
-            <div class="popup-container">
-                <div class="popup-title">{ultimo_anuncio['titulo']}</div>
-                <div class="popup-body">{ultimo_anuncio['contenido']}</div>
-                <div class="popup-date">FECHA ESTELAR: {fecha_popup}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("ENTENDIDO, CERRAR ENLACE"):
-                st.rerun()
-
-    news_text = obtener_noticias()
-    st.markdown(f"""<div class="ticker-wrap"><div class="ticker"><div class="ticker-item">{news_text}</div></div></div>""", unsafe_allow_html=True)
-
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
     ap = p.get("AP", {}).get("number", 0) or 0
@@ -911,6 +894,48 @@ else:
     status_color = "#00e5ff"
     if is_alumni: status_color = "#ff4b4b"
     elif estado_label == "Sin empezar": status_color = "#FFD700"
+
+    # --- POPUP ANUNCIO (Segmentado: Solo Activos + Match Universidad) ---
+    if not st.session_state.popup_shown and st.session_state.anuncios_data:
+        # 1. Filtro: Si es Alumni, NO ver Popup (a menos que se quiera en futuro)
+        if not is_alumni:
+            ultimo_anuncio = st.session_state.anuncios_data[0]
+            
+            # 2. Filtro: Match Universidad
+            target_uni = ultimo_anuncio.get("universidad", "Todas")
+            # Si target es lista (multiselect), revisar si user_uni está dentro
+            match_uni = False
+            if isinstance(target_uni, list):
+                if "Todas" in target_uni or uni_label in target_uni: match_uni = True
+            elif target_uni == "Todas" or target_uni == uni_label:
+                match_uni = True
+            
+            if match_uni:
+                st.session_state.popup_shown = True
+                
+                # Procesar Fecha Popup
+                raw_date_popup = ultimo_anuncio['fecha']
+                try:
+                    if "T" in raw_date_popup:
+                        utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
+                        chile_tz = pytz.timezone('America/Santiago')
+                        local_dt = utc_dt.astimezone(chile_tz)
+                        fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
+                    else:
+                        dt_obj = datetime.strptime(raw_date_popup, "%Y-%m-%d")
+                        fecha_popup = dt_obj.strftime("%d/%m/%Y")
+                except: fecha_popup = raw_date_popup
+
+                with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
+                    st.markdown(f"""
+                    <div class="popup-container">
+                        <div class="popup-title">{ultimo_anuncio['titulo']}</div>
+                        <div class="popup-body">{ultimo_anuncio['contenido']}</div>
+                        <div class="popup-date">FECHA ESTELAR: {fecha_popup}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button("ENTENDIDO, CERRAR ENLACE"):
+                        st.rerun()
 
     c_head1, c_head2 = st.columns([1.2, 4.8])
     with c_head1: 
@@ -1170,11 +1195,29 @@ else:
     with tab_comms:
         st.markdown("### 📡 TRANSMISIONES DE VALERIUS")
         anuncios = st.session_state.anuncios_data
-        if not anuncios:
-            st.info("Sin transmisiones recientes.")
-        else:
+        
+        # FILTRAR ANUNCIOS PARA BANDEJA DE ENTRADA (Misma lógica que popup)
+        anuncios_visibles = []
+        if anuncios:
             for anuncio in anuncios:
-                # --- PROCESAMIENTO FECHA CHILE ---
+                target_uni = anuncio.get("universidad", "Todas")
+                match_uni = False
+                if isinstance(target_uni, list):
+                    if "Todas" in target_uni or uni_label in target_uni: match_uni = True
+                elif target_uni == "Todas" or target_uni == uni_label:
+                    match_uni = True
+                
+                # Si es Alumni, solo ver anuncios para Alumni (opcional, por ahora bloqueamos todo el popup, 
+                # pero en la bandeja podríamos dejar que vean cosas generales si quisieras. 
+                # Por consistencia con tu petición "no recibir", ocultamos si no es match).
+                # Como el filtro principal era "no recibir popup", aquí aplicamos el filtro de Universidad.
+                if match_uni:
+                    anuncios_visibles.append(anuncio)
+
+        if not anuncios_visibles:
+            st.info("Sin transmisiones en tu frecuencia.")
+        else:
+            for anuncio in anuncios_visibles:
                 raw_date = anuncio['fecha']
                 try:
                     if "T" in raw_date:
