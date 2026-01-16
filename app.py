@@ -121,7 +121,6 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
-# NUEVOS ESTADOS PARA FLUJO TRIVIA (V92.0)
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
@@ -198,13 +197,20 @@ st.markdown(f"""
         }}
         .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
         
+        /* FEEDBACK BOX */
         .feedback-box {{
-            background: rgba(0,0,0,0.5); border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 15px;
+            background: rgba(0,0,0,0.6); 
+            border-radius: 10px; 
+            padding: 25px; 
+            text-align: center; 
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s;
         }}
-        .feedback-correct {{ border: 2px solid #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.3); }}
-        .feedback-wrong {{ border: 2px solid #ff1744; box-shadow: 0 0 20px rgba(255, 23, 68, 0.3); }}
-        .feedback-title {{ font-family: 'Orbitron'; font-size: 1.8em; margin-bottom: 10px; font-weight: bold; }}
-        .feedback-text {{ font-size: 1.1em; color: #ddd; }}
+        .feedback-correct {{ border: 2px solid #00e676; box-shadow: 0 0 25px rgba(0, 230, 118, 0.4); }}
+        .feedback-wrong {{ border: 2px solid #ff1744; box-shadow: 0 0 25px rgba(255, 23, 68, 0.4); }}
+        .feedback-title {{ font-family: 'Orbitron'; font-size: 1.5em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }}
+        .feedback-text {{ font-size: 1.1em; color: #eee; line-height: 1.5; }}
+        @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
         /* POPUP STYLES */
         .popup-container {{
@@ -520,10 +526,14 @@ def cargar_pregunta_aleatoria():
                 q_data = random.choice(results)
                 props = q_data["properties"]
                 
-                # Obtener explicación si existe
-                explicacion = ""
-                if "Explicacion" in props and props["Explicacion"]["rich_text"]:
-                    explicacion = props["Explicacion"]["rich_text"][0]["text"]["content"]
+                # Obtener explicaciones duales (Seguridad si no existen)
+                exp_correcta = ""
+                if "Explicacion Correcta" in props and props["Explicacion Correcta"]["rich_text"]:
+                    exp_correcta = props["Explicacion Correcta"]["rich_text"][0]["text"]["content"]
+                
+                exp_incorrecta = ""
+                if "Explicacion Incorrecta" in props and props["Explicacion Incorrecta"]["rich_text"]:
+                    exp_incorrecta = props["Explicacion Incorrecta"]["rich_text"][0]["text"]["content"]
                 
                 return {
                     "id": q_data["id"],
@@ -533,7 +543,8 @@ def cargar_pregunta_aleatoria():
                     "opcion_c": props["Opcion C"]["rich_text"][0]["text"]["content"],
                     "correcta": props["Correcta"]["select"]["name"],
                     "recompensa": props["Recompensa"]["number"],
-                    "explicacion": explicacion
+                    "exp_correcta": exp_correcta,
+                    "exp_incorrecta": exp_incorrecta
                 }
     except: pass
     return None
@@ -1085,7 +1096,8 @@ else:
                     msg = random.choice(SYSTEM_MESSAGES)
                     st.toast(msg, icon="🤖")
                     if random.random() < 0.1:
-                        st.balloons()
+                        # Nota: Aquí SÍ permitimos globos como easter egg raro
+                        # st.balloons() <- Comentado para seriedad total
                         enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
                 else: st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
         
@@ -1281,7 +1293,7 @@ else:
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
-    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V92.0 - Feedback Mode) ---
+    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V93.0 - Flujo Reparado + Feedback) ---
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
         st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
@@ -1320,40 +1332,43 @@ else:
         if is_alumni:
             st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
         
-        # --- MODO FEEDBACK: MOSTRAR RESULTADO ---
+        # --- ESTADO 2: MODO FEEDBACK (RESULTADO) ---
         elif st.session_state.trivia_feedback_mode:
             res = st.session_state.trivia_last_result
+            
             if res['correct']:
-                st.balloons()
+                # FEEDBACK POSITIVO
                 st.markdown(f"""
                 <div class="feedback-box feedback-correct">
-                    <div class="feedback-title" style="color: #00e676;">✅ ¡SISTEMAS ESTABILIZADOS!</div>
-                    <div class="feedback-text">Has aportado coherencia a la red.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
+                    <div class="feedback-title" style="color: #00e676;">✅ ¡BIEN HECHO, ASPIRANTE!</div>
+                    <div class="feedback-text">Datos confirmados correctamente.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
                     <br>
-                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation']}</div>
+                    <div style="font-size: 0.9em; color: #ccc; font-style:italic;">"{res['explanation_correct']}"</div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
+                # FEEDBACK NEGATIVO
                 st.markdown(f"""
                 <div class="feedback-box feedback-wrong">
-                    <div class="feedback-title" style="color: #ff1744;">❌ ERROR DE COHERENCIA</div>
-                    <div class="feedback-text">Datos corruptos detectados. La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
+                    <div class="feedback-title" style="color: #ff1744;">❌ OH NO... DATOS CORRUPTOS</div>
+                    <div class="feedback-text">La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
                     <br>
-                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation']}</div>
+                    <div style="font-size: 0.9em; color: #ccc; font-style:italic;">"{res['explanation_wrong']}"</div>
                 </div>
                 """, unsafe_allow_html=True)
             
+            # Botón único para limpiar y salir
             if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
                 st.session_state.trivia_feedback_mode = False
                 st.session_state.trivia_question = None
-                actualizar_datos_sesion() # Esto recargará y mostrará el Timer
+                actualizar_datos_sesion() # Esto recarga la página y activará el Timer
 
-        # --- MODO BLOQUEADO (TIMER) ---
+        # --- ESTADO 3: BLOQUEO POR TIEMPO ---
         elif not can_play:
             st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
             st.progress(100)
 
-        # --- MODO JUEGO ---
+        # --- ESTADO 1: MODO JUEGO (PREGUNTA) ---
         else:
             if not st.session_state.trivia_question:
                 with st.spinner("Escaneando sectores corruptos..."):
@@ -1371,17 +1386,21 @@ else:
                     is_correct = (choice == q['correcta'])
                     reward = q['recompensa'] if is_correct else 0
                     
-                    # 1. Guardar estado para el feedback
+                    # Guardar estado para el feedback
                     st.session_state.trivia_feedback_mode = True
                     st.session_state.trivia_last_result = {
                         "correct": is_correct,
                         "reward": reward,
                         "correct_option": q['correcta'],
-                        "explanation": q.get("explicacion", "")
+                        "explanation_correct": q.get("exp_correcta", "Respuesta Correcta."),
+                        "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
                     }
                     
-                    # 2. Escribir en Notion INMEDIATAMENTE (para evitar F5 cheat)
+                    # Escribir en Notion INMEDIATAMENTE
                     procesar_recalibracion(reward)
+                    
+                    # FORZAR RECARGA UI PARA MOSTRAR FEEDBACK
+                    st.rerun()
 
                 with col_a:
                     if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
