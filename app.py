@@ -611,24 +611,60 @@ def cargar_anuncios():
                     if "Prioridad" in props and props["Prioridad"]["select"]:
                         prio = props["Prioridad"]["select"]["name"]
                     
-                    # NUEVO: Obtener Universidad objetivo
+                    # --- NUEVO: OBTENER PROPIEDADES DE SEGMENTACIÓN ---
                     uni_target = "Todas"
-                    if "Universidad" in props and props["Universidad"]["select"]:
-                        uni_target = props["Universidad"]["select"]["name"]
-                    elif "Universidad" in props and props["Universidad"]["multi_select"]:
-                         # Si es multi-select, tomamos el primero o un string
-                         uni_target = [x["name"] for x in props["Universidad"]["multi_select"]]
+                    if "Universidad" in props:
+                        if props["Universidad"]["type"] == "select" and props["Universidad"]["select"]:
+                            uni_target = props["Universidad"]["select"]["name"]
+                        elif props["Universidad"]["type"] == "multi_select" and props["Universidad"]["multi_select"]:
+                            uni_target = [x["name"] for x in props["Universidad"]["multi_select"]]
+                    
+                    year_target = "Todas"
+                    if "Año" in props:
+                        if props["Año"]["type"] == "select" and props["Año"]["select"]:
+                            year_target = props["Año"]["select"]["name"]
+                        elif props["Año"]["type"] == "multi_select" and props["Año"]["multi_select"]:
+                            year_target = [x["name"] for x in props["Año"]["multi_select"]]
 
                     anuncios.append({
                         "titulo": titulo, 
                         "contenido": contenido, 
                         "fecha": fecha, 
                         "prioridad": prio,
-                        "universidad": uni_target
+                        "universidad": uni_target,
+                        "año": year_target
                     })
                 except: pass
         return anuncios
     except: return []
+
+# --- HELPER DE FILTRADO INTELIGENTE (POPUP & TAB) ---
+def es_anuncio_relevante(anuncio, user_uni, user_year, is_alumni):
+    # 1. Filtro Universidad
+    target_uni = anuncio.get("universidad", "Todas")
+    match_uni = False
+    if isinstance(target_uni, list):
+        if "Todas" in target_uni or user_uni in target_uni: match_uni = True
+    elif target_uni == "Todas" or target_uni == user_uni:
+        match_uni = True
+    
+    if not match_uni: return False
+
+    # 2. Filtro Año / Generación
+    target_year = anuncio.get("año", "Todas")
+    match_year = False
+    
+    # Si target_year está vacío o no existe, asumimos "Todas" o "Actual" por seguridad
+    if not target_year: target_year = "Todas"
+
+    if isinstance(target_year, list):
+        if "Todas" in target_year or user_year in target_year: match_year = True
+    elif target_year == "Todas" or target_year == user_year:
+        match_year = True
+    
+    if not match_year: return False
+
+    return True
 
 def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     url = "https://api.notion.com/v1/pages"
@@ -895,26 +931,23 @@ else:
     if is_alumni: status_color = "#ff4b4b"
     elif estado_label == "Sin empezar": status_color = "#FFD700"
 
-    # --- POPUP ANUNCIO (Segmentado: Solo Activos + Match Universidad) ---
+    # --- POPUP ANUNCIO INTELIGENTE (BÚSQUEDA RECURSIVA DE RELEVANCIA) ---
     if not st.session_state.popup_shown and st.session_state.anuncios_data:
-        # 1. Filtro: Si es Alumni, NO ver Popup (a menos que se quiera en futuro)
+        # Si es Alumni, NO mostramos popup (por defecto, para no molestar)
+        # Si quisieras enviar algo a Alumni, podrías cambiar esta lógica aquí.
         if not is_alumni:
-            ultimo_anuncio = st.session_state.anuncios_data[0]
+            anuncio_para_mostrar = None
             
-            # 2. Filtro: Match Universidad
-            target_uni = ultimo_anuncio.get("universidad", "Todas")
-            # Si target es lista (multiselect), revisar si user_uni está dentro
-            match_uni = False
-            if isinstance(target_uni, list):
-                if "Todas" in target_uni or uni_label in target_uni: match_uni = True
-            elif target_uni == "Todas" or target_uni == uni_label:
-                match_uni = True
+            # Buscamos el PRIMER anuncio que coincida con la Universidad y Año del usuario
+            for anuncio in st.session_state.anuncios_data:
+                if es_anuncio_relevante(anuncio, uni_label, ano_label, is_alumni):
+                    anuncio_para_mostrar = anuncio
+                    break # ¡Encontrado! Dejamos de buscar
             
-            if match_uni:
+            if anuncio_para_mostrar:
                 st.session_state.popup_shown = True
                 
-                # Procesar Fecha Popup
-                raw_date_popup = ultimo_anuncio['fecha']
+                raw_date_popup = anuncio_para_mostrar['fecha']
                 try:
                     if "T" in raw_date_popup:
                         utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
@@ -929,8 +962,8 @@ else:
                 with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
                     st.markdown(f"""
                     <div class="popup-container">
-                        <div class="popup-title">{ultimo_anuncio['titulo']}</div>
-                        <div class="popup-body">{ultimo_anuncio['contenido']}</div>
+                        <div class="popup-title">{anuncio_para_mostrar['titulo']}</div>
+                        <div class="popup-body">{anuncio_para_mostrar['contenido']}</div>
                         <div class="popup-date">FECHA ESTELAR: {fecha_popup}</div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1200,18 +1233,7 @@ else:
         anuncios_visibles = []
         if anuncios:
             for anuncio in anuncios:
-                target_uni = anuncio.get("universidad", "Todas")
-                match_uni = False
-                if isinstance(target_uni, list):
-                    if "Todas" in target_uni or uni_label in target_uni: match_uni = True
-                elif target_uni == "Todas" or target_uni == uni_label:
-                    match_uni = True
-                
-                # Si es Alumni, solo ver anuncios para Alumni (opcional, por ahora bloqueamos todo el popup, 
-                # pero en la bandeja podríamos dejar que vean cosas generales si quisieras. 
-                # Por consistencia con tu petición "no recibir", ocultamos si no es match).
-                # Como el filtro principal era "no recibir popup", aquí aplicamos el filtro de Universidad.
-                if match_uni:
+                if es_anuncio_relevante(anuncio, uni_label, ano_label, is_alumni):
                     anuncios_visibles.append(anuncio)
 
         if not anuncios_visibles:
