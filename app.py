@@ -48,12 +48,19 @@ NOMBRES_NIVELES = {
 }
 
 SYSTEM_MESSAGES = [
-    "📡 Enlace estable.",
-    "🛡️ Escudos al 100%.",
-    "👁️ Valerius observa.",
-    "💉 Contraste óptimo.",
-    "⚡ Energía estable.",
-    "🌟 La suerte favorece a los audaces."
+    "📡 Enlace neuronal estable. Latencia: 0.04ms",
+    "🛡️ Escudos de deflexión al 100%.",
+    "👁️ Valerius está observando tu progreso...",
+    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...",
+    "💉 Niveles de contraste en sangre: Óptimos.",
+    "💠 Sincronización con la Matriz completada.",
+    "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?",
+    "⚡ Energía del núcleo: Estable.",
+    "📂 Desencriptando archivos secretos...",
+    "🍕 Se recomienda una pausa para reabastecimiento.",
+    "🌟 La suerte favorece a los audaces.",
+    "🚫 Acceso denegado al Área 51... por ahora.",
+    "🎲 Tira los dados, el destino aguarda."
 ]
 
 SQUAD_THEMES = {
@@ -204,17 +211,7 @@ st.markdown(f"""
         .supply-desc {{ font-size: 0.9em; color: #aaa; margin-bottom: 15px; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }} 70% {{ box-shadow: 0 0 0 15px rgba(0, 255, 157, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }} }}
 
-        /* TRIVIA */
-        .trivia-container {{
-            background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9));
-            border: 2px solid #e040fb;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 0 25px rgba(224, 64, 251, 0.3);
-            margin-bottom: 20px;
-        }}
-        .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
+        @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
         /* POPUP STYLES */
         .popup-container {{
@@ -231,8 +228,6 @@ st.markdown(f"""
         .popup-title {{ font-family: 'Orbitron'; font-size: 1.5em; color: var(--text-highlight); margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }}
         .popup-body {{ font-size: 1em; color: #fff; line-height: 1.5; margin-bottom: 15px; }}
         .popup-date {{ font-size: 0.7em; color: #888; text-align: right; font-style: italic; }}
-
-        @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
@@ -529,16 +524,30 @@ def cargar_estado_suministros():
             results = res.json().get("results", [])
             for r in results:
                 props = r["properties"]
-                try:
-                    title = props.get("Clave", {}).get("title", [])[0]["text"]["content"]
-                    if title == "DROP_SUMINISTROS":
-                        return props.get("Activo", {}).get("checkbox", False)
-                except: pass
+                # Búsqueda agnóstica del título
+                row_name = ""
+                for prop_name, prop_data in props.items():
+                    if prop_data["type"] == "title" and prop_data["title"]:
+                        row_name = prop_data["title"][0]["text"]["content"]
+                        break
+                
+                if row_name == "DROP_SUMINISTROS":
+                    return props.get("Activo", {}).get("checkbox", False)
     except: pass
     return False
 
-def procesar_suministro(ap_reward):
-    new_ap = (st.session_state.jugador["AP"]["number"] or 0) + ap_reward
+def procesar_suministro(rewards):
+    # Rewards es un dict: {"AP": int, "MP": int, "VP": int}
+    
+    current_ap = st.session_state.jugador.get("AP", {}).get("number", 0) or 0
+    current_mp = st.session_state.jugador.get("MP", {}).get("number", 0) or 0
+    current_vp = st.session_state.jugador.get("VP", {}).get("number", 0) or 0
+    
+    new_ap = current_ap + rewards["AP"]
+    new_mp = current_mp + rewards["MP"]
+    # VP tope 100
+    new_vp = min(100, current_vp + rewards["VP"])
+    
     page_id = st.session_state.player_page_id
     url = f"https://api.notion.com/v1/pages/{page_id}"
     
@@ -546,7 +555,15 @@ def procesar_suministro(ap_reward):
     now_chile = datetime.now(chile_tz)
     now_iso = now_chile.isoformat() 
     
-    payload = {"properties": {"AP": {"number": new_ap}, "Ultimo Suministro": {"date": {"start": now_iso}}}}
+    payload = {
+        "properties": {
+            "AP": {"number": new_ap},
+            "MP": {"number": new_mp},
+            "VP": {"number": new_vp},
+            "Ultimo Suministro": {"date": {"start": now_iso}}
+        }
+    }
+    
     try:
         res = requests.patch(url, headers=headers, json=payload)
         return res.status_code == 200
@@ -554,14 +571,18 @@ def procesar_suministro(ap_reward):
 
 def generar_loot():
     roll = random.randint(1, 100)
+    # Común (60%)
     if roll <= 60:
-        return "Común", random.randint(5, 10), "📦"
+        return "Común", {"AP": random.randint(5, 10), "MP": 0, "VP": 0}, "📦"
+    # Raro (30%)
     elif roll <= 90:
-        return "Raro", random.randint(15, 25), "💼"
+        return "Raro", {"AP": random.randint(15, 25), "MP": 0, "VP": 0}, "💼"
+    # Épico (9%)
     elif roll <= 99:
-        return "Épico", random.randint(40, 60), "💎"
+        return "Épico", {"AP": random.randint(40, 60), "MP": random.randint(5, 10), "VP": random.randint(5, 10)}, "💎"
+    # Legendario (1%)
     else:
-        return "Legendario", 100, "🌟"
+        return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
 
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
@@ -1112,7 +1133,6 @@ else:
         profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # --- SUMINISTROS DIARIOS ---
         if not is_alumni:
             today_iso = date.today().isoformat()
             last_supply = None
@@ -1136,19 +1156,23 @@ else:
                     """, unsafe_allow_html=True)
                     
                     if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
-                        tier, amount, icon = generar_loot()
-                        if procesar_suministro(amount):
+                        tier, rewards, icon = generar_loot()
+                        if procesar_suministro(rewards):
                             st.session_state.supply_claimed_session = True 
                             
+                            reward_text = f"+{rewards['AP']} AP"
+                            if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
+                            if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
+                            
                             if tier == "Común":
-                                st.toast(f"Recibido: {amount} AP", icon=icon)
+                                st.toast(f"Recibido: {reward_text}", icon=icon)
                             elif tier == "Raro":
-                                st.toast(f"¡Bien! {tier}: +{amount} AP", icon=icon)
+                                st.toast(f"¡Bien! {tier}: {reward_text}", icon=icon)
                             elif tier == "Épico":
-                                st.toast(f"¡Increíble! {tier}: +{amount} AP", icon=icon)
+                                st.toast(f"¡Increíble! {tier}: {reward_text}", icon=icon)
                                 st.balloons()
                             elif tier == "Legendario":
-                                st.toast(f"¡LEYENDA! +{amount} AP", icon=icon)
+                                st.toast(f"¡LEYENDA! {reward_text}", icon=icon)
                                 st.snow()
                                 st.balloons()
                             
