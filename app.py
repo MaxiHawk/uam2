@@ -120,11 +120,9 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
-# Trivia States
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
-# Supply States
 if "supply_claimed_session" not in st.session_state: st.session_state.supply_claimed_session = False
 
 # Logout automático
@@ -1134,15 +1132,40 @@ else:
         st.markdown(profile_html, unsafe_allow_html=True)
         
         if not is_alumni:
-            today_iso = date.today().isoformat()
-            last_supply = None
+            # --- LOGICA DE FECHA CHILE (V96.0 FIX) ---
+            chile_tz = pytz.timezone('America/Santiago')
+            today_chile = datetime.now(chile_tz).date()
+            
+            claimed_today = False
+            last_supply_str = None
+            
+            # Obtener fecha de Notion
             try:
                 ls_prop = p.get("Ultimo Suministro")
                 if ls_prop:
-                    last_supply = ls_prop.get("date", {}).get("start")
-            except: last_supply = None
+                    last_supply_str = ls_prop.get("date", {}).get("start")
+            except: last_supply_str = None
+
+            # Comparar fechas correctamente
+            if last_supply_str:
+                try:
+                    if "T" in last_supply_str:
+                        # Convertir ISO a fecha Chile
+                        dt_obj = datetime.fromisoformat(last_supply_str.replace('Z', '+00:00'))
+                        if dt_obj.tzinfo is None:
+                            dt_obj = pytz.utc.localize(dt_obj)
+                        date_stored = dt_obj.astimezone(chile_tz).date()
+                    else:
+                        # Si es YYYY-MM-DD
+                        date_stored = datetime.strptime(last_supply_str, "%Y-%m-%d").date()
+                    
+                    if date_stored == today_chile:
+                        claimed_today = True
+                except: pass
             
-            claimed_today = (last_supply == today_iso) or st.session_state.supply_claimed_session
+            # Chequeo adicional de sesión
+            if st.session_state.supply_claimed_session:
+                claimed_today = True
 
             if supply_active:
                 if claimed_today:
@@ -1151,7 +1174,7 @@ else:
                     st.markdown("""
                     <div class="supply-box">
                         <div class="supply-title">📡 SEÑAL DE SUMINISTROS DETECTADA</div>
-                        <div class="supply-desc">El Comando Central ha liberado un paquete de ayuda en tu sector.</div>
+                        <div class="supply-desc">El Sumo Cartógrafo ha liberado un paquete de ayuda en tu sector.</div>
                     </div>
                     """, unsafe_allow_html=True)
                     
