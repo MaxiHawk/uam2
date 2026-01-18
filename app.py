@@ -23,7 +23,7 @@ try:
     DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
     DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None)
     DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None)
-    DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None) # NUEVO: COMANDO CENTRAL
+    DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -48,19 +48,12 @@ NOMBRES_NIVELES = {
 }
 
 SYSTEM_MESSAGES = [
-    "📡 Enlace neuronal estable. Latencia: 0.04ms",
-    "🛡️ Escudos de deflexión al 100%.",
-    "👁️ Valerius está observando tu progreso...",
-    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...",
-    "💉 Niveles de contraste en sangre: Óptimos.",
-    "💠 Sincronización con la Matriz completada.",
-    "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?",
-    "⚡ Energía del núcleo: Estable.",
-    "📂 Desencriptando archivos secretos...",
-    "🍕 Se recomienda una pausa para reabastecimiento.",
-    "🌟 La suerte favorece a los audaces.",
-    "🚫 Acceso denegado al Área 51... por ahora.",
-    "🎲 Tira los dados, el destino aguarda."
+    "📡 Enlace estable.",
+    "🛡️ Escudos al 100%.",
+    "👁️ Valerius observa.",
+    "💉 Contraste óptimo.",
+    "⚡ Energía estable.",
+    "🌟 La suerte favorece a los audaces."
 ]
 
 SQUAD_THEMES = {
@@ -107,7 +100,6 @@ DEFAULT_BADGE = "assets/insignias/default.png"
 if "jugador" not in st.session_state: st.session_state.jugador = None
 if "player_page_id" not in st.session_state: st.session_state.player_page_id = None 
 if "squad_name" not in st.session_state: st.session_state.squad_name = None
-if "show_intro" not in st.session_state: st.session_state.show_intro = False
 if "popup_shown" not in st.session_state: st.session_state.popup_shown = False
 if "team_stats" not in st.session_state: st.session_state.team_stats = 0
 if "login_error" not in st.session_state: st.session_state.login_error = None
@@ -125,7 +117,7 @@ if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg =
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
-# Supply States (v94.0)
+# Supply States
 if "supply_claimed_session" not in st.session_state: st.session_state.supply_claimed_session = False
 
 # Logout automático
@@ -212,7 +204,17 @@ st.markdown(f"""
         .supply-desc {{ font-size: 0.9em; color: #aaa; margin-bottom: 15px; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }} 70% {{ box-shadow: 0 0 0 15px rgba(0, 255, 157, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }} }}
 
-        @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
+        /* TRIVIA */
+        .trivia-container {{
+            background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9));
+            border: 2px solid #e040fb;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(224, 64, 251, 0.3);
+            margin-bottom: 20px;
+        }}
+        .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
 
         /* POPUP STYLES */
         .popup-container {{
@@ -229,6 +231,8 @@ st.markdown(f"""
         .popup-title {{ font-family: 'Orbitron'; font-size: 1.5em; color: var(--text-highlight); margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }}
         .popup-body {{ font-size: 1em; color: #fff; line-height: 1.5; margin-bottom: 15px; }}
         .popup-date {{ font-size: 0.7em; color: #888; text-align: right; font-style: italic; }}
+
+        @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
@@ -524,7 +528,6 @@ def cargar_estado_suministros():
         if res.status_code == 200:
             results = res.json().get("results", [])
             for r in results:
-                # Buscamos la fila "DROP_SUMINISTROS"
                 props = r["properties"]
                 try:
                     title = props.get("Clave", {}).get("title", [])[0]["text"]["content"]
@@ -967,28 +970,6 @@ def cerrar_sesion():
     st.session_state.clear()
     st.rerun()
 
-def play_intro_sequence():
-    placeholder = st.empty()
-    intro_html = """
-    <div class="intro-overlay">
-        <div class="scanline"></div>
-        <div class="core-loader"><div class="core-text">🔒</div></div>
-        <div class="status-text">CONECTANDO...</div>
-        <div class="bar-container"><div class="bar-fill" id="loading-bar"></div></div>
-        <script>
-            let bar = document.getElementById('loading-bar');
-            let width = 0;
-            let interval = setInterval(function() {
-                if (width >= 100) { clearInterval(interval); }
-                else { width++; bar.style.width = width + '%'; }
-            }, 30);
-        </script>
-    </div>
-    """
-    placeholder.markdown(intro_html, unsafe_allow_html=True)
-    time.sleep(3.5)
-    placeholder.empty()
-
 # ================= UI PRINCIPAL =================
 
 main_placeholder = st.empty()
@@ -1025,12 +1006,6 @@ if not st.session_state.jugador:
         if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    if st.session_state.show_intro:
-        main_placeholder.empty()
-        play_intro_sequence()
-        st.session_state.show_intro = False
-        st.rerun()
-
     main_placeholder.empty() 
 
     p = st.session_state.jugador
@@ -1104,6 +1079,12 @@ else:
     tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "📡 COMUNICACIONES"])
     
     with tab_perfil:
+        # DIAGNOSTICO SUMINISTROS
+        supply_status_text = "🔴 ENLACE DE SUMINISTROS: OFF"
+        supply_active = cargar_estado_suministros()
+        if supply_active: supply_status_text = "🟢 ENLACE DE SUMINISTROS: ON"
+        st.caption(supply_status_text)
+        
         avatar_url = None
         try:
             f_list = p.get("Avatar", {}).get("files", [])
@@ -1131,11 +1112,8 @@ else:
         profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # --- SUMINISTROS DIARIOS (V94.0) ---
+        # --- SUMINISTROS DIARIOS ---
         if not is_alumni:
-            supply_active = cargar_estado_suministros()
-            
-            # Verificar si ya cobró hoy
             today_iso = date.today().isoformat()
             last_supply = None
             try:
@@ -1160,9 +1138,8 @@ else:
                     if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
                         tier, amount, icon = generar_loot()
                         if procesar_suministro(amount):
-                            st.session_state.supply_claimed_session = True # Bloqueo local inmediato
+                            st.session_state.supply_claimed_session = True 
                             
-                            # FEEDBACK VISUAL SEGÚN TIER
                             if tier == "Común":
                                 st.toast(f"Recibido: {amount} AP", icon=icon)
                             elif tier == "Raro":
@@ -1179,11 +1156,7 @@ else:
                             actualizar_datos_sesion()
                         else:
                             st.error("Error de conexión al reclamar.")
-            else:
-                # Si está inactivo, no mostramos nada o un mensaje sutil
-                # st.caption("❄️ Sin señales de suministros en el sector.") 
-                pass
-
+        
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
@@ -1349,7 +1322,7 @@ else:
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
         st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
-        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">SALDO<br>ACTUAL</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
+        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
         market_items = st.session_state.market_data
         if not market_items:
@@ -1388,12 +1361,10 @@ else:
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
-    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V93.0 - Feedback Mode) ---
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
         st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
         
-        # 1. VERIFICAR TIEMPO REAL
         can_play = True
         msg_wait = ""
         
@@ -1427,11 +1398,9 @@ else:
         if is_alumni:
             st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
         
-        # --- MODO FEEDBACK: MOSTRAR RESULTADO ---
         elif st.session_state.trivia_feedback_mode:
             res = st.session_state.trivia_last_result
             if res['correct']:
-                # FEEDBACK POSITIVO (Solo Tarjeta, Sin Globos)
                 st.markdown(f"""
                 <div class="feedback-box feedback-correct">
                     <div class="feedback-title" style="color: #00e676;">✅ ¡SISTEMAS ESTABILIZADOS!</div>
@@ -1441,7 +1410,6 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                # FEEDBACK NEGATIVO
                 st.markdown(f"""
                 <div class="feedback-box feedback-wrong">
                     <div class="feedback-title" style="color: #ff1744;">❌ ERROR DE COHERENCIA</div>
@@ -1454,14 +1422,12 @@ else:
             if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
                 st.session_state.trivia_feedback_mode = False
                 st.session_state.trivia_question = None
-                actualizar_datos_sesion() # Esto recargará y mostrará el Timer
+                actualizar_datos_sesion() 
 
-        # --- MODO BLOQUEADO (TIMER) ---
         elif not can_play:
             st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
             st.progress(100)
 
-        # --- MODO JUEGO ---
         else:
             if not st.session_state.trivia_question:
                 with st.spinner("Escaneando sectores corruptos..."):
@@ -1478,8 +1444,6 @@ else:
                 def handle_choice(choice):
                     is_correct = (choice == q['correcta'])
                     reward = q['recompensa'] if is_correct else 0
-                    
-                    # 1. Guardar estado para el feedback
                     st.session_state.trivia_feedback_mode = True
                     st.session_state.trivia_last_result = {
                         "correct": is_correct,
@@ -1488,11 +1452,7 @@ else:
                         "explanation_correct": q.get("exp_correcta", "Respuesta Correcta."),
                         "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
                     }
-                    
-                    # 2. Escribir en Notion INMEDIATAMENTE
                     procesar_recalibracion(reward)
-                    
-                    # 3. FORZAR RECARGA UI PARA MOSTRAR FEEDBACK
                     st.rerun()
 
                 with col_a:
