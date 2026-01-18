@@ -24,6 +24,7 @@ try:
     DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None)
     DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None)
     DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
+    DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None) # NUEVO: CAJA NEGRA
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -512,6 +513,28 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     buf.seek(0)
     return buf
 
+# --- FUNCIONES DE LOGGING (CAJA NEGRA) ---
+def registrar_evento_sistema(usuario, tipo, detalle):
+    if not DB_LOGS_ID: return
+    url = "https://api.notion.com/v1/pages"
+    
+    chile_tz = pytz.timezone('America/Santiago')
+    now_iso = datetime.now(chile_tz).isoformat()
+
+    payload = {
+        "parent": {"database_id": DB_LOGS_ID},
+        "properties": {
+            "Evento": {"title": [{"text": {"content": tipo}}]},
+            "Jugador": {"rich_text": [{"text": {"content": usuario}}]},
+            "Tipo": {"select": {"name": tipo}},
+            "Detalle": {"rich_text": [{"text": {"content": detalle}}]},
+            "Fecha": {"date": {"start": now_iso}}
+        }
+    }
+    try:
+        requests.post(url, headers=headers, json=payload)
+    except: pass
+
 # --- FUNCIONES LÓGICAS ---
 def cargar_estado_suministros():
     if not DB_CONFIG_ID: return False
@@ -522,36 +545,30 @@ def cargar_estado_suministros():
             results = res.json().get("results", [])
             for r in results:
                 props = r["properties"]
-                # Búsqueda agnóstica del título
                 row_name = ""
                 for prop_name, prop_data in props.items():
                     if prop_data["type"] == "title" and prop_data["title"]:
                         row_name = prop_data["title"][0]["text"]["content"]
                         break
-                
                 if row_name == "DROP_SUMINISTROS":
                     return props.get("Activo", {}).get("checkbox", False)
     except: pass
     return False
 
 def procesar_suministro(rewards):
-    # Rewards es un dict: {"AP": int, "MP": int, "VP": int}
-    
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0) or 0
     current_mp = st.session_state.jugador.get("MP", {}).get("number", 0) or 0
     current_vp = st.session_state.jugador.get("VP", {}).get("number", 0) or 0
     
     new_ap = current_ap + rewards["AP"]
     new_mp = current_mp + rewards["MP"]
-    # VP tope 100
     new_vp = min(100, current_vp + rewards["VP"])
     
     page_id = st.session_state.player_page_id
     url = f"https://api.notion.com/v1/pages/{page_id}"
     
     chile_tz = pytz.timezone('America/Santiago')
-    now_chile = datetime.now(chile_tz)
-    now_iso = now_chile.isoformat() 
+    now_iso = datetime.now(chile_tz).isoformat()
     
     payload = {
         "properties": {
@@ -564,23 +581,20 @@ def procesar_suministro(rewards):
     
     try:
         res = requests.patch(url, headers=headers, json=payload)
-        return res.status_code == 200
-    except: return False
+        if res.status_code == 200:
+            # REGISTRAR EN LOG
+            detalles = f"AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
+            registrar_evento_sistema(st.session_state.nombre, "Suministro", detalles)
+            return True
+    except: pass
+    return False
 
 def generar_loot():
     roll = random.randint(1, 100)
-    # Común (60%)
-    if roll <= 60:
-        return "Común", {"AP": random.randint(5, 10), "MP": 0, "VP": 0}, "📦"
-    # Raro (30%)
-    elif roll <= 90:
-        return "Raro", {"AP": random.randint(15, 25), "MP": 0, "VP": 0}, "💼"
-    # Épico (9%)
-    elif roll <= 99:
-        return "Épico", {"AP": random.randint(40, 60), "MP": random.randint(5, 10), "VP": random.randint(5, 10)}, "💎"
-    # Legendario (1%)
-    else:
-        return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
+    if roll <= 60: return "Común", {"AP": random.randint(5, 10), "MP": 0, "VP": 0}, "📦"
+    elif roll <= 90: return "Raro", {"AP": random.randint(15, 25), "MP": 0, "VP": 0}, "💼"
+    elif roll <= 99: return "Épico", {"AP": random.randint(40, 60), "MP": random.randint(5, 10), "VP": random.randint(5, 10)}, "💎"
+    else: return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
 
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
@@ -593,15 +607,12 @@ def cargar_pregunta_aleatoria():
             if results:
                 q_data = random.choice(results)
                 props = q_data["properties"]
-                
                 exp_correcta = ""
                 if "Explicacion Correcta" in props and props["Explicacion Correcta"]["rich_text"]:
                     exp_correcta = props["Explicacion Correcta"]["rich_text"][0]["text"]["content"]
-                
                 exp_incorrecta = ""
                 if "Explicacion Incorrecta" in props and props["Explicacion Incorrecta"]["rich_text"]:
                     exp_incorrecta = props["Explicacion Incorrecta"]["rich_text"][0]["text"]["content"]
-                
                 return {
                     "id": q_data["id"],
                     "pregunta": props["Pregunta"]["title"][0]["text"]["content"],
@@ -616,19 +627,23 @@ def cargar_pregunta_aleatoria():
     except: pass
     return None
 
-def procesar_recalibracion(ap_reward):
+def procesar_recalibracion(ap_reward, es_correcto):
     new_ap = (st.session_state.jugador["AP"]["number"] or 0) + ap_reward
     page_id = st.session_state.player_page_id
     url = f"https://api.notion.com/v1/pages/{page_id}"
     
     chile_tz = pytz.timezone('America/Santiago')
-    now_chile = datetime.now(chile_tz)
-    now_iso = now_chile.isoformat() 
+    now_iso = datetime.now(chile_tz).isoformat()
     
     payload = {"properties": {"AP": {"number": new_ap}, "Ultima Recalibracion": {"date": {"start": now_iso}}}}
     try:
         res = requests.patch(url, headers=headers, json=payload)
-        if res.status_code == 200: return True
+        if res.status_code == 200:
+            # REGISTRAR EN LOG
+            estado = "Correcto" if es_correcto else "Incorrecto"
+            detalles = f"Resultado: {estado} | Recompensa: +{ap_reward} AP"
+            registrar_evento_sistema(st.session_state.nombre, "Trivia", detalles)
+            return True
     except: pass
     return False
 
@@ -652,21 +667,18 @@ def cargar_anuncios():
                     prio = "Normal"
                     if "Prioridad" in props and props["Prioridad"]["select"]:
                         prio = props["Prioridad"]["select"]["name"]
-                    
                     uni_target = "Todas"
                     if "Universidad" in props:
                         if props["Universidad"]["type"] == "select" and props["Universidad"]["select"]:
                             uni_target = props["Universidad"]["select"]["name"]
                         elif props["Universidad"]["type"] == "multi_select" and props["Universidad"]["multi_select"]:
                             uni_target = [x["name"] for x in props["Universidad"]["multi_select"]]
-                    
                     year_target = "Todas"
                     if "Año" in props:
                         if props["Año"]["type"] == "select" and props["Año"]["select"]:
                             year_target = props["Año"]["select"]["name"]
                         elif props["Año"]["type"] == "multi_select" and props["Año"]["multi_select"]:
                             year_target = [x["name"] for x in props["Año"]["multi_select"]]
-
                     anuncios.append({
                         "titulo": titulo, 
                         "contenido": contenido, 
@@ -1139,31 +1151,26 @@ else:
             claimed_today = False
             last_supply_str = None
             
-            # Obtener fecha de Notion
             try:
                 ls_prop = p.get("Ultimo Suministro")
                 if ls_prop:
                     last_supply_str = ls_prop.get("date", {}).get("start")
             except: last_supply_str = None
 
-            # Comparar fechas correctamente
             if last_supply_str:
                 try:
                     if "T" in last_supply_str:
-                        # Convertir ISO a fecha Chile
                         dt_obj = datetime.fromisoformat(last_supply_str.replace('Z', '+00:00'))
                         if dt_obj.tzinfo is None:
                             dt_obj = pytz.utc.localize(dt_obj)
                         date_stored = dt_obj.astimezone(chile_tz).date()
                     else:
-                        # Si es YYYY-MM-DD
                         date_stored = datetime.strptime(last_supply_str, "%Y-%m-%d").date()
                     
                     if date_stored == today_chile:
                         claimed_today = True
                 except: pass
             
-            # Chequeo adicional de sesión
             if st.session_state.supply_claimed_session:
                 claimed_today = True
 
@@ -1499,7 +1506,7 @@ else:
                         "explanation_correct": q.get("exp_correcta", "Respuesta Correcta."),
                         "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
                     }
-                    procesar_recalibracion(reward)
+                    procesar_recalibracion(reward, is_correct)
                     st.rerun()
 
                 with col_a:
