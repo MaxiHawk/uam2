@@ -22,7 +22,8 @@ try:
     DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
     DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
     DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None)
-    DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None) 
+    DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None)
+    DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None) # NUEVO: COMANDO CENTRAL
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -46,7 +47,6 @@ NOMBRES_NIVELES = {
     5: "👑 AngioMaster"
 }
 
-# --- FRASES DEL SISTEMA (EASTER EGG) ---
 SYSTEM_MESSAGES = [
     "📡 Enlace neuronal estable. Latencia: 0.04ms",
     "🛡️ Escudos de deflexión al 100%.",
@@ -121,9 +121,12 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
+# Trivia States
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
+# Supply States (v94.0)
+if "supply_claimed_session" not in st.session_state: st.session_state.supply_claimed_session = False
 
 # Logout automático
 if st.session_state.get("jugador") is not None:
@@ -185,31 +188,30 @@ st.markdown(f"""
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
-        /* TRIVIA STYLES */
-        .trivia-container {{
-            background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9));
-            border: 2px solid #e040fb;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 0 25px rgba(224, 64, 251, 0.3);
-            margin-bottom: 20px;
-        }}
-        .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
-        
         /* FEEDBACK BOX */
         .feedback-box {{
-            background: rgba(0,0,0,0.6); 
-            border-radius: 10px; 
-            padding: 25px; 
-            text-align: center; 
-            margin-bottom: 20px;
-            animation: fadeIn 0.5s;
+            background: rgba(0,0,0,0.6); border-radius: 10px; padding: 25px; 
+            text-align: center; margin-bottom: 20px; animation: fadeIn 0.5s;
         }}
         .feedback-correct {{ border: 2px solid #00e676; box-shadow: 0 0 25px rgba(0, 230, 118, 0.4); }}
         .feedback-wrong {{ border: 2px solid #ff1744; box-shadow: 0 0 25px rgba(255, 23, 68, 0.4); }}
         .feedback-title {{ font-family: 'Orbitron'; font-size: 1.5em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }}
         .feedback-text {{ font-size: 1.1em; color: #eee; line-height: 1.5; }}
+        
+        /* SUPPLY DROP STYLES */
+        .supply-box {{
+            background: linear-gradient(135deg, rgba(20,40,60,0.9), rgba(10,20,30,0.95));
+            border: 2px dashed var(--primary-color);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            animation: pulse 3s infinite;
+        }}
+        .supply-title {{ font-family: 'Orbitron'; font-size: 1.3em; color: var(--text-highlight); margin-bottom: 5px; }}
+        .supply-desc {{ font-size: 0.9em; color: #aaa; margin-bottom: 15px; }}
+        @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }} 70% {{ box-shadow: 0 0 0 15px rgba(0, 255, 157, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }} }}
+
         @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
         /* POPUP STYLES */
@@ -513,7 +515,51 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     buf.seek(0)
     return buf
 
-# --- LÓGICA TRIVIA Y ANUNCIOS ---
+# --- FUNCIONES LÓGICAS ---
+def cargar_estado_suministros():
+    if not DB_CONFIG_ID: return False
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    try:
+        res = requests.post(url, headers=headers)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            for r in results:
+                # Buscamos la fila "DROP_SUMINISTROS"
+                props = r["properties"]
+                try:
+                    title = props.get("Clave", {}).get("title", [])[0]["text"]["content"]
+                    if title == "DROP_SUMINISTROS":
+                        return props.get("Activo", {}).get("checkbox", False)
+                except: pass
+    except: pass
+    return False
+
+def procesar_suministro(ap_reward):
+    new_ap = (st.session_state.jugador["AP"]["number"] or 0) + ap_reward
+    page_id = st.session_state.player_page_id
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    
+    chile_tz = pytz.timezone('America/Santiago')
+    now_chile = datetime.now(chile_tz)
+    now_iso = now_chile.isoformat() 
+    
+    payload = {"properties": {"AP": {"number": new_ap}, "Ultimo Suministro": {"date": {"start": now_iso}}}}
+    try:
+        res = requests.patch(url, headers=headers, json=payload)
+        return res.status_code == 200
+    except: return False
+
+def generar_loot():
+    roll = random.randint(1, 100)
+    if roll <= 60:
+        return "Común", random.randint(5, 10), "📦"
+    elif roll <= 90:
+        return "Raro", random.randint(15, 25), "💼"
+    elif roll <= 99:
+        return "Épico", random.randint(40, 60), "💎"
+    else:
+        return "Legendario", 100, "🌟"
+
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
     url = f"https://api.notion.com/v1/databases/{DB_TRIVIA_ID}/query"
@@ -526,7 +572,6 @@ def cargar_pregunta_aleatoria():
                 q_data = random.choice(results)
                 props = q_data["properties"]
                 
-                # Obtener explicaciones duales (Seguridad si no existen)
                 exp_correcta = ""
                 if "Explicacion Correcta" in props and props["Explicacion Correcta"]["rich_text"]:
                     exp_correcta = props["Explicacion Correcta"]["rich_text"][0]["text"]["content"]
@@ -565,7 +610,6 @@ def procesar_recalibracion(ap_reward):
     except: pass
     return False
 
-# --- LÓGICA DE FILTRADO INTELIGENTE (ANUNCIOS) ---
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
@@ -888,6 +932,7 @@ def validar_login():
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
                         st.session_state.popup_shown = False
+                        st.session_state.supply_claimed_session = False
                         # RESETEAR ESTADOS TRIVIA
                         st.session_state.trivia_feedback_mode = False 
                         st.session_state.trivia_question = None
@@ -1058,7 +1103,6 @@ else:
 
     tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "📡 COMUNICACIONES"])
     
-    # ... (Otras Tabs) ...
     with tab_perfil:
         avatar_url = None
         try:
@@ -1087,6 +1131,59 @@ else:
         profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
         st.markdown(profile_html, unsafe_allow_html=True)
         
+        # --- SUMINISTROS DIARIOS (V94.0) ---
+        if not is_alumni:
+            supply_active = cargar_estado_suministros()
+            
+            # Verificar si ya cobró hoy
+            today_iso = date.today().isoformat()
+            last_supply = None
+            try:
+                ls_prop = p.get("Ultimo Suministro")
+                if ls_prop:
+                    last_supply = ls_prop.get("date", {}).get("start")
+            except: last_supply = None
+            
+            claimed_today = (last_supply == today_iso) or st.session_state.supply_claimed_session
+
+            if supply_active:
+                if claimed_today:
+                    st.info("✅ Suministros diarios ya reclamados. Vuelve en la próxima ventana táctica.")
+                else:
+                    st.markdown("""
+                    <div class="supply-box">
+                        <div class="supply-title">📡 SEÑAL DE SUMINISTROS DETECTADA</div>
+                        <div class="supply-desc">El Comando Central ha liberado un paquete de ayuda en tu sector.</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
+                        tier, amount, icon = generar_loot()
+                        if procesar_suministro(amount):
+                            st.session_state.supply_claimed_session = True # Bloqueo local inmediato
+                            
+                            # FEEDBACK VISUAL SEGÚN TIER
+                            if tier == "Común":
+                                st.toast(f"Recibido: {amount} AP", icon=icon)
+                            elif tier == "Raro":
+                                st.toast(f"¡Bien! {tier}: +{amount} AP", icon=icon)
+                            elif tier == "Épico":
+                                st.toast(f"¡Increíble! {tier}: +{amount} AP", icon=icon)
+                                st.balloons()
+                            elif tier == "Legendario":
+                                st.toast(f"¡LEYENDA! +{amount} AP", icon=icon)
+                                st.snow()
+                                st.balloons()
+                            
+                            time.sleep(1.5)
+                            actualizar_datos_sesion()
+                        else:
+                            st.error("Error de conexión al reclamar.")
+            else:
+                # Si está inactivo, no mostramos nada o un mensaje sutil
+                # st.caption("❄️ Sin señales de suministros en el sector.") 
+                pass
+
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
@@ -1096,8 +1193,6 @@ else:
                     msg = random.choice(SYSTEM_MESSAGES)
                     st.toast(msg, icon="🤖")
                     if random.random() < 0.1:
-                        # Nota: Aquí SÍ permitimos globos como easter egg raro
-                        # st.balloons() <- Comentado para seriedad total
                         enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
                 else: st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
         
@@ -1293,7 +1388,7 @@ else:
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
-    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V93.0 - Flujo Reparado + Feedback) ---
+    # --- NUEVA TAB: ORÁCULO DE VALERIUS (V93.0 - Feedback Mode) ---
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
         st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
@@ -1332,43 +1427,41 @@ else:
         if is_alumni:
             st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
         
-        # --- ESTADO 2: MODO FEEDBACK (RESULTADO) ---
+        # --- MODO FEEDBACK: MOSTRAR RESULTADO ---
         elif st.session_state.trivia_feedback_mode:
             res = st.session_state.trivia_last_result
-            
             if res['correct']:
-                # FEEDBACK POSITIVO
+                # FEEDBACK POSITIVO (Solo Tarjeta, Sin Globos)
                 st.markdown(f"""
                 <div class="feedback-box feedback-correct">
-                    <div class="feedback-title" style="color: #00e676;">✅ ¡BIEN HECHO, ASPIRANTE!</div>
-                    <div class="feedback-text">Datos confirmados correctamente.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
+                    <div class="feedback-title" style="color: #00e676;">✅ ¡SISTEMAS ESTABILIZADOS!</div>
+                    <div class="feedback-text">Has aportado coherencia a la red.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
                     <br>
-                    <div style="font-size: 0.9em; color: #ccc; font-style:italic;">"{res['explanation_correct']}"</div>
+                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation_correct']}</div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 # FEEDBACK NEGATIVO
                 st.markdown(f"""
                 <div class="feedback-box feedback-wrong">
-                    <div class="feedback-title" style="color: #ff1744;">❌ OH NO... DATOS CORRUPTOS</div>
-                    <div class="feedback-text">La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
+                    <div class="feedback-title" style="color: #ff1744;">❌ ERROR DE COHERENCIA</div>
+                    <div class="feedback-text">Datos corruptos detectados. La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
                     <br>
-                    <div style="font-size: 0.9em; color: #ccc; font-style:italic;">"{res['explanation_wrong']}"</div>
+                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation_wrong']}</div>
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Botón único para limpiar y salir
             if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
                 st.session_state.trivia_feedback_mode = False
                 st.session_state.trivia_question = None
-                actualizar_datos_sesion() # Esto recarga la página y activará el Timer
+                actualizar_datos_sesion() # Esto recargará y mostrará el Timer
 
-        # --- ESTADO 3: BLOQUEO POR TIEMPO ---
+        # --- MODO BLOQUEADO (TIMER) ---
         elif not can_play:
             st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
             st.progress(100)
 
-        # --- ESTADO 1: MODO JUEGO (PREGUNTA) ---
+        # --- MODO JUEGO ---
         else:
             if not st.session_state.trivia_question:
                 with st.spinner("Escaneando sectores corruptos..."):
@@ -1386,7 +1479,7 @@ else:
                     is_correct = (choice == q['correcta'])
                     reward = q['recompensa'] if is_correct else 0
                     
-                    # Guardar estado para el feedback
+                    # 1. Guardar estado para el feedback
                     st.session_state.trivia_feedback_mode = True
                     st.session_state.trivia_last_result = {
                         "correct": is_correct,
@@ -1396,10 +1489,10 @@ else:
                         "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
                     }
                     
-                    # Escribir en Notion INMEDIATAMENTE
+                    # 2. Escribir en Notion INMEDIATAMENTE
                     procesar_recalibracion(reward)
                     
-                    # FORZAR RECARGA UI PARA MOSTRAR FEEDBACK
+                    # 3. FORZAR RECARGA UI PARA MOSTRAR FEEDBACK
                     st.rerun()
 
                 with col_a:
