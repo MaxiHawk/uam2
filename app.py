@@ -25,7 +25,7 @@ try:
     DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None)
     DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
     DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
-    DB_CODIGOS_ID = st.secrets.get("DB_CODIGOS_ID", None) # NUEVO: V100
+    DB_CODIGOS_ID = st.secrets.get("DB_CODIGOS_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -122,11 +122,14 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
+# Trivia States
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
+# Supply States
 if "supply_claimed_session" not in st.session_state: st.session_state.supply_claimed_session = False
 
+# Logout automático
 if st.session_state.get("jugador") is not None:
     if time.time() - st.session_state.last_active > SESSION_TIMEOUT:
         st.session_state.jugador = None
@@ -149,60 +152,190 @@ else:
     if not found:
         THEME = SQUAD_THEMES["Default"]
 
+# --- CSS DINÁMICO ---
 st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
-        :root {{ --primary-color: {THEME['primary']}; --glow-color: {THEME['glow']}; --grad-start: {THEME['gradient_start']}; --grad-end: {THEME['gradient_end']}; --text-highlight: {THEME['text_highlight']}; --bg-dark: #050810; --bg-card: rgba(10, 25, 40, 0.7); }}
-        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{ overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa; }}
-        h1, h2, h3, h4, h5 {{ font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; color: #ffffff !important; text-shadow: 0 0 5px rgba(0,0,0,0.5) !important; }}
+        
+        :root {{
+            --primary-color: {THEME['primary']};
+            --glow-color: {THEME['glow']};
+            --grad-start: {THEME['gradient_start']};
+            --grad-end: {THEME['gradient_end']};
+            --text-highlight: {THEME['text_highlight']};
+            --bg-dark: #050810;
+            --bg-card: rgba(10, 25, 40, 0.7);
+        }}
+
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
+            overflow-x: hidden !important; background-color: var(--bg-dark); color: #e0f7fa;
+        }}
+        h1, h2, h3, h4, h5 {{ 
+            font-family: 'Orbitron', sans-serif !important; letter-spacing: 1px; 
+            color: #ffffff !important;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
+        }}
         html, body, [class*="css"] {{ font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); }}
         .block-container {{ padding-top: 1rem !important; overflow-x: hidden; }}
         #MainMenu, header, footer, .stAppDeployButton {{ display: none !important; }}
         [data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ display: none !important; }}
-        [data-testid="stForm"] {{ max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5); }}
-        .centered-container, .profile-container, .hud-grid, .badge-grid, .energy-core, .rank-table, .log-card, .skill-card-container, .codex-card, .market-card {{ max-width: 700px; margin-left: auto !important; margin-right: auto !important; }}
-        .feedback-box {{ background: rgba(0,0,0,0.6); border-radius: 10px; padding: 25px; text-align: center; margin-bottom: 20px; animation: fadeIn 0.5s; }}
+        
+        [data-testid="stForm"] {{
+            max-width: 700px; margin: 0 auto; border: 1px solid #1c2e3e; padding: 20px; border-radius: 15px; background: rgba(10, 20, 30, 0.5);
+        }}
+        .centered-container, .profile-container, .hud-grid, .badge-grid, 
+        .energy-core, .rank-table, .log-card, .skill-card-container, .codex-card, .market-card {{
+            max-width: 700px; margin-left: auto !important; margin-right: auto !important;
+        }}
+
+        /* FEEDBACK BOX */
+        .feedback-box {{
+            background: rgba(0,0,0,0.6); border-radius: 10px; padding: 25px; 
+            text-align: center; margin-bottom: 20px; animation: fadeIn 0.5s;
+        }}
         .feedback-correct {{ border: 2px solid #00e676; box-shadow: 0 0 25px rgba(0, 230, 118, 0.4); }}
         .feedback-wrong {{ border: 2px solid #ff1744; box-shadow: 0 0 25px rgba(255, 23, 68, 0.4); }}
         .feedback-title {{ font-family: 'Orbitron'; font-size: 1.5em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }}
         .feedback-text {{ font-size: 1.1em; color: #eee; line-height: 1.5; }}
-        .supply-box {{ background: linear-gradient(135deg, rgba(20,40,60,0.9), rgba(10,20,30,0.95)); border: 2px dashed var(--primary-color); border-radius: 15px; padding: 20px; text-align: center; margin-bottom: 30px; animation: pulse 3s infinite; }}
+        
+        /* SUPPLY DROP STYLES */
+        .supply-box {{
+            background: linear-gradient(135deg, rgba(20,40,60,0.9), rgba(10,20,30,0.95));
+            border: 2px dashed var(--primary-color);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            animation: pulse 3s infinite;
+        }}
         .supply-title {{ font-family: 'Orbitron'; font-size: 1.3em; color: var(--text-highlight); margin-bottom: 5px; }}
         .supply-desc {{ font-size: 0.9em; color: #aaa; margin-bottom: 15px; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }} 70% {{ box-shadow: 0 0 0 15px rgba(0, 255, 157, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }} }}
-        .trivia-container {{ background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9)); border: 2px solid #e040fb; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 0 25px rgba(224, 64, 251, 0.3); margin-bottom: 20px; }}
+
+        /* TRIVIA STYLES */
+        .trivia-container {{
+            background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9));
+            border: 2px solid #e040fb;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(224, 64, 251, 0.3);
+            margin-bottom: 20px;
+        }}
         .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
-        .popup-container {{ background: linear-gradient(135deg, rgba(10,20,30,0.95), rgba(0,5,10,0.98)); border: 2px solid var(--primary-color); border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 0 30px var(--glow-color); position: relative; animation: slide-in 0.5s ease-out; }}
+
+        /* POPUP STYLES */
+        .popup-container {{
+            background: linear-gradient(135deg, rgba(10,20,30,0.95), rgba(0,5,10,0.98));
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 30px var(--glow-color);
+            position: relative;
+            animation: slide-in 0.5s ease-out;
+        }}
         @keyframes slide-in {{ 0% {{ transform: translateY(-20px); opacity: 0; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
         .popup-title {{ font-family: 'Orbitron'; font-size: 1.5em; color: var(--text-highlight); margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }}
         .popup-body {{ font-size: 1em; color: #fff; line-height: 1.5; margin-bottom: 15px; }}
         .popup-date {{ font-size: 0.7em; color: #888; text-align: right; font-style: italic; }}
+
         @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
-        .stButton>button {{ width: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }}
+
+        /* TICKER FIXED */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-top: 1px solid var(--primary-color);
+            border-bottom: 1px solid var(--primary-color);
+            white-space: nowrap !important;
+            box-sizing: border-box;
+            height: 35px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .ticker {
+            display: inline-block;
+            white-space: nowrap !important;
+            padding-right: 100%;
+            animation: ticker-animation 60s linear infinite;
+        }
+        .ticker-item {
+            display: inline-block;
+            padding: 0 2rem;
+            font-size: 0.9em;
+            color: var(--text-highlight);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+        @keyframes ticker-animation {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        .stButton>button {{ 
+            width: 100%; border-radius: 8px; 
+            background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); 
+            color: white; border: none; font-family: 'Orbitron'; font-weight:bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; 
+        }}
         .stButton>button:hover {{ transform: scale(1.02); box-shadow: 0 0 15px var(--primary-color); }}
-        div[data-testid="column"] .stButton>button {{ background: rgba(0, 0, 0, 0.3); border: 1px solid var(--primary-color); color: var(--primary-color); font-size: 0.8em; }}
+        
+        div[data-testid="column"] .stButton>button {{ 
+            background: rgba(0, 0, 0, 0.3); border: 1px solid var(--primary-color); color: var(--primary-color); font-size: 0.8em; 
+        }}
         div[data-testid="column"] .stButton>button:hover {{ background: var(--primary-color); color: #000; }}
-        .stTabs [aria-selected="true"] {{ background-color: transparent !important; color: var(--primary-color) !important; border-radius: 0 !important; border-bottom: 3px solid var(--primary-color) !important; font-weight: bold; text-shadow: 0 0 8px var(--glow-color); }}
+
+        .stTabs [aria-selected="true"] {{ 
+            background-color: transparent !important; 
+            color: var(--primary-color) !important; 
+            border-radius: 0 !important;
+            border-bottom: 3px solid var(--primary-color) !important; 
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--glow-color);
+        }}
         .stTabs [data-baseweb="tab-list"] {{ gap: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }}
         .stTabs [data-baseweb="tab"] {{ height: 50px; white-space: nowrap; background-color: transparent !important; border: none !important; color: #888 !important; font-family: 'Orbitron', sans-serif; font-size: 0.9em; }}
-        .profile-container {{ background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; position: relative; box-shadow: 0 10px 40px -10px var(--glow-color); text-align: center; }}
-        .profile-avatar-wrapper {{ position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; border-radius: 50%; padding: 5px; background: var(--bg-dark); border: 2px solid #e0f7fa; box-shadow: 0 0 25px var(--glow-color); z-index: 10; }}
+
+        .profile-container {{ 
+            background: linear-gradient(180deg, rgba(6, 22, 38, 0.95), rgba(4, 12, 20, 0.98)); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 20px; padding: 20px; margin-top: 70px; margin-bottom: 30px; 
+            position: relative; box-shadow: 0 10px 40px -10px var(--glow-color); 
+            text-align: center;
+        }}
+        .profile-avatar-wrapper {{ 
+            position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 160px; height: 160px; 
+            border-radius: 50%; padding: 5px; background: var(--bg-dark); 
+            border: 2px solid #e0f7fa; box-shadow: 0 0 25px var(--glow-color); z-index: 10; 
+        }}
         .profile-avatar {{ width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }}
         .profile-content {{ margin-top: 90px; }}
         .profile-name {{ font-family: 'Orbitron'; font-size: 2.2em; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0,0,0,0.8); }}
         .profile-role {{ color: #b0bec5; font-size: 1.1em; margin-bottom: 15px; font-weight: 400; letter-spacing: 1px; }}
         .profile-role strong {{ color: var(--text-highlight); font-weight: bold; text-transform: uppercase; }}
-        .level-badge {{ display: inline-block; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--primary-color); padding: 8px 25px; border-radius: 30px; font-family: 'Orbitron', sans-serif; font-size: 1.4em; font-weight: 700; color: var(--text-highlight); text-shadow: 0 0 15px var(--glow-color); margin-top: 10px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); }}
+        
+        .level-badge {{
+            display: inline-block; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--primary-color);
+            padding: 8px 25px; border-radius: 30px; font-family: 'Orbitron', sans-serif;
+            font-size: 1.4em; font-weight: 700; color: var(--text-highlight);
+            text-shadow: 0 0 15px var(--glow-color); margin-top: 10px; margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }}
+
         .level-progress-wrapper {{ width: 80%; margin: 0 auto 20px auto; }}
         .level-progress-bg {{ background: #1c2e3e; height: 10px; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }}
         .level-progress-fill {{ height: 100%; background: #FFD700; border-radius: 5px; box-shadow: 0 0 15px #FFD700; transition: width 1s ease-in-out; }}
         .level-progress-text {{ font-size: 0.8em; color: #aaa; margin-top: 5px; letter-spacing: 1px; }}
         .level-progress-text strong {{ color: #FFD700; }}
+
         .hud-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
         .hud-card {{ background: var(--bg-card); border: 1px solid #1c2e3e; border-radius: 15px; padding: 15px; text-align: center; position: relative; overflow: hidden; }}
         .hud-icon {{ width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; opacity: 0.9; }}
         .epic-number {{ font-family: 'Orbitron'; font-size: 2.5em; font-weight: 900; line-height: 1; margin: 5px 0; text-shadow: 0 0 20px currentColor; }}
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
+
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
@@ -210,6 +343,7 @@ st.markdown(f"""
         .skill-cost-col {{ width: 100px; flex-shrink: 0; background: rgba(255, 255, 255, 0.03); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }}
         .skill-cost-icon {{ width: 35px; height: 35px; margin-bottom: 5px; }}
         .skill-cost-val {{ font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }}
+        
         .codex-card {{ display: flex; align-items: center; justify-content: space-between; background: #0a141f; border: 1px solid #1c2e3e; border-left: 4px solid var(--primary-color); border-radius: 8px; padding: 15px; margin-bottom: 10px; transition: 0.3s; }}
         .codex-card.locked {{ border-left-color: #555; opacity: 0.6; filter: grayscale(1); }}
         .codex-info {{ flex-grow: 1; }}
@@ -217,13 +351,20 @@ st.markdown(f"""
         .codex-desc {{ font-size: 0.85em; color: #aaa; }}
         .codex-action {{ margin-left: 15px; }}
         .codex-icon {{ font-size: 1.5em; margin-right: 15px; }}
-        .market-card {{ display: flex; align-items: center; justify-content: space-between; background: linear-gradient(90deg, rgba(10,20,30,0.9), rgba(0,0,0,0.8)); border: 1px solid #333; border-right: 4px solid #FFD700; border-radius: 8px; padding: 15px; margin-bottom: 15px; }}
+
+        .market-card {{
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(90deg, rgba(10,20,30,0.9), rgba(0,0,0,0.8));
+            border: 1px solid #333; border-right: 4px solid #FFD700;
+            border-radius: 8px; padding: 15px; margin-bottom: 15px;
+        }}
         .market-icon {{ font-size: 2em; margin-right: 15px; filter: drop-shadow(0 0 5px var(--glow-color)); }}
         .market-info {{ flex-grow: 1; }}
         .market-title {{ font-family: 'Orbitron'; color: #fff; font-size: 1.1em; margin-bottom: 3px; }}
         .market-desc {{ font-size: 0.85em; color: #aaa; }}
         .market-cost {{ font-family: 'Orbitron'; font-weight: bold; font-size: 1.2em; color: #00e5ff; text-align: center; min-width: 80px; }}
         .market-cost span {{ font-size: 0.6em; color: #aaa; display: block; }}
+
         .rank-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; }}
         .rank-row {{ background: linear-gradient(90deg, rgba(15,30,50,0.8), rgba(10,20,30,0.6)); }}
         .rank-cell {{ padding: 12px 15px; color: #e0f7fa; vertical-align: middle; border-top: 1px solid #1c2e3e; border-bottom: 1px solid #1c2e3e; }}
@@ -235,11 +376,13 @@ st.markdown(f"""
         .log-header {{ display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa; margin-bottom: 5px; }}
         .log-body {{ font-size: 0.95em; color: #fff; margin-bottom: 5px; }}
         .log-reply {{ background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 4px; font-size: 0.9em; color: var(--text-highlight); margin-top: 8px; border-left: 2px solid var(--primary-color); }}
+
         .energy-core {{ background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.05)); border: 2px solid var(--primary-color); border-radius: 12px; padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: 0 0 20px var(--glow-color); }}
         .energy-left {{ display: flex; align-items: center; gap: 15px; }}
         .energy-icon-large {{ width: 60px; height: 60px; filter: drop-shadow(0 0 8px var(--primary-color)); }}
         .energy-label {{ font-family: 'Orbitron'; color: var(--text-highlight); font-size: 0.9em; letter-spacing: 2px; text-transform: uppercase; }}
         .energy-val {{ font-family: 'Orbitron'; font-size: 2.8em; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary-color); line-height: 1; }}
+
         .badge-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }}
         .badge-wrapper {{ position: relative; }} 
         .badge-toggle {{ display: none; }} 
@@ -248,6 +391,7 @@ st.markdown(f"""
         .badge-img-container {{ width: 70px; height: 70px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }}
         .badge-img {{ width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }}
         .badge-name {{ font-size: 0.7em; color: #e0f7fa; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; font-weight: bold; }}
+
         .badge-hologram-wrapper {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 999999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }}
         .badge-toggle:checked ~ .badge-hologram-wrapper {{ opacity: 1; visibility: visible; pointer-events: auto; }}
         .badge-close-backdrop {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1000000; }}
@@ -258,8 +402,37 @@ st.markdown(f"""
         .holo-close-btn {{ display: inline-block; padding: 10px 30px; border: 1px solid #555; border-radius: 30px; color: #fff; background: rgba(255,255,255,0.1); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }}
         .holo-close-btn:hover {{ background: #ff1744; border-color: #ff1744; box-shadow: 0 0 15px #ff1744; }}
         @keyframes holo-float {{ 0%, 100% {{ transform: translateY(0) scale(1); }} 50% {{ transform: translateY(-10px) scale(1.05); }} }}
+
         .footer {{ text-align: center; color: #444; margin-top: 50px; padding-bottom: 20px; font-family: 'Orbitron', sans-serif; font-size: 0.7em; letter-spacing: 3px; border-top: 1px solid #1c2e3e; padding-top: 20px; width: 100%; }}
-        @media (max-width: 768px) {{ .profile-container {{ margin-top: 50px; }} .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }} .profile-name {{ font-size: 1.8em; }} .hud-grid {{ gap: 5px; }} .hud-card {{ padding: 8px 2px; }} .hud-icon {{ width: 30px; height: 30px; margin-bottom: 2px; }} .epic-number {{ font-size: 1.6em; margin: 2px 0; }} .hud-label {{ font-size: 0.55em; letter-spacing: 1px; }} .skill-card-container {{ min-height: 100px; }} .skill-banner-col {{ width: 60px; }} .skill-content-col {{ padding: 10px; }} .skill-cost-col {{ width: 70px; padding: 5px; }} .skill-cost-icon {{ width: 25px; height: 25px; }} .skill-cost-val {{ font-size: 1.4em; }} .rank-cell {{ padding: 8px 5px; font-size: 0.9em; }} .rank-cell-rank {{ width: 30px; font-size: 1em; }} .energy-core {{ padding: 10px 15px; }} .energy-icon-large {{ width: 45px; height: 45px; }} .energy-val {{ font-size: 2.2em; }} .energy-label {{ font-size: 0.7em; }} .badge-grid {{ grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }} .badge-card {{ height: 110px; }} .badge-img-container {{ width: 50px; height: 50px; }} .badge-name {{ font-size: 0.6em; }} .holo-img {{ width: 200px; height: 200px; }} .holo-title {{ font-size: 1.5em; }} }}
+
+        @media (max-width: 768px) {{
+            .profile-container {{ margin-top: 50px; }}
+            .profile-avatar-wrapper {{ width: 130px; height: 130px; top: -65px; }}
+            .profile-name {{ font-size: 1.8em; }}
+            .hud-grid {{ gap: 5px; }}
+            .hud-card {{ padding: 8px 2px; }}
+            .hud-icon {{ width: 30px; height: 30px; margin-bottom: 2px; }}
+            .epic-number {{ font-size: 1.6em; margin: 2px 0; }}
+            .hud-label {{ font-size: 0.55em; letter-spacing: 1px; }}
+            .skill-card-container {{ min-height: 100px; }}
+            .skill-banner-col {{ width: 60px; }}
+            .skill-content-col {{ padding: 10px; }}
+            .skill-cost-col {{ width: 70px; padding: 5px; }}
+            .skill-cost-icon {{ width: 25px; height: 25px; }}
+            .skill-cost-val {{ font-size: 1.4em; }}
+            .rank-cell {{ padding: 8px 5px; font-size: 0.9em; }}
+            .rank-cell-rank {{ width: 30px; font-size: 1em; }}
+            .energy-core {{ padding: 10px 15px; }}
+            .energy-icon-large {{ width: 45px; height: 45px; }}
+            .energy-val {{ font-size: 2.2em; }}
+            .energy-label {{ font-size: 0.7em; }}
+            .badge-grid {{ grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }}
+            .badge-card {{ height: 110px; }}
+            .badge-img-container {{ width: 50px; height: 50px; }}
+            .badge-name {{ font-size: 0.6em; }}
+            .holo-img {{ width: 200px; height: 200px; }}
+            .holo-title {{ font-size: 1.5em; }}
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -424,7 +597,6 @@ def cargar_estado_suministros():
             results = res.json().get("results", [])
             for r in results:
                 props = r["properties"]
-                # Búsqueda agnóstica del título
                 row_name = ""
                 for prop_name, prop_data in props.items():
                     if prop_data["type"] == "title" and prop_data["title"]:
@@ -476,12 +648,10 @@ def generar_loot():
     elif roll <= 99: return "Épico", {"AP": random.randint(40, 60), "MP": random.randint(5, 10), "VP": random.randint(5, 10)}, "💎"
     else: return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
 
-# --- NUEVO: FUNCIÓN PARA CÓDIGOS DE CANJE ---
 def procesar_codigo_canje(codigo_input):
     if not DB_CODIGOS_ID: return False, "Sistema de códigos no configurado."
     
     url = f"https://api.notion.com/v1/databases/{DB_CODIGOS_ID}/query"
-    # Filtrar por código exacto y activo
     payload = {
         "filter": {
             "and": [
@@ -502,7 +672,6 @@ def procesar_codigo_canje(codigo_input):
         props = code_page["properties"]
         page_id = code_page["id"]
         
-        # 1. Validar si ya lo usó
         redeemed_text = ""
         if "Redimido Por" in props and props["Redimido Por"]["rich_text"]:
             redeemed_text = props["Redimido Por"]["rich_text"][0]["text"]["content"]
@@ -510,19 +679,16 @@ def procesar_codigo_canje(codigo_input):
         if st.session_state.nombre in redeemed_text.split(","):
             return False, "Ya has canjeado este código."
             
-        # 2. Validar límite de usos
         limit = props.get("Limite Usos", {}).get("number")
         current_uses = props.get("Usos Actuales", {}).get("number") or 0
         
         if limit is not None and current_uses >= limit:
             return False, "Este código ha alcanzado su límite de usos."
             
-        # 3. Obtener recompensas
         rew_ap = props.get("Valor AP", {}).get("number") or 0
         rew_mp = props.get("Valor MP", {}).get("number") or 0
         rew_vp = props.get("Valor VP", {}).get("number") or 0
         
-        # 4. Aplicar al Jugador
         current_ap = st.session_state.jugador.get("AP", {}).get("number", 0) or 0
         current_mp = st.session_state.jugador.get("MP", {}).get("number", 0) or 0
         current_vp = st.session_state.jugador.get("VP", {}).get("number", 0) or 0
@@ -538,7 +704,6 @@ def procesar_codigo_canje(codigo_input):
         req_p = requests.patch(url_player, headers=headers, json=payload_player)
         if req_p.status_code != 200: return False, "Error al actualizar perfil."
         
-        # 5. Actualizar Código (Sumar uso y agregar nombre)
         new_uses = current_uses + 1
         new_redeemed_list = redeemed_text + "," + st.session_state.nombre if redeemed_text else st.session_state.nombre
         
@@ -551,7 +716,6 @@ def procesar_codigo_canje(codigo_input):
         }
         requests.patch(url_code, headers=headers, json=payload_code)
         
-        # 6. Log
         detalles = f"Código: {codigo_input} | +{rew_ap} AP, +{rew_mp} MP, +{rew_vp} VP"
         registrar_evento_sistema(st.session_state.nombre, "Canje Código", detalles)
         
@@ -1085,7 +1249,7 @@ else:
     st.markdown("<br><br>", unsafe_allow_html=True)
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "📡 COMUNICACIONES"])
+    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_codes, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "🔐 CÓDIGOS", "📡 COMUNICACIONES"])
     
     with tab_perfil:
         # DIAGNOSTICO SUMINISTROS
@@ -1121,13 +1285,14 @@ else:
         profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
         st.markdown(profile_html, unsafe_allow_html=True)
         
-        # --- SUMINISTROS DIARIOS ---
         if not is_alumni:
+            # --- LOGICA DE FECHA CHILE (V96.0 FIX) ---
             chile_tz = pytz.timezone('America/Santiago')
             today_chile = datetime.now(chile_tz).date()
             
             claimed_today = False
             last_supply_str = None
+            
             try:
                 ls_prop = p.get("Ultimo Suministro")
                 if ls_prop:
@@ -1143,6 +1308,7 @@ else:
                         date_stored = dt_obj.astimezone(chile_tz).date()
                     else:
                         date_stored = datetime.strptime(last_supply_str, "%Y-%m-%d").date()
+                    
                     if date_stored == today_chile:
                         claimed_today = True
                 except: pass
@@ -1165,35 +1331,28 @@ else:
                         tier, rewards, icon = generar_loot()
                         if procesar_suministro(rewards):
                             st.session_state.supply_claimed_session = True 
+                            
                             reward_text = f"+{rewards['AP']} AP"
                             if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                             if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
-                            if tier == "Común": st.toast(f"Recibido: {reward_text}", icon=icon)
-                            elif tier == "Raro": st.toast(f"¡Bien! {tier}: {reward_text}", icon=icon)
-                            elif tier == "Épico": st.toast(f"¡Increíble! {tier}: {reward_text}", icon=icon); st.balloons()
-                            elif tier == "Legendario": st.toast(f"¡LEYENDA! {reward_text}", icon=icon); st.snow(); st.balloons()
-                            time.sleep(1.5); actualizar_datos_sesion()
-                        else: st.error("Error de conexión al reclamar.")
-        
-        # --- CÓDIGOS DE CANJE (NUEVO V100) ---
-        st.markdown("---")
-        with st.expander("🔐 CÓDIGOS DE ACCESO (REDEEM CODES)"):
-            st.caption("Ingresa códigos tácticos para desbloquear recursos especiales.")
-            code_input = st.text_input("Ingresa el código:", key="redeem_input")
-            if st.button("CANJEAR CÓDIGO"):
-                if code_input:
-                    with st.spinner("Desencriptando..."):
-                        success, msg = procesar_codigo_canje(code_input.strip())
-                        if success:
-                            st.balloons()
-                            st.success(msg)
-                            time.sleep(2)
+                            
+                            if tier == "Común":
+                                st.toast(f"Recibido: {reward_text}", icon=icon)
+                            elif tier == "Raro":
+                                st.toast(f"¡Bien! {tier}: {reward_text}", icon=icon)
+                            elif tier == "Épico":
+                                st.toast(f"¡Increíble! {tier}: {reward_text}", icon=icon)
+                                st.balloons()
+                            elif tier == "Legendario":
+                                st.toast(f"¡LEYENDA! {reward_text}", icon=icon)
+                                st.snow()
+                                st.balloons()
+                            
+                            time.sleep(1.5)
                             actualizar_datos_sesion()
                         else:
-                            st.error(msg)
-                else:
-                    st.warning("Ingresa un código.")
-
+                            st.error("Error de conexión al reclamar.")
+        
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
@@ -1498,6 +1657,34 @@ else:
                     if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
                 with col_c:
                     if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
+
+    # --- NUEVA PESTAÑA: CÓDIGOS DE ACCESO (V101.0) ---
+    with tab_codes:
+        st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
+        st.caption("Introduce las claves tácticas proporcionadas por el Sumo Cartógrafo para desbloquear recursos.")
+        
+        # Centrar visualmente el input
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80) # Icono candado simple
+            st.markdown("<br>", unsafe_allow_html=True)
+            code_input = st.text_input("CLAVE DE ACCESO:", key="redeem_input", placeholder="X-X-X-X")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
+                if code_input:
+                    with st.spinner("Verificando firma digital..."):
+                        time.sleep(1) # Efecto dramático
+                        success, msg = procesar_codigo_canje(code_input.strip())
+                        if success:
+                            st.balloons()
+                            st.success(f"✅ ACCESO CONCEDIDO: {msg}")
+                            time.sleep(2)
+                            actualizar_datos_sesion()
+                        else:
+                            st.error(f"⛔ ACCESO DENEGADO: {msg}")
+                else:
+                    st.warning("⚠️ Ingrese una clave válida.")
 
     with tab_comms:
         st.markdown("### 📡 TRANSMISIONES DE VALERIUS")
