@@ -270,10 +270,10 @@ st.markdown(f"""
             font-family: 'Orbitron', sans-serif;
             letter-spacing: 1px;
         }
-        @keyframes ticker-animation {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
-        }
+     @keyframes ticker-animation {{
+    0%  transform: translate3d(0, 0, 0); 
+    100%  transform: translate3d(-100%, 0, 0); 
+}}   
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
