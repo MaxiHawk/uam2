@@ -25,6 +25,7 @@ try:
     DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None)
     DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
     DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
+    DB_CODIGOS_ID = st.secrets.get("DB_CODIGOS_ID", None) # NUEVO: V100
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -388,7 +389,6 @@ def registrar_evento_sistema(usuario, tipo, detalle, id_ref=None):
     chile_tz = pytz.timezone('America/Santiago')
     now_iso = datetime.now(chile_tz).isoformat()
     
-    # Obtener Uni y Año del estado (si existen)
     uni = st.session_state.uni_actual if st.session_state.uni_actual else "N/A"
     ano = st.session_state.ano_actual if st.session_state.ano_actual else "N/A"
     
@@ -402,7 +402,6 @@ def registrar_evento_sistema(usuario, tipo, detalle, id_ref=None):
         "Año": {"select": {"name": ano}}
     }
     
-    # Agregar ID_Ref solo si viene con datos
     if id_ref:
         props["ID_Ref"] = {"rich_text": [{"text": {"content": str(id_ref)}}]}
 
@@ -425,11 +424,13 @@ def cargar_estado_suministros():
             results = res.json().get("results", [])
             for r in results:
                 props = r["properties"]
+                # Búsqueda agnóstica del título
                 row_name = ""
                 for prop_name, prop_data in props.items():
                     if prop_data["type"] == "title" and prop_data["title"]:
                         row_name = prop_data["title"][0]["text"]["content"]
                         break
+                
                 if row_name == "DROP_SUMINISTROS":
                     return props.get("Activo", {}).get("checkbox", False)
     except: pass
@@ -475,6 +476,90 @@ def generar_loot():
     elif roll <= 99: return "Épico", {"AP": random.randint(40, 60), "MP": random.randint(5, 10), "VP": random.randint(5, 10)}, "💎"
     else: return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
 
+# --- NUEVO: FUNCIÓN PARA CÓDIGOS DE CANJE ---
+def procesar_codigo_canje(codigo_input):
+    if not DB_CODIGOS_ID: return False, "Sistema de códigos no configurado."
+    
+    url = f"https://api.notion.com/v1/databases/{DB_CODIGOS_ID}/query"
+    # Filtrar por código exacto y activo
+    payload = {
+        "filter": {
+            "and": [
+                {"property": "Código", "title": {"equals": codigo_input}},
+                {"property": "Activo", "checkbox": {"equals": True}}
+            ]
+        }
+    }
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code != 200: return False, "Error de conexión."
+        
+        results = res.json().get("results", [])
+        if not results: return False, "Código inválido o expirado."
+        
+        code_page = results[0]
+        props = code_page["properties"]
+        page_id = code_page["id"]
+        
+        # 1. Validar si ya lo usó
+        redeemed_text = ""
+        if "Redimido Por" in props and props["Redimido Por"]["rich_text"]:
+            redeemed_text = props["Redimido Por"]["rich_text"][0]["text"]["content"]
+        
+        if st.session_state.nombre in redeemed_text.split(","):
+            return False, "Ya has canjeado este código."
+            
+        # 2. Validar límite de usos
+        limit = props.get("Limite Usos", {}).get("number")
+        current_uses = props.get("Usos Actuales", {}).get("number") or 0
+        
+        if limit is not None and current_uses >= limit:
+            return False, "Este código ha alcanzado su límite de usos."
+            
+        # 3. Obtener recompensas
+        rew_ap = props.get("Valor AP", {}).get("number") or 0
+        rew_mp = props.get("Valor MP", {}).get("number") or 0
+        rew_vp = props.get("Valor VP", {}).get("number") or 0
+        
+        # 4. Aplicar al Jugador
+        current_ap = st.session_state.jugador.get("AP", {}).get("number", 0) or 0
+        current_mp = st.session_state.jugador.get("MP", {}).get("number", 0) or 0
+        current_vp = st.session_state.jugador.get("VP", {}).get("number", 0) or 0
+        
+        new_ap = current_ap + rew_ap
+        new_mp = current_mp + rew_mp
+        new_vp = min(100, current_vp + rew_vp)
+        
+        player_pid = st.session_state.player_page_id
+        url_player = f"https://api.notion.com/v1/pages/{player_pid}"
+        payload_player = {"properties": {"AP": {"number": new_ap}, "MP": {"number": new_mp}, "VP": {"number": new_vp}}}
+        
+        req_p = requests.patch(url_player, headers=headers, json=payload_player)
+        if req_p.status_code != 200: return False, "Error al actualizar perfil."
+        
+        # 5. Actualizar Código (Sumar uso y agregar nombre)
+        new_uses = current_uses + 1
+        new_redeemed_list = redeemed_text + "," + st.session_state.nombre if redeemed_text else st.session_state.nombre
+        
+        url_code = f"https://api.notion.com/v1/pages/{page_id}"
+        payload_code = {
+            "properties": {
+                "Usos Actuales": {"number": new_uses},
+                "Redimido Por": {"rich_text": [{"text": {"content": new_redeemed_list}}]}
+            }
+        }
+        requests.patch(url_code, headers=headers, json=payload_code)
+        
+        # 6. Log
+        detalles = f"Código: {codigo_input} | +{rew_ap} AP, +{rew_mp} MP, +{rew_vp} VP"
+        registrar_evento_sistema(st.session_state.nombre, "Canje Código", detalles)
+        
+        return True, f"¡Código Canjeado! +{rew_ap} AP, +{rew_mp} MP"
+        
+    except Exception as e:
+        return False, f"Error técnico: {str(e)}"
+
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
     url = f"https://api.notion.com/v1/databases/{DB_TRIVIA_ID}/query"
@@ -493,10 +578,8 @@ def cargar_pregunta_aleatoria():
                 if "Explicacion Incorrecta" in props and props["Explicacion Incorrecta"]["rich_text"]:
                     exp_incorrecta = props["Explicacion Incorrecta"]["rich_text"][0]["text"]["content"]
                 
-                # --- NUEVO: ID_TRIVIA ---
                 ref_id = "N/A"
                 if "ID_TRIVIA" in props:
-                    # Detectar tipo (number o rich_text)
                     if props["ID_TRIVIA"]["type"] == "number":
                         ref_id = str(props["ID_TRIVIA"]["number"])
                     elif props["ID_TRIVIA"]["type"] == "rich_text" and props["ID_TRIVIA"]["rich_text"]:
@@ -504,7 +587,7 @@ def cargar_pregunta_aleatoria():
 
                 return {
                     "id": q_data["id"],
-                    "ref_id": ref_id, # ID de referencia para Log
+                    "ref_id": ref_id,
                     "pregunta": props["Pregunta"]["title"][0]["text"]["content"],
                     "opcion_a": props["Opcion A"]["rich_text"][0]["text"]["content"],
                     "opcion_b": props["Opcion B"]["rich_text"][0]["text"]["content"],
@@ -531,7 +614,6 @@ def procesar_recalibracion(ap_reward, es_correcto, ref_id):
         if res.status_code == 200:
             estado = "Correcto" if es_correcto else "Incorrecto"
             detalles = f"Resultado: {estado} | Recompensa: +{ap_reward} AP"
-            # PASAMOS EL ID DE LA TRIVIA AL LOG
             registrar_evento_sistema(st.session_state.nombre, "Trivia", detalles, ref_id)
             return True
     except: pass
@@ -709,18 +791,16 @@ def enviar_solicitud(tipo, titulo_msg, cuerpo_msg, jugador_nombre):
     if tipo == "HABILIDAD":
         texto_final = f"{titulo_msg} | Costo: {cuerpo_msg}"
         tipo_select = "Poder"
-        # NUEVO: Log de Gasto AP
         registrar_evento_sistema(jugador_nombre, "Habilidad", f"Activó {titulo_msg} (-{cuerpo_msg} AP)")
     elif tipo == "COMPRA":
         texto_final = f"SOLICITUD DE COMPRA: {titulo_msg} | Costo: {cuerpo_msg} AP"
         tipo_select = "Mensaje"
-        # NUEVO: Log de Gasto AP
         registrar_evento_sistema(jugador_nombre, "Compra", f"Compró {titulo_msg} (-{cuerpo_msg} AP)")
     else:
         texto_final = f"{titulo_msg} - {cuerpo_msg}"
         tipo_select = "Mensaje"
     
-    if tipo == "SISTEMA": # Easter Egg
+    if tipo == "SISTEMA": 
          registrar_evento_sistema(jugador_nombre, "Sistema", "Easter Egg Encontrado (+ AP)")
 
     uni = st.session_state.uni_actual if st.session_state.uni_actual else "Sin Asignar"
@@ -1041,39 +1121,32 @@ else:
         profile_html = f"""<div class="profile-container"><div class="profile-avatar-wrapper">{avatar_div}</div><div class="profile-content"><div class="profile-name">{st.session_state.nombre}</div><div class="profile-role">Perteneciente a la orden de los <strong>{rol}</strong></div><div class="level-badge">NIVEL {nivel_num}: {nombre_rango.upper()}</div>{progress_html}{squad_html}</div></div>""".replace('\n', '')
         st.markdown(profile_html, unsafe_allow_html=True)
         
+        # --- SUMINISTROS DIARIOS ---
         if not is_alumni:
-            # --- LOGICA DE FECHA CHILE (V96.0 FIX) ---
             chile_tz = pytz.timezone('America/Santiago')
             today_chile = datetime.now(chile_tz).date()
             
             claimed_today = False
             last_supply_str = None
-            
-            # Obtener fecha de Notion
             try:
                 ls_prop = p.get("Ultimo Suministro")
                 if ls_prop:
                     last_supply_str = ls_prop.get("date", {}).get("start")
             except: last_supply_str = None
 
-            # Comparar fechas correctamente
             if last_supply_str:
                 try:
                     if "T" in last_supply_str:
-                        # Convertir ISO a fecha Chile
                         dt_obj = datetime.fromisoformat(last_supply_str.replace('Z', '+00:00'))
                         if dt_obj.tzinfo is None:
                             dt_obj = pytz.utc.localize(dt_obj)
                         date_stored = dt_obj.astimezone(chile_tz).date()
                     else:
-                        # Si es YYYY-MM-DD
                         date_stored = datetime.strptime(last_supply_str, "%Y-%m-%d").date()
-                    
                     if date_stored == today_chile:
                         claimed_today = True
                 except: pass
             
-            # Chequeo adicional de sesión
             if st.session_state.supply_claimed_session:
                 claimed_today = True
 
@@ -1092,28 +1165,35 @@ else:
                         tier, rewards, icon = generar_loot()
                         if procesar_suministro(rewards):
                             st.session_state.supply_claimed_session = True 
-                            
                             reward_text = f"+{rewards['AP']} AP"
                             if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                             if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
-                            
-                            if tier == "Común":
-                                st.toast(f"Recibido: {reward_text}", icon=icon)
-                            elif tier == "Raro":
-                                st.toast(f"¡Bien! {tier}: {reward_text}", icon=icon)
-                            elif tier == "Épico":
-                                st.toast(f"¡Increíble! {tier}: {reward_text}", icon=icon)
-                                st.balloons()
-                            elif tier == "Legendario":
-                                st.toast(f"¡LEYENDA! {reward_text}", icon=icon)
-                                st.snow()
-                                st.balloons()
-                            
-                            time.sleep(1.5)
+                            if tier == "Común": st.toast(f"Recibido: {reward_text}", icon=icon)
+                            elif tier == "Raro": st.toast(f"¡Bien! {tier}: {reward_text}", icon=icon)
+                            elif tier == "Épico": st.toast(f"¡Increíble! {tier}: {reward_text}", icon=icon); st.balloons()
+                            elif tier == "Legendario": st.toast(f"¡LEYENDA! {reward_text}", icon=icon); st.snow(); st.balloons()
+                            time.sleep(1.5); actualizar_datos_sesion()
+                        else: st.error("Error de conexión al reclamar.")
+        
+        # --- CÓDIGOS DE CANJE (NUEVO V100) ---
+        st.markdown("---")
+        with st.expander("🔐 CÓDIGOS DE ACCESO (REDEEM CODES)"):
+            st.caption("Ingresa códigos tácticos para desbloquear recursos especiales.")
+            code_input = st.text_input("Ingresa el código:", key="redeem_input")
+            if st.button("CANJEAR CÓDIGO"):
+                if code_input:
+                    with st.spinner("Desencriptando..."):
+                        success, msg = procesar_codigo_canje(code_input.strip())
+                        if success:
+                            st.balloons()
+                            st.success(msg)
+                            time.sleep(2)
                             actualizar_datos_sesion()
                         else:
-                            st.error("Error de conexión al reclamar.")
-        
+                            st.error(msg)
+                else:
+                    st.warning("Ingresa un código.")
+
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
             if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
