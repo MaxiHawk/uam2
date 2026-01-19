@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import time
 from datetime import datetime
-import pytz # Vital para la hora de Chile
+import pytz 
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -11,40 +11,11 @@ try:
     DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
     DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
+    # Intentamos cargar el ID de Logs, si no existe, no crashea pero avisa
+    DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
 except FileNotFoundError:
-    st.error("⚠️ Error: Faltan secretos. Configura ADMIN_PASSWORD en secrets.toml")
+    st.error("⚠️ Error: Faltan secretos. Configura ADMIN_PASSWORD y DBs en secrets.toml")
     st.stop()
-# --- FUNCIÓN DE LOGGING PARA EL ADMIN PANEL ---
-
-def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
-    """
-    Registra una acción administrativa en el Historial del Sistema.
-    Uso: registrar_log_admin("Juan Perez", "Ajuste Manual", "Se agregaron +50 AP por participación", "UV", "2026")
-    """
-    if "DB_LOGS_ID" not in st.secrets: return
-    
-    url = "https://api.notion.com/v1/pages"
-    
-    # Fecha Chile
-    chile_tz = pytz.timezone('America/Santiago')
-    now_iso = datetime.now(chile_tz).isoformat()
-
-    payload = {
-        "parent": {"database_id": st.secrets["DB_LOGS_ID"]},
-        "properties": {
-            "Evento": {"title": [{"text": {"content": tipo_evento}}]},
-            "Jugador": {"rich_text": [{"text": {"content": usuario_afectado}}]},
-            "Tipo": {"select": {"name": "Sistema"}}, # O 'Admin' si creas esa categoría
-            "Detalle": {"rich_text": [{"text": {"content": detalle}}]},
-            "Fecha": {"date": {"start": now_iso}},
-            "Universidad": {"select": {"name": universidad}},
-            "Año": {"select": {"name": año}}
-        }
-    }
-    
-    try:
-        requests.post(url, headers=headers, json=payload)
-    except: pass
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
@@ -93,6 +64,36 @@ st.markdown("""
         .refresh-btn { margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
+
+# --- FUNCIÓN DE LOGGING (AHORA CONECTADA) ---
+def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
+    """
+    Registra una acción administrativa en el Historial del Sistema.
+    """
+    if not DB_LOGS_ID: return
+    
+    url = "https://api.notion.com/v1/pages"
+    
+    # Fecha Chile
+    chile_tz = pytz.timezone('America/Santiago')
+    now_iso = datetime.now(chile_tz).isoformat()
+
+    payload = {
+        "parent": {"database_id": DB_LOGS_ID},
+        "properties": {
+            "Evento": {"title": [{"text": {"content": tipo_evento}}]},
+            "Jugador": {"rich_text": [{"text": {"content": usuario_afectado}}]},
+            "Tipo": {"select": {"name": "Sistema"}}, # O 'Admin'
+            "Detalle": {"rich_text": [{"text": {"content": detalle}}]},
+            "Fecha": {"date": {"start": now_iso}},
+            "Universidad": {"select": {"name": universidad}},
+            "Año": {"select": {"name": año}}
+        }
+    }
+    
+    try:
+        requests.post(url, headers=headers, json=payload)
+    except: pass
 
 # --- FUNCIONES NOTION ---
 
@@ -177,10 +178,10 @@ def get_pending_requests(debug_mode=False):
                     
                     # Contexto
                     uni_obj = props.get("Universidad", {}).get("select")
-                    uni = uni_obj["name"] if uni_obj else None
+                    uni = uni_obj["name"] if uni_obj else "Sin Asignar"
                     
                     ano_obj = props.get("Año", {}).get("select")
-                    ano = ano_obj["name"] if ano_obj else None
+                    ano = ano_obj["name"] if ano_obj else "Sin Año"
                     
                     created_time = r["created_time"]
                     
@@ -331,8 +332,8 @@ with tab_req:
             
             player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
             req_gen_label = r.get('año') if r.get('año') else "??"
+            req_uni_label = r.get('universidad') if r.get('universidad') else "Admin"
             
-            # --- FIX: CONVERTIR FECHA A SANTIAGO (GMT-3) ---
             try:
                 utc_dt = datetime.fromisoformat(r['created'].replace('Z', '+00:00'))
                 chile_tz = pytz.timezone('America/Santiago')
@@ -353,7 +354,6 @@ with tab_req:
                 tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
                 title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
                 
-                # CABECERA
                 st.markdown(f"""
                 <div class="{card_class}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -370,14 +370,12 @@ with tab_req:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # STATS MINIATURA
                 if not player_stats.empty:
                     k1, k2, k3 = st.columns(3)
                     k1.markdown(f"<div class='kpi-mini' style='border-color:#FFD700;'><div class='kpi-mini-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-mini-lbl'>MP Actual</div></div>", unsafe_allow_html=True)
                     k2.markdown(f"<div class='kpi-mini' style='border-color:#00e5ff;'><div class='kpi-mini-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-mini-lbl'>AP Actual</div></div>", unsafe_allow_html=True)
                     k3.markdown(f"<div class='kpi-mini' style='border-color:#ff4b4b;'><div class='kpi-mini-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-mini-lbl'>VP Actual</div></div>", unsafe_allow_html=True)
 
-                # ACCIONES
                 c_obs, c_acts = st.columns([3, 2])
                 
                 with c_obs:
@@ -392,22 +390,28 @@ with tab_req:
                             ok_ap = update_player_ap_by_name(player_name, costo)
                             if ok_ap:
                                 finalize_request(r['id'], "Aprobado", obs_text)
+                                # --- LOGGING ---
+                                registrar_log_admin(player_name, "Solicitud Aprobada", f"Se aprobó {skill_name} (-{costo} AP)", req_uni_label, req_gen_label)
                                 st.toast(f"Solicitud Aprobada")
                                 time.sleep(1); st.rerun()
                             else: st.error("Error al descontar AP")
                         
                         if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
                             finalize_request(r['id'], "Rechazado", obs_text)
+                            # --- LOGGING ---
+                            registrar_log_admin(player_name, "Solicitud Rechazada", f"Motivo: {obs_text}", req_uni_label, req_gen_label)
                             st.toast("Solicitud Denegada")
                             time.sleep(1); st.rerun()
                     else:
                         if c_yes.button(f"📤 CONTESTADO", key=f"reply_{r['id']}"):
                             finalize_request(r['id'], "Respuesta", obs_text)
+                            # --- LOGGING ---
+                            registrar_log_admin(player_name, "Mensaje Respondido", f"Respuesta: {obs_text}", req_uni_label, req_gen_label)
                             st.toast("Contestado")
                             time.sleep(1); st.rerun()
                         
                         if c_no.button(f"📥 ARCHIVAR", key=f"arch_{r['id']}"):
-                            finalize_request(r['id'], "Respuesta", obs_text) 
+                            finalize_request(r['id'], "Respuesta", obs_text)
                             st.toast("Archivado")
                             time.sleep(1); st.rerun()
 
@@ -422,6 +426,8 @@ with tab_ops:
         
         player_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
         pid = player_data["id"]
+        p_uni = player_data["Universidad"]
+        p_gen = player_data["Generación"]
         
         st.markdown("---")
         c_mp, c_ap, c_vp = st.columns(3)
@@ -433,9 +439,11 @@ with tab_ops:
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar MP"):
                 update_stat(pid, "MP", player_data['MP'] + mod_mp)
+                registrar_log_admin(player_data['Aspirante'], "Ajuste Manual MP", f"Se sumaron {mod_mp} MP", p_uni, p_gen)
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar MP"):
                 update_stat(pid, "MP", max(0, player_data['MP'] - mod_mp))
+                registrar_log_admin(player_data['Aspirante'], "Ajuste Manual MP", f"Se restaron {mod_mp} MP", p_uni, p_gen)
                 st.toast(f"MP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_ap:
@@ -445,9 +453,11 @@ with tab_ops:
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sumar AP"):
                 update_stat(pid, "AP", player_data['AP'] + mod_ap)
+                registrar_log_admin(player_data['Aspirante'], "Ajuste Manual AP", f"Se sumaron {mod_ap} AP", p_uni, p_gen)
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Restar AP"):
                 update_stat(pid, "AP", max(0, player_data['AP'] - mod_ap))
+                registrar_log_admin(player_data['Aspirante'], "Ajuste Manual AP", f"Se restaron {mod_ap} AP", p_uni, p_gen)
                 st.toast(f"AP Actualizado"); time.sleep(0.5); st.rerun()
 
         with c_vp:
@@ -457,9 +467,11 @@ with tab_ops:
             c_add, c_sub = st.columns(2)
             if c_add.button("➕ Sanar VP"):
                 update_stat(pid, "VP", min(100, player_data['VP'] + mod_vp))
+                registrar_log_admin(player_data['Aspirante'], "Ajuste Manual VP", f"Se sanaron {mod_vp}% VP", p_uni, p_gen)
                 st.toast("Aspirante Sanado"); time.sleep(0.5); st.rerun()
             if c_sub.button("➖ Dañar VP"):
                 update_stat(pid, "VP", max(0, player_data['VP'] - mod_vp))
+                registrar_log_admin(player_data['Aspirante'], "Ajuste Manual VP", f"Se dañaron {mod_vp}% VP", p_uni, p_gen)
                 st.toast("Daño Aplicado"); time.sleep(0.5); st.rerun()
 
 # ================= TAB 3: NÓMINA =================
