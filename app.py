@@ -257,6 +257,11 @@ st.markdown(f"""
     align-items: center;
 }}
 
+/* ESTA ES LA REGLA QUE FALTABA: */
+.ticker-wrap:hover .ticker {{
+    animation-play-state: paused; 
+}}
+
 .ticker {{
     display: inline-block;
     white-space: nowrap !important;
