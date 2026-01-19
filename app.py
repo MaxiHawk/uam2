@@ -243,7 +243,7 @@ st.markdown(f"""
         @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
 /* TICKER FIXED */
-.ticker-wrap 
+.ticker-wrap {{
     width: 100%;
     overflow: hidden;
     background-color: rgba(0, 0, 0, 0.6);
@@ -255,25 +255,28 @@ st.markdown(f"""
     margin-bottom: 20px;
     display: flex;
     align-items: center;
+}}
 
-.ticker 
+.ticker {{
     display: inline-block;
     white-space: nowrap !important;
     padding-right: 100%;
     animation: ticker-animation 60s linear infinite;
+}}
 
-.ticker-item 
+.ticker-item {{
     display: inline-block;
     padding: 0 2rem;
     font-size: 0.9em;
     color: var(--text-highlight);
     font-family: 'Orbitron', sans-serif;
     letter-spacing: 1px;
+}}
 
 @keyframes ticker-animation {{
-    0%  transform: translate3d(0, 0, 0); 
-    100%  transform: translate3d(-100%, 0, 0); 
-}} 
+    0% {{ transform: translate3d(0, 0, 0); }}
+    100% {{ transform: translate3d(-100%, 0, 0); }}
+}}
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
