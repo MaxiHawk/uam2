@@ -89,21 +89,27 @@ SQUAD_THEMES = {
     "Remodeladores de Moret": { "primary": "#cfd8dc", "glow": "rgba(255, 215, 0, 0.3)", "gradient_start": "#000000", "gradient_end": "#546e7a", "text_highlight": "#ffca28" }
 }
 
-BADGE_MAP = {
-    "Misión 1": "assets/insignias/mision_1.png",
-    "Misión 2": "assets/insignias/mision_2.png",
-    "Misión 3": "assets/insignias/mision_3.png",
-    "Primer Sangre": "assets/insignias/primer_sangre.png",
-    "Francotirador": "assets/insignias/francotirador.png",
-    "Erudito":       "assets/insignias/erudito.png",
-    "Veterano":      "assets/insignias/veterano.png",
-    "Hacker":        "assets/insignias/hacker.png",
-    "Curador":       "assets/insignias/curador.png",
-    "Velocista":     "assets/insignias/velocista.png",
-    "Imparable":     "assets/insignias/imparable.png",
-    "Legendario":    "assets/insignias/legendario.png"
-}
-DEFAULT_BADGE = "assets/insignias/default.png" 
+# --- MAPA DE INSIGNIAS (ACTUALIZADO V2) ---
+BADGE_MAP = {}
+
+# 1. Generar Misiones (1 a 9)
+# En Notion: "Misión 1" -> Archivo: assets/insignias/mision_1.png
+for i in range(1, 10):
+    BADGE_MAP[f"Misión {i}"] = f"assets/insignias/mision_{i}.png"
+
+# 2. Generar Hazañas (1 a 7)
+# En Notion: "Hazaña 1" -> Archivo: assets/insignias/hazana_1.png
+# (Usamos 'hazana' sin ñ en el archivo para evitar problemas de compatibilidad)
+for i in range(1, 8):
+    BADGE_MAP[f"Hazaña {i}"] = f"assets/insignias/hazana_{i}.png"
+
+# 3. Generar Expediciones (1 a 3)
+# En Notion: "Expedición 1" -> Archivo: assets/insignias/expedicion_1.png
+# (Usamos 'expedicion' sin tilde en el archivo)
+for i in range(1, 4):
+    BADGE_MAP[f"Expedición {i}"] = f"assets/insignias/expedicion_{i}.png"
+
+DEFAULT_BADGE = "assets/insignias/default.png"
 
 # --- ESTADO DE SESIÓN ---
 if "jugador" not in st.session_state: st.session_state.jugador = None
