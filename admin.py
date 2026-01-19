@@ -14,6 +14,37 @@ try:
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan secretos. Configura ADMIN_PASSWORD en secrets.toml")
     st.stop()
+# --- FUNCIÓN DE LOGGING PARA EL ADMIN PANEL ---
+
+def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
+    """
+    Registra una acción administrativa en el Historial del Sistema.
+    Uso: registrar_log_admin("Juan Perez", "Ajuste Manual", "Se agregaron +50 AP por participación", "UV", "2026")
+    """
+    if "DB_LOGS_ID" not in st.secrets: return
+    
+    url = "https://api.notion.com/v1/pages"
+    
+    # Fecha Chile
+    chile_tz = pytz.timezone('America/Santiago')
+    now_iso = datetime.now(chile_tz).isoformat()
+
+    payload = {
+        "parent": {"database_id": st.secrets["DB_LOGS_ID"]},
+        "properties": {
+            "Evento": {"title": [{"text": {"content": tipo_evento}}]},
+            "Jugador": {"rich_text": [{"text": {"content": usuario_afectado}}]},
+            "Tipo": {"select": {"name": "Sistema"}}, # O 'Admin' si creas esa categoría
+            "Detalle": {"rich_text": [{"text": {"content": detalle}}]},
+            "Fecha": {"date": {"start": now_iso}},
+            "Universidad": {"select": {"name": universidad}},
+            "Año": {"select": {"name": año}}
+        }
+    }
+    
+    try:
+        requests.post(url, headers=headers, json=payload)
+    except: pass
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
