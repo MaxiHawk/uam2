@@ -242,7 +242,7 @@ st.markdown(f"""
 
         @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
-  /* TICKER FIXED */
+/* TICKER FIXED */
 .ticker-wrap 
     width: 100%;
     overflow: hidden;
@@ -273,7 +273,7 @@ st.markdown(f"""
 @keyframes ticker-animation {{
     0%  transform: translate3d(0, 0, 0); 
     100%  transform: translate3d(-100%, 0, 0); 
-}}  
+}} 
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
