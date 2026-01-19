@@ -122,14 +122,12 @@ if "ano_actual" not in st.session_state: st.session_state.ano_actual = None
 if "estado_uam" not in st.session_state: st.session_state.estado_uam = None
 if "last_active" not in st.session_state: st.session_state.last_active = time.time()
 if "last_easter_egg" not in st.session_state: st.session_state.last_easter_egg = 0
-# Trivia States
 if "trivia_question" not in st.session_state: st.session_state.trivia_question = None
 if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedback_mode = False
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
-# Supply States
 if "supply_claimed_session" not in st.session_state: st.session_state.supply_claimed_session = False
+if "previous_login_timestamp" not in st.session_state: st.session_state.previous_login_timestamp = None
 
-# Logout automático
 if st.session_state.get("jugador") is not None:
     if time.time() - st.session_state.last_active > SESSION_TIMEOUT:
         st.session_state.jugador = None
@@ -188,7 +186,6 @@ st.markdown(f"""
             max-width: 700px; margin-left: auto !important; margin-right: auto !important;
         }}
 
-        /* FEEDBACK BOX */
         .feedback-box {{
             background: rgba(0,0,0,0.6); border-radius: 10px; padding: 25px; 
             text-align: center; margin-bottom: 20px; animation: fadeIn 0.5s;
@@ -198,7 +195,6 @@ st.markdown(f"""
         .feedback-title {{ font-family: 'Orbitron'; font-size: 1.5em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }}
         .feedback-text {{ font-size: 1.1em; color: #eee; line-height: 1.5; }}
         
-        /* SUPPLY DROP STYLES */
         .supply-box {{
             background: linear-gradient(135deg, rgba(20,40,60,0.9), rgba(10,20,30,0.95));
             border: 2px dashed var(--primary-color);
@@ -212,7 +208,6 @@ st.markdown(f"""
         .supply-desc {{ font-size: 0.9em; color: #aaa; margin-bottom: 15px; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }} 70% {{ box-shadow: 0 0 0 15px rgba(0, 255, 157, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }} }}
 
-        /* TRIVIA STYLES */
         .trivia-container {{
             background: linear-gradient(145deg, rgba(20, 10, 30, 0.8), rgba(10, 5, 20, 0.9));
             border: 2px solid #e040fb;
@@ -224,7 +219,6 @@ st.markdown(f"""
         }}
         .trivia-question {{ font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 20px; }}
 
-        /* POPUP STYLES */
         .popup-container {{
             background: linear-gradient(135deg, rgba(10,20,30,0.95), rgba(0,5,10,0.98));
             border: 2px solid var(--primary-color);
@@ -242,46 +236,45 @@ st.markdown(f"""
 
         @keyframes fadeIn {{ from {{ opacity:0; transform:translateY(-10px); }} to {{ opacity:1; transform:translateY(0); }} }}
 
-/* TICKER FIXED */
-.ticker-wrap {{
-    width: 100%;
-    overflow: hidden;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-top: 1px solid var(--primary-color);
-    border-bottom: 1px solid var(--primary-color);
-    white-space: nowrap !important;
-    box-sizing: border-box;
-    height: 35px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-}}
+        /* TICKER FIXED */
+        .ticker-wrap {{
+            width: 100%;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-top: 1px solid var(--primary-color);
+            border-bottom: 1px solid var(--primary-color);
+            white-space: nowrap !important;
+            box-sizing: border-box;
+            height: 35px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }}
+        
+        .ticker-wrap:hover .ticker {{
+            animation-play-state: paused; 
+        }}
 
-/* ESTA ES LA REGLA QUE FALTABA: */
-.ticker-wrap:hover .ticker {{
-    animation-play-state: paused; 
-}}
+        .ticker {{
+            display: inline-block;
+            white-space: nowrap !important;
+            padding-right: 100%;
+            animation: ticker-animation 60s linear infinite;
+        }}
 
-.ticker {{
-    display: inline-block;
-    white-space: nowrap !important;
-    padding-right: 100%;
-    animation: ticker-animation 60s linear infinite;
-}}
+        .ticker-item {{
+            display: inline-block;
+            padding: 0 2rem;
+            font-size: 0.9em;
+            color: var(--text-highlight);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }}
 
-.ticker-item {{
-    display: inline-block;
-    padding: 0 2rem;
-    font-size: 0.9em;
-    color: var(--text-highlight);
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 1px;
-}}
-
-@keyframes ticker-animation {{
-    0% {{ transform: translate3d(0, 0, 0); }}
-    100% {{ transform: translate3d(-100%, 0, 0); }}
-}}
+        @keyframes ticker-animation {{
+            0% {{ transform: translate3d(0, 0, 0); }}
+            100% {{ transform: translate3d(-100%, 0, 0); }}
+        }}
 
         .stButton>button {{ 
             width: 100%; border-radius: 8px; 
@@ -596,6 +589,18 @@ def registrar_evento_sistema(usuario, tipo, detalle, id_ref=None):
     except: pass
 
 # --- FUNCIONES LÓGICAS ---
+def actualizar_ultima_conexion(page_id):
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    chile_tz = pytz.timezone('America/Santiago')
+    now_iso = datetime.now(chile_tz).isoformat()
+    payload = {
+        "properties": {
+            "Ultima Conexion": {"date": {"start": now_iso}}
+        }
+    }
+    try: requests.patch(url, headers=headers, json=payload)
+    except: pass
+
 def cargar_estado_suministros():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
@@ -1008,7 +1013,18 @@ def obtener_mis_solicitudes(jugador_nombre):
                 obs_list = props.get("Observaciones", {}).get("rich_text", [])
                 obs = obs_list[0]["text"]["content"] if obs_list else None
                 created = r["created_time"]
-                historial.append({"mensaje": mensaje, "status": status, "obs": obs, "fecha": created})
+                
+                fecha_resp = None
+                if "Fecha respuesta" in props and props["Fecha respuesta"]["date"]:
+                    fecha_resp = props["Fecha respuesta"]["date"]["start"]
+
+                historial.append({
+                    "mensaje": mensaje, 
+                    "status": status, 
+                    "obs": obs, 
+                    "fecha": created,
+                    "fecha_respuesta": fecha_resp
+                })
             except: pass
     return historial
 
@@ -1113,11 +1129,20 @@ def validar_login():
                         st.session_state.jugador = props
                         st.session_state.player_page_id = page_id
                         st.session_state.nombre = usuario
+                        
+                        last_login_iso = None
+                        try:
+                            if "Ultima Conexion" in props and props["Ultima Conexion"]["date"]:
+                                last_login_iso = props["Ultima Conexion"]["date"]["start"]
+                        except: pass
+                        st.session_state.previous_login_timestamp = last_login_iso
+                        
+                        actualizar_ultima_conexion(page_id)
+                        
                         st.session_state.login_error = None
                         st.session_state.show_intro = True
                         st.session_state.popup_shown = False
                         st.session_state.supply_claimed_session = False
-                        # RESETEAR ESTADOS TRIVIA
                         st.session_state.trivia_feedback_mode = False 
                         st.session_state.trivia_question = None
                         try:
@@ -1188,6 +1213,43 @@ if not st.session_state.jugador:
 
 else:
     main_placeholder.empty() 
+
+    # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
+    if "notificaciones_check" not in st.session_state:
+        st.session_state.notificaciones_check = False
+
+    if not st.session_state.notificaciones_check:
+        st.session_state.notificaciones_check = True 
+        
+        historial_reciente = obtener_mis_solicitudes(st.session_state.nombre)
+        
+        fecha_corte = None
+        if "previous_login_timestamp" in st.session_state and st.session_state.previous_login_timestamp:
+            try:
+                raw_prev = st.session_state.previous_login_timestamp
+                chile_tz = pytz.timezone('America/Santiago')
+                if "T" in raw_prev:
+                    dt_prev = datetime.fromisoformat(raw_prev.replace('Z', '+00:00'))
+                    fecha_corte = dt_prev.astimezone(chile_tz)
+                else:
+                    fecha_corte = chile_tz.localize(datetime.strptime(raw_prev, "%Y-%m-%d"))
+            except: pass
+        
+        if fecha_corte and historial_reciente:
+            for req in historial_reciente:
+                if req.get('fecha_respuesta'): 
+                    try:
+                        resp_iso = req['fecha_respuesta']
+                        if "T" in resp_iso:
+                            dt_resp = datetime.fromisoformat(resp_iso.replace('Z', '+00:00')).astimezone(pytz.timezone('America/Santiago'))
+                        else:
+                            dt_resp = pytz.timezone('America/Santiago').localize(datetime.strptime(resp_iso, "%Y-%m-%d"))
+                        
+                        if dt_resp > fecha_corte:
+                            icono = "✅" if req['status'] == "Aprobado" else "❌" if req['status'] == "Rechazado" else "📩"
+                            st.toast(f"{icono} {req['status'].upper()}: {req['mensaje']}", icon="🔔")
+                            time.sleep(0.5) 
+                    except: pass
 
     p = st.session_state.jugador
     mp = p.get("MP", {}).get("number", 0) or 0
@@ -1294,7 +1356,6 @@ else:
         st.markdown(profile_html, unsafe_allow_html=True)
         
         if not is_alumni:
-            # --- LOGICA DE FECHA CHILE (V96.0 FIX) ---
             chile_tz = pytz.timezone('America/Santiago')
             today_chile = datetime.now(chile_tz).date()
             
@@ -1659,22 +1720,13 @@ else:
                     procesar_recalibracion(reward, is_correct, q['ref_id'])
                     st.rerun()
 
-                with col_a:
-                    if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
-                with col_b:
-                    if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
-                with col_c:
-                    if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
-
-    # --- NUEVA PESTAÑA: CÓDIGOS DE ACCESO (V101.0) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
         st.caption("Introduce las claves tácticas proporcionadas por el Sumo Cartógrafo para desbloquear recursos.")
         
-        # Centrar visualmente el input
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
-            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80) # Icono candado simple
+            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80) 
             st.markdown("<br>", unsafe_allow_html=True)
             code_input = st.text_input("CLAVE DE ACCESO:", key="redeem_input", placeholder="X-X-X-X")
             st.markdown("<br>", unsafe_allow_html=True)
@@ -1682,7 +1734,7 @@ else:
             if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
                 if code_input:
                     with st.spinner("Verificando firma digital..."):
-                        time.sleep(1) # Efecto dramático
+                        time.sleep(1) 
                         success, msg = procesar_codigo_canje(code_input.strip())
                         if success:
                             st.balloons()
