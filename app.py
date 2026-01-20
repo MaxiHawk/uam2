@@ -1706,6 +1706,8 @@ else:
                     if q: st.session_state.trivia_question = q
                     else: st.info("Sistemas al 100%. No se requieren reparaciones hoy.")
             
+# ... (código anterior dentro de tab_trivia) ...
+            
             if st.session_state.trivia_question:
                 q = st.session_state.trivia_question
                 st.markdown(f"""<div class="trivia-container"><div class="trivia-question">{q['pregunta']}</div></div>""", unsafe_allow_html=True)
@@ -1725,7 +1727,9 @@ else:
                     }
                     procesar_recalibracion(reward, is_correct, q['ref_id'])
                     st.rerun()
-                    with col_a:
+
+                # --- 🔴 ESTE ES EL BLOQUE QUE FALTABA 🔴 ---
+                with col_a:
                     if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
                 with col_b:
                     if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
