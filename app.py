@@ -48,7 +48,7 @@ def verificar_modo_mantenimiento():
     try:
         payload = {
             "filter": {
-                "property": "Nombre", 
+                "property": "Clave",  # <--- AQUÍ ESTABA EL ERROR (Antes decía "Nombre")
                 "title": {"equals": "MODO_MANTENIMIENTO"}
             }
         }
@@ -56,6 +56,7 @@ def verificar_modo_mantenimiento():
         if res.status_code == 200:
             results = res.json().get("results", [])
             if results:
+                # Si encuentra la fila, devuelve el valor del checkbox 'Activo'
                 return results[0]["properties"].get("Activo", {}).get("checkbox", False)
     except: pass 
     return False
