@@ -39,7 +39,51 @@ headers = {
 
 SESSION_TIMEOUT = 900 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
-
+# --- 🛡️ PROTOCOLO DE MANTENIMIENTO (KILL SWITCH) ---
+if verificar_modo_mantenimiento():
+    st.markdown("""
+        <style>
+            .stApp {
+                background-color: #1a0505;
+                color: #ff4444;
+            }
+            .maintenance-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 80vh;
+                text-align: center;
+                font-family: 'Courier New', monospace;
+                border: 2px solid #ff4444;
+                padding: 40px;
+                border-radius: 10px;
+                background: rgba(255, 0, 0, 0.05);
+                box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+            }
+            .blink {
+                animation: blinker 1.5s linear infinite;
+                font-size: 3em;
+                margin-bottom: 20px;
+            }
+            @keyframes blinker {
+                50% { opacity: 0; }
+            }
+        </style>
+        <div class="maintenance-container">
+            <div class="blink">⛔</div>
+            <h1 style="color: #ff4444; text-transform: uppercase;">SISTEMAS OFFLINE</h1>
+            <h3 style="color: #ff8888;">PROTOCOLO DE MANTENIMIENTO ACTIVO</h3>
+            <p>El Comando Central está realizando ajustes críticos en la infraestructura.</p>
+            <br>
+            <p style="border-top: 1px solid #ff4444; padding-top: 20px; width: 50%; margin: 0 auto;">
+                <em>"La paciencia es la primera virtud del estratega."</em>
+            </p>
+            <br><br>
+            <small>PRAXIS PRIMORIS // ESTADO: DESCONECTADO</small>
+        </div>
+    """, unsafe_allow_html=True)
+    st.stop() # 🛑 ESTO DETIENE TODA LA EJECUCIÓN AQUÍ
 # --- DICCIONARIO DE NIVELES ---
 NOMBRES_NIVELES = {
     1: "🧪 Aprendiz",
@@ -626,7 +670,31 @@ def cargar_estado_suministros():
                     return props.get("Activo", {}).get("checkbox", False)
     except: pass
     return False
-
+    
+def verificar_modo_mantenimiento():
+    """Consulta si el Kill Switch está activo en Notion."""
+    if not DB_CONFIG_ID: return False
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    try:
+        # Buscamos específicamente la fila de Mantenimiento
+        payload = {
+            "filter": {
+                "property": "Nombre", # Asegúrate que tu columna principal se llame "Nombre" o "Name"
+                "title": {
+                    "equals": "MODO_MANTENIMIENTO"
+                }
+            }
+        }
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results:
+                # Si existe la fila, devolvemos el valor del checkbox 'Activo'
+                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
+    except: 
+        pass # Si falla la conexión, asumimos que NO hay mantenimiento para no bloquear por error
+    return False
+    
 def procesar_suministro(rewards):
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0) or 0
     current_mp = st.session_state.jugador.get("MP", {}).get("number", 0) or 0
