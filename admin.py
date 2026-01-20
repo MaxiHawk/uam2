@@ -25,6 +25,12 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
+# --- GENERACIÓN DE LISTA DE INSIGNIAS (Sincronizado con APP) ---
+BADGE_OPTIONS = []
+for i in range(1, 10): BADGE_OPTIONS.append(f"Misión {i}")
+for i in range(1, 8): BADGE_OPTIONS.append(f"Hazaña {i}")
+for i in range(1, 4): BADGE_OPTIONS.append(f"Expedición {i}")
+
 # --- CSS TÁCTICO ---
 st.markdown("""
     <style>
@@ -63,6 +69,14 @@ st.markdown("""
         .mass-ops-box {
             border: 2px dashed #ff9100;
             background: rgba(255, 145, 0, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .badge-ops-box {
+            border: 2px dashed #D4AF37;
+            background: rgba(212, 175, 55, 0.05);
             padding: 20px;
             border-radius: 10px;
             margin-top: 20px;
@@ -127,13 +141,18 @@ def get_players():
                     squad_list = props.get("Nombre Escuadrón", {}).get("rich_text", [])
                     squad = squad_list[0]["text"]["content"] if squad_list else "Sin Escuadrón"
                     
+                    # NUEVO: Obtener Insignias Actuales
+                    insignias_objs = props.get("Insignias", {}).get("multi_select", [])
+                    insignias_list = [x["name"] for x in insignias_objs]
+
                     players.append({
                         "id": p["id"], 
                         "Aspirante": name, 
                         "Escuadrón": squad, 
                         "Universidad": uni,
                         "Generación": ano,
-                        "MP": mp, "AP": ap, "VP": vp
+                        "MP": mp, "AP": ap, "VP": vp,
+                        "Insignias": insignias_list # Guardamos la lista actual
                     })
                 except: pass
             has_more = data["has_more"]
@@ -168,9 +187,15 @@ def get_pending_requests(debug_mode=False):
                     ano_obj = props.get("Año", {}).get("select")
                     ano = ano_obj["name"] if ano_obj else "Sin Año"
                     created_time = r["created_time"]
+                    
+                    # Intentar obtener fecha respuesta si existe (para debug)
+                    resp_date = None
+                    if "Fecha respuesta" in props and props["Fecha respuesta"]["date"]:
+                        resp_date = props["Fecha respuesta"]["date"]["start"]
+
                     reqs.append({
                         "id": r["id"], "remitente": remitente, "mensaje": mensaje, "tipo": tipo,
-                        "universidad": uni, "año": ano, "created": created_time
+                        "universidad": uni, "año": ano, "created": created_time, "resp_date": resp_date
                     })
             except Exception as e: pass
     return reqs
@@ -186,6 +211,24 @@ def update_stat_batch(player_id, updates_dict):
         props[key] = {"number": val}
     
     data = {"properties": props}
+    res = requests.patch(url, headers=headers, json=data)
+    return res.status_code == 200
+
+def update_badges_batch(player_id, new_badges_list):
+    """
+    Actualiza la lista de insignias de un jugador (Multi-select).
+    new_badges_list: ["Misión 1", "Veterano"]
+    """
+    url = f"https://api.notion.com/v1/pages/{player_id}"
+    
+    # Formato Notion para Multi-select
+    badges_payload = [{"name": b} for b in new_badges_list]
+    
+    data = {
+        "properties": {
+            "Insignias": {"multi_select": badges_payload}
+        }
+    }
     res = requests.patch(url, headers=headers, json=data)
     return res.status_code == 200
 
@@ -417,14 +460,14 @@ with tab_ops:
                 registrar_log_admin(player_data['Aspirante'], "Ajuste Manual VP", f"Se dañaron {mod_vp}% VP", p_uni, p_gen)
                 st.toast("Actualizado"); time.sleep(0.5); st.rerun()
 
-        # --- SECCIÓN MASIVA ---
+        # --- SECCIÓN MASIVA (PUNTOS) ---
         st.markdown("---")
         st.markdown("<div class='mass-ops-box'>", unsafe_allow_html=True)
-        st.markdown("### 💣 OPERACIONES MASIVAS DE ESCUADRÓN")
+        st.markdown("### 💣 BOMBARDEO DE SUMINISTROS (MP/AP/VP)")
         
         # Filtro de escuadrones disponibles en el filtro actual
         available_squads = df_filtered["Escuadrón"].unique().tolist()
-        target_squad = st.selectbox("🎯 Seleccionar Escuadrón Objetivo:", available_squads)
+        target_squad = st.selectbox("🎯 Seleccionar Escuadrón Objetivo:", available_squads, key="squad_stat")
         
         c_m1, c_m2, c_m3 = st.columns(3)
         mass_mp = c_m1.number_input("MP a Asignar", value=0, step=5)
@@ -433,7 +476,7 @@ with tab_ops:
         
         mass_reason = st.text_input("📝 Motivo de la Operación (OBLIGATORIO):", placeholder="Ej: Bonificación Misión 1, Castigo por retraso, etc.")
         
-        if st.button("🚀 EJECUTAR BOMBARDEO DE RECOMPENSAS", use_container_width=True):
+        if st.button("🚀 EJECUTAR OPERACIÓN", use_container_width=True):
             if not mass_reason:
                 st.error("⚠️ DEBES ESCRIBIR UN MOTIVO PARA LA OPERACIÓN.")
             else:
@@ -478,7 +521,7 @@ with tab_ops:
                         
                         count += 1
                         prog_bar.progress(count / total_targets)
-                        time.sleep(0.1) # Pequeña pausa para no saturar API
+                        time.sleep(0.1) 
                         
                     st.success(f"✅ Operación completada. {count} aspirantes actualizados.")
                     time.sleep(2)
@@ -487,6 +530,47 @@ with tab_ops:
                     st.warning("El escuadrón seleccionado no tiene miembros visibles.")
         
         st.markdown("</div>", unsafe_allow_html=True)
+
+        # --- SECCIÓN MASIVA (INSIGNIAS) ---
+        st.markdown("<div class='badge-ops-box'>", unsafe_allow_html=True)
+        st.markdown("### 🎖️ CONDECORACIÓN DE CAMPO (INSIGNIAS)")
+        
+        badge_target_squad = st.selectbox("🎯 Seleccionar Escuadrón a Condecorar:", available_squads, key="squad_badge")
+        selected_badge = st.selectbox("🏅 Seleccionar Insignia:", BADGE_OPTIONS)
+        
+        if st.button("🎖️ ASIGNAR INSIGNIA AL ESCUADRÓN", use_container_width=True):
+            targets_b = df_filtered[df_filtered["Escuadrón"] == badge_target_squad]
+            total_targets_b = len(targets_b)
+            
+            if total_targets_b > 0:
+                prog_bar_b = st.progress(0)
+                status_text_b = st.empty()
+                
+                count_b = 0
+                for index, soldier in targets_b.iterrows():
+                    status_text_b.text(f"Condecorando: {soldier['Aspirante']}...")
+                    
+                    # Obtener insignias actuales (Ya vienen en el DF gracias a la mejora en get_players)
+                    current_badges = soldier["Insignias"]
+                    
+                    # Verificar si ya la tiene para no duplicar
+                    if selected_badge not in current_badges:
+                        new_badges_list = current_badges + [selected_badge]
+                        update_badges_batch(soldier["id"], new_badges_list)
+                        registrar_log_admin(soldier["Aspirante"], "Condecoración", f"Se otorgó insignia: {selected_badge}", soldier["Universidad"], soldier["Generación"])
+                    
+                    count_b += 1
+                    prog_bar_b.progress(count_b / total_targets_b)
+                    time.sleep(0.1)
+                
+                st.success(f"✅ Misión cumplida. {count_b} insignias asignadas.")
+                time.sleep(2)
+                st.rerun()
+            else:
+                st.warning("No hay aspirantes en este escuadrón.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ================= TAB 3: NÓMINA =================
 with tab_list:
@@ -498,6 +582,7 @@ with tab_list:
             "Escuadrón": st.column_config.TextColumn("Escuadrón", width="small"),
             "MP": st.column_config.ProgressColumn("MasterPoints", format="%d", min_value=0, max_value=1000),
             "VP": st.column_config.NumberColumn("VitaPoints", format="%d%%"),
+            "Insignias": st.column_config.ListColumn("Insignias")
         },
         use_container_width=True,
         hide_index=True
