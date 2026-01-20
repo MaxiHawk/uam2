@@ -39,36 +39,39 @@ headers = {
 
 SESSION_TIMEOUT = 900 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
-# --- 🛡️ PROTOCOLO DE MANTENIMIENTO (KILL SWITCH) ---
+
+# --- 🛡️ MODO MANTENIMIENTO (KILL SWITCH) ---
+def verificar_modo_mantenimiento():
+    """Consulta si el Kill Switch está activo en Notion."""
+    if not DB_CONFIG_ID: return False
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    try:
+        payload = {
+            "filter": {
+                "property": "Nombre", 
+                "title": {"equals": "MODO_MANTENIMIENTO"}
+            }
+        }
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results:
+                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
+    except: pass 
+    return False
+
 if verificar_modo_mantenimiento():
     st.markdown("""
         <style>
-            .stApp {
-                background-color: #1a0505;
-                color: #ff4444;
-            }
+            .stApp { background-color: #1a0505; color: #ff4444; }
             .maintenance-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 80vh;
-                text-align: center;
-                font-family: 'Courier New', monospace;
-                border: 2px solid #ff4444;
-                padding: 40px;
-                border-radius: 10px;
-                background: rgba(255, 0, 0, 0.05);
-                box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                height: 80vh; text-align: center; font-family: 'Courier New', monospace;
+                border: 2px solid #ff4444; padding: 40px; border-radius: 10px;
+                background: rgba(255, 0, 0, 0.05); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
             }
-            .blink {
-                animation: blinker 1.5s linear infinite;
-                font-size: 3em;
-                margin-bottom: 20px;
-            }
-            @keyframes blinker {
-                50% { opacity: 0; }
-            }
+            .blink { animation: blinker 1.5s linear infinite; font-size: 3em; margin-bottom: 20px; }
+            @keyframes blinker { 50% { opacity: 0; } }
         </style>
         <div class="maintenance-container">
             <div class="blink">⛔</div>
@@ -83,29 +86,16 @@ if verificar_modo_mantenimiento():
             <small>PRAXIS PRIMORIS // ESTADO: DESCONECTADO</small>
         </div>
     """, unsafe_allow_html=True)
-    st.stop() # 🛑 ESTO DETIENE TODA LA EJECUCIÓN AQUÍ
-# --- DICCIONARIO DE NIVELES ---
-NOMBRES_NIVELES = {
-    1: "🧪 Aprendiz",
-    2: "🚀 Navegante",
-    3: "🎯 Caza Arterias",
-    4: "🔍 Clarividente",
-    5: "👑 AngioMaster"
-}
+    st.stop()
+
+# --- CONSTANTES ---
+NOMBRES_NIVELES = { 1: "🧪 Aprendiz", 2: "🚀 Navegante", 3: "🎯 Caza Arterias", 4: "🔍 Clarividente", 5: "👑 AngioMaster" }
 
 SYSTEM_MESSAGES = [
-    "📡 Enlace neuronal estable. Latencia: 0.04ms",
-    "🛡️ Escudos de deflexión al 100%.",
-    "👁️ Valerius está observando tu progreso...",
-    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...",
-    "💉 Niveles de contraste en sangre: Óptimos.",
-    "💠 Sincronización con la Matriz completada.",
-    "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?",
-    "⚡ Energía del núcleo: Estable.",
-    "📂 Desencriptando archivos secretos...",
-    "🍕 Se recomienda una pausa para reabastecimiento.",
-    "🌟 La suerte favorece a los audaces.",
-    "🚫 Acceso denegado al Área 51... por ahora.",
+    "📡 Enlace neuronal estable. Latencia: 0.04ms", "🛡️ Escudos de deflexión al 100%.", "👁️ Valerius está observando tu progreso...",
+    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...", "💉 Niveles de contraste en sangre: Óptimos.", "💠 Sincronización con la Matriz completada.",
+    "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?", "⚡ Energía del núcleo: Estable.", "📂 Desencriptando archivos secretos...",
+    "🍕 Se recomienda una pausa para reabastecimiento.", "🌟 La suerte favorece a los audaces.", "🚫 Acceso denegado al Área 51... por ahora.",
     "🎲 Tira los dados, el destino aguarda."
 ]
 
@@ -135,24 +125,9 @@ SQUAD_THEMES = {
 
 # --- MAPA DE INSIGNIAS (ACTUALIZADO V2) ---
 BADGE_MAP = {}
-
-# 1. Generar Misiones (1 a 9)
-# En Notion: "Misión 1" -> Archivo: assets/insignias/mision_1.png
-for i in range(1, 10):
-    BADGE_MAP[f"Misión {i}"] = f"assets/insignias/mision_{i}.png"
-
-# 2. Generar Hazañas (1 a 7)
-# En Notion: "Hazaña 1" -> Archivo: assets/insignias/hazana_1.png
-# (Usamos 'hazana' sin ñ en el archivo para evitar problemas de compatibilidad)
-for i in range(1, 8):
-    BADGE_MAP[f"Hazaña {i}"] = f"assets/insignias/hazana_{i}.png"
-
-# 3. Generar Expediciones (1 a 3)
-# En Notion: "Expedición 1" -> Archivo: assets/insignias/expedicion_1.png
-# (Usamos 'expedicion' sin tilde en el archivo)
-for i in range(1, 4):
-    BADGE_MAP[f"Expedición {i}"] = f"assets/insignias/expedicion_{i}.png"
-
+for i in range(1, 10): BADGE_MAP[f"Misión {i}"] = f"assets/insignias/mision_{i}.png"
+for i in range(1, 8): BADGE_MAP[f"Hazaña {i}"] = f"assets/insignias/hazana_{i}.png"
+for i in range(1, 4): BADGE_MAP[f"Expedición {i}"] = f"assets/insignias/expedicion_{i}.png"
 DEFAULT_BADGE = "assets/insignias/default.png"
 
 # --- ESTADO DE SESIÓN ---
@@ -670,31 +645,7 @@ def cargar_estado_suministros():
                     return props.get("Activo", {}).get("checkbox", False)
     except: pass
     return False
-    
-def verificar_modo_mantenimiento():
-    """Consulta si el Kill Switch está activo en Notion."""
-    if not DB_CONFIG_ID: return False
-    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
-    try:
-        # Buscamos específicamente la fila de Mantenimiento
-        payload = {
-            "filter": {
-                "property": "Nombre", # Asegúrate que tu columna principal se llame "Nombre" o "Name"
-                "title": {
-                    "equals": "MODO_MANTENIMIENTO"
-                }
-            }
-        }
-        res = requests.post(url, headers=headers, json=payload)
-        if res.status_code == 200:
-            results = res.json().get("results", [])
-            if results:
-                # Si existe la fila, devolvemos el valor del checkbox 'Activo'
-                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
-    except: 
-        pass # Si falla la conexión, asumimos que NO hay mantenimiento para no bloquear por error
-    return False
-    
+
 def procesar_suministro(rewards):
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0) or 0
     current_mp = st.session_state.jugador.get("MP", {}).get("number", 0) or 0
@@ -1097,7 +1048,7 @@ def obtener_mis_solicitudes(jugador_nombre):
                     "status": status, 
                     "obs": obs, 
                     "fecha": created,
-                    "fecha_respuesta": fecha_resp
+                    "fecha_respuesta": fecha_resp 
                 })
             except: pass
     return historial
@@ -1774,8 +1725,6 @@ else:
                     if q: st.session_state.trivia_question = q
                     else: st.info("Sistemas al 100%. No se requieren reparaciones hoy.")
             
-# ... (código anterior dentro de tab_trivia) ...
-            
             if st.session_state.trivia_question:
                 q = st.session_state.trivia_question
                 st.markdown(f"""<div class="trivia-container"><div class="trivia-question">{q['pregunta']}</div></div>""", unsafe_allow_html=True)
@@ -1796,22 +1745,21 @@ else:
                     procesar_recalibracion(reward, is_correct, q['ref_id'])
                     st.rerun()
 
-                # --- 🔴 ESTE ES EL BLOQUE QUE FALTABA 🔴 ---
                 with col_a:
                     if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
                 with col_b:
                     if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
                 with col_c:
                     if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
-                # ---------------------------------------------
 
+    # --- NUEVA PESTAÑA: CÓDIGOS DE ACCESO (V101.0) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
         st.caption("Introduce las claves tácticas proporcionadas por el Sumo Cartógrafo para desbloquear recursos.")
         
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
-            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80) 
+            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80) # Icono candado simple
             st.markdown("<br>", unsafe_allow_html=True)
             code_input = st.text_input("CLAVE DE ACCESO:", key="redeem_input", placeholder="X-X-X-X")
             st.markdown("<br>", unsafe_allow_html=True)
@@ -1819,7 +1767,7 @@ else:
             if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
                 if code_input:
                     with st.spinner("Verificando firma digital..."):
-                        time.sleep(1) 
+                        time.sleep(1) # Efecto dramático
                         success, msg = procesar_codigo_canje(code_input.strip())
                         if success:
                             st.balloons()
