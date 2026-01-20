@@ -1725,6 +1725,13 @@ else:
                     }
                     procesar_recalibracion(reward, is_correct, q['ref_id'])
                     st.rerun()
+                    with col_a:
+                    if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
+                with col_b:
+                    if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
+                with col_c:
+                    if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
+                # ---------------------------------------------
 
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
