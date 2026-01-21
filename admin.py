@@ -109,6 +109,7 @@ def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Adm
     except: pass
 
 # --- FUNCIONES NOTION ---
+@st.cache_data(ttl=60)
 def get_players():
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     has_more = True
@@ -305,6 +306,12 @@ with st.sidebar:
     st.divider()
     st.metric("Aspirantes Activos", len(df_filtered))
     debug_mode = st.checkbox("🛠️ Modo Diagnóstico")
+    st.divider()
+    if st.button("🧹 Limpiar Caché Global"):
+        st.cache_data.clear()
+        st.toast("✅ Memoria del sistema purgada.")
+        time.sleep(1)
+        st.rerun()
     if st.button("Cerrar Sesión"):
         st.session_state.admin_logged_in = False
         st.rerun()
