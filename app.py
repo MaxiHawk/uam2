@@ -41,6 +41,7 @@ SESSION_TIMEOUT = 900
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
 # --- 🛡️ MODO MANTENIMIENTO (KILL SWITCH) ---
+@st.cache_data(ttl=60, show_spinner=False)
 def verificar_modo_mantenimiento():
     """Consulta si el Kill Switch está activo en Notion."""
     if not DB_CONFIG_ID: return False
@@ -464,6 +465,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- HELPERS ---
+@st.cache_data(show_spinner=False)
 def get_img_as_base64(file_path):
     if not os.path.exists(file_path): return ""
     with open(file_path, "rb") as f: data = f.read()
@@ -822,6 +824,7 @@ def procesar_recalibracion(ap_reward, es_correcto, ref_id):
     except: pass
     return False
 
+@st.cache_data(ttl=600)
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
@@ -909,6 +912,7 @@ def calcular_progreso_nivel(mp):
     faltantes = (techo + 1) - mp
     return progreso_actual, total_nivel, pct, faltantes, False
 
+@st.cache_data(ttl=3600)
 def cargar_habilidades_rol(rol_jugador):
     if not rol_jugador: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
@@ -938,6 +942,7 @@ def cargar_habilidades_rol(rol_jugador):
         return habilidades
     except: return []
 
+@st.cache_data(ttl=3600)
 def cargar_codice():
     if not DB_CODICE_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_CODICE_ID}/query"
@@ -966,6 +971,7 @@ def cargar_codice():
         return items
     except: return []
 
+@st.cache_data(ttl=600)
 def cargar_mercado():
     if not DB_MERCADO_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MERCADO_ID}/query"
@@ -1068,6 +1074,7 @@ def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
         return total_mp
     except: return 0
 
+@st.cache_data(ttl=300)
 def cargar_ranking_filtrado(uni, ano):
     if not uni or not ano: return pd.DataFrame()
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
