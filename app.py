@@ -8,6 +8,7 @@ import time
 import random
 import unicodedata
 import io
+import json
 from datetime import datetime, timedelta, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
@@ -474,27 +475,22 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CARGADOR DE ANIMACIONES LOTTIE ---
+# --- CARGADOR DE ANIMACIONES LOTTIE (MODO LOCAL - ROBUSTO) ---
 @st.cache_data(show_spinner=False)
-def cargar_lottie(url):
+def cargar_lottie(filepath):
+    # Ahora leemos del disco, no de internet. Cero errores 403.
+    if not os.path.exists(filepath): return None
     try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            # Esto imprimirá un error visible en la app si la descarga falla
-            st.error(f"❌ Error descargando animación: {r.status_code}")
-            return None
-        return r.json()
-    except Exception as e:
-        # Esto nos dirá si es un error de conexión
-        st.error(f"❌ Error de conexión Lottie: {e}")
-        return None
+        with open(filepath, "r") as f:
+            return json.load(f)
+    except: return None
 
 # --- BIBLIOTECA DE ASSETS TÁCTICOS ---
 ASSETS_LOTTIE = {
-    "success_hack": "https://lottie.host/5aee9359-c29d-4357-b08e-5b62b1442152/c9C9C22y3W.json", # Candado digital abriéndose
-    "loot_epic": "https://lottie.host/9e013620-e22a-4467-9c98-154df2d63339/q5Z6y71q2R.json",    # Caja sci-fi abriéndose
-    "loot_legendary": "https://lottie.host/8b965825-7b56-4c4f-8f85-8495098a5840/hX21KjZ67n.json", # Explosión de energía dorada
-    "access_denied": "https://lottie.host/bc795328-9778-430c-8e0a-4299446d0286/9zD9Xj5K3o.json"  # Acceso denegado rojo
+    # Apuntamos a los archivos que acabas de subir
+    "success_hack": "assets/animaciones/hack.json",
+    "loot_epic": "assets/animaciones/loot_epic.json", 
+    "loot_legendary": "assets/animaciones/loot_legendary.json"
 }
 
 def normalize_text(text):
