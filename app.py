@@ -479,9 +479,15 @@ def get_img_as_base64(file_path):
 def cargar_lottie(url):
     try:
         r = requests.get(url)
-        if r.status_code != 200: return None
+        if r.status_code != 200:
+            # Esto imprimirá un error visible en la app si la descarga falla
+            st.error(f"❌ Error descargando animación: {r.status_code}")
+            return None
         return r.json()
-    except: return None
+    except Exception as e:
+        # Esto nos dirá si es un error de conexión
+        st.error(f"❌ Error de conexión Lottie: {e}")
+        return None
 
 # --- BIBLIOTECA DE ASSETS TÁCTICOS ---
 ASSETS_LOTTIE = {
