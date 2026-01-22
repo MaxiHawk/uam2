@@ -1556,12 +1556,17 @@ else:
                             if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                             if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
                             
-                            # ANIMACIÓN ÉPICA (Solo para Tier alto)
-                            if tier in ["Épico", "Legendario"]:
-                                lottie_file = ASSETS_LOTTIE["loot_legendary"] if tier == "Legendario" else ASSETS_LOTTIE["loot_epic"]
-                                ani_data = cargar_lottie(lottie_file)
+                            # --- MODIFICACIÓN: ANIMACIÓN SIEMPRE ---
+                            # Si es Legendario usa la animación dorada, para todo lo demás usa la caja (loot_epic)
+                            lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
+                            
+                            # Carga segura
+                            if lottie_target in ASSETS_LOTTIE:
+                                ani_data = cargar_lottie(ASSETS_LOTTIE[lottie_target])
                                 if ani_data:
+                                    # Mostramos la animación a todos
                                     st_lottie(ani_data, height=300, key=f"ani_loot_{time.time()}")
+                            # ---------------------------------------
                             
                             # Feedback de texto
                             icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
