@@ -3,3 +3,4 @@ requests
 pandas
 pytz
 Pillow
+streamlit-lottie
