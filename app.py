@@ -711,6 +711,13 @@ def generar_loot():
     else: return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
 
 def procesar_codigo_canje(codigo_input):
+    # --- 🔒 NIVEL DE SEGURIDAD 1: VERIFICACIÓN DE ESTADO ---
+    # Solo los agentes con status "En Curso" tienen permiso de escritura en la base de datos de códigos.
+    # Esto bloquea a "Finalizado", "Expulsado", "Sin empezar", etc.
+    if st.session_state.estado_uam != "En Curso":
+        return False, "⛔ Acceso denegado. Protocolo exclusivo para aspirantes activos."
+
+    # --- 🔒 NIVEL DE SEGURIDAD 2: CONFIGURACIÓN ---
     if not DB_CODIGOS_ID: return False, "Sistema de códigos no configurado."
     
     url = f"https://api.notion.com/v1/databases/{DB_CODIGOS_ID}/query"
