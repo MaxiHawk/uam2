@@ -490,9 +490,6 @@ ASSETS_LOTTIE = {
     "loot_legendary": "https://lottie.host/8b965825-7b56-4c4f-8f85-8495098a5840/hX21KjZ67n.json", # Explosión de energía dorada
     "access_denied": "https://lottie.host/bc795328-9778-430c-8e0a-4299446d0286/9zD9Xj5K3o.json"  # Acceso denegado rojo
 }
-    if not os.path.exists(file_path): return ""
-    with open(file_path, "rb") as f: data = f.read()
-    return base64.b64encode(data).decode()
 
 def normalize_text(text):
     if not text: return ""
