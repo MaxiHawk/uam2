@@ -1212,15 +1212,13 @@ def cerrar_sesion():
 
 # --- NUEVAS FUNCIONES: SISTEMA DE MISIONES ---
 
-@st.cache_data(ttl=30) # <--- CAMBIO: 30 segundos para ser preciso con los tiempos
+@st.cache_data(ttl=30)
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
     
-    # Filtramos solo las activas
     payload = {
         "filter": {"property": "Activa", "checkbox": {"equals": True}},
-        # Ordenamos por fecha de lanzamiento
         "sorts": [{"property": "Lanzamiento", "direction": "ascending"}]
     }
     
@@ -1235,7 +1233,20 @@ def cargar_misiones_activas():
                     tipo = props["Tipo"]["select"]["name"] if props["Tipo"]["select"] else "General"
                     link = props["Enlace"]["url"]
                     
-                    # FECHAS CLAVE (Manejo de errores si están vacías)
+                    # --- NUEVO: EXTRACCIÓN DE UNIVERSIDAD ---
+                    # Soporta Select o Multi-select para flexibilidad
+                    target_unis = []
+                    if "Universidad" in props:
+                        prop_uni = props["Universidad"]
+                        if prop_uni["type"] == "multi_select":
+                            target_unis = [opt["name"] for opt in prop_uni["multi_select"]]
+                        elif prop_uni["type"] == "select" and prop_uni["select"]:
+                            target_unis = [prop_uni["select"]["name"]]
+                    
+                    # Si está vacío, asumimos "Todas" por seguridad, o puedes dejarlo vacío
+                    if not target_unis: target_unis = ["Todas"]
+                    # ----------------------------------------
+
                     def get_date(prop_name):
                         if prop_name in props and props[prop_name]["date"]:
                             return props[prop_name]["date"]["start"]
@@ -1245,7 +1256,6 @@ def cargar_misiones_activas():
                     f_cierre = get_date("Cierre Inscripciones")
                     f_lanzamiento = get_date("Lanzamiento")
 
-                    # Si falta alguna fecha crítica, ignoramos la misión para evitar errores
                     if not f_lanzamiento: continue 
 
                     pwd_obj = props.get("Password", {}).get("rich_text", [])
@@ -1267,7 +1277,8 @@ def cargar_misiones_activas():
                         "inscritos": inscritos_str,
                         "f_apertura": f_apertura,
                         "f_cierre": f_cierre,
-                        "f_lanzamiento": f_lanzamiento
+                        "f_lanzamiento": f_lanzamiento,
+                        "target_unis": target_unis # <--- Guardamos esto para filtrar después
                     })
                 except Exception as e: pass
         return misiones
@@ -1712,6 +1723,14 @@ else:
             st.info("No hay operaciones programadas en el radar.")
         else:
             for m in misiones:
+                # --- NUEVO FILTRO TÁCTICO DE UNIVERSIDAD ---
+                uni_usuario = st.session_state.uni_actual # Ej: "Universidad de Valparaíso"
+                targets = m.get("target_unis", ["Todas"])
+                
+                # Lógica: Si "Todas" no está en la lista Y mi universidad tampoco...
+                # ...entonces esta misión es invisible para mí. ABORTAR.
+                if "Todas" not in targets and uni_usuario not in targets:
+                    continue
                 # 1. Procesar Fechas
                 dt_apertura = parse_notion_date(m['f_apertura'])
                 dt_cierre = parse_notion_date(m['f_cierre'])
