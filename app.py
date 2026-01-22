@@ -26,6 +26,7 @@ try:
     DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
     DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
     DB_CODIGOS_ID = st.secrets.get("DB_CODIGOS_ID", None)
+    DB_MISIONES_ID = st.secrets.get("DB_MISIONES_ID", None)
 except FileNotFoundError:
     st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
     st.stop()
@@ -1209,6 +1210,82 @@ def cerrar_sesion():
     st.session_state.clear()
     st.rerun()
 
+# --- NUEVAS FUNCIONES: SISTEMA DE MISIONES ---
+
+@st.cache_data(ttl=600) # Cacheamos 10 mins para no saturar, limpiamos al inscribir
+def cargar_misiones_activas():
+    if not DB_MISIONES_ID: return []
+    url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
+    
+    # Filtramos solo las activas y ordenamos por fecha
+    payload = {
+        "filter": {"property": "Activa", "checkbox": {"equals": True}},
+        "sorts": [{"property": "Fecha Inicio", "direction": "ascending"}]
+    }
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        misiones = []
+        if res.status_code == 200:
+            for r in res.json()["results"]:
+                props = r["properties"]
+                try:
+                    # Extracción segura de datos
+                    nombre = props["Nombre"]["title"][0]["text"]["content"]
+                    fecha_str = props["Fecha Inicio"]["date"]["start"]
+                    tipo = props["Tipo"]["select"]["name"] if props["Tipo"]["select"] else "General"
+                    link = props["Enlace"]["url"]
+                    
+                    # Password y Descripción (Textos)
+                    pwd_obj = props.get("Password", {}).get("rich_text", [])
+                    password = pwd_obj[0]["text"]["content"] if pwd_obj else "Sin Clave"
+                    
+                    desc_obj = props.get("Descripcion", {}).get("rich_text", [])
+                    desc = desc_obj[0]["text"]["content"] if desc_obj else ""
+                    
+                    # Lista de inscritos (String separado por comas)
+                    insc_obj = props.get("Inscritos", {}).get("rich_text", [])
+                    inscritos_str = insc_obj[0]["text"]["content"] if insc_obj else ""
+                    
+                    misiones.append({
+                        "id": r["id"],
+                        "nombre": nombre,
+                        "fecha": fecha_str,
+                        "tipo": tipo,
+                        "link": link,
+                        "password": password,
+                        "descripcion": desc,
+                        "inscritos": inscritos_str
+                    })
+                except Exception as e: pass
+        return misiones
+    except: return []
+
+def inscribir_jugador_mision(mision_id, inscritos_actuales, nombre_jugador):
+    """Agrega al jugador a la lista de inscritos en Notion."""
+    url = f"https://api.notion.com/v1/pages/{mision_id}"
+    
+    # Lógica simple: Si ya hay gente, agregamos coma.
+    if inscritos_actuales:
+        nuevo_str = f"{inscritos_actuales},{nombre_jugador}"
+    else:
+        nuevo_str = nombre_jugador
+        
+    payload = {
+        "properties": {
+            "Inscritos": {
+                "rich_text": [{"text": {"content": nuevo_str}}]
+            }
+        }
+    }
+    
+    res = requests.patch(url, headers=headers, json=payload)
+    if res.status_code == 200:
+        # Importante: Limpiamos caché para que el usuario se vea inscrito de inmediato
+        cargar_misiones_activas.clear()
+        return True
+    return False
+    
 # ================= UI PRINCIPAL =================
 
 main_placeholder = st.empty()
@@ -1352,8 +1429,7 @@ else:
     st.markdown("<br><br>", unsafe_allow_html=True)
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-    tab_perfil, tab_ranking, tab_habilidades, tab_codice, tab_mercado, tab_trivia, tab_codes, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "🔐 CÓDIGOS", "📡 COMUNICACIONES"])
-    
+tab_perfil, tab_ranking, tab_habilidades, tab_misiones, tab_codice, tab_mercado, tab_trivia, tab_codes, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "🚀 MISIONES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "🔐 CÓDIGOS", "📡 COMUNICACIONES"])    
     with tab_perfil:
         # DIAGNOSTICO SUMINISTROS
         supply_status_text = "🔴 ENLACE DE SUMINISTROS: OFF"
@@ -1594,7 +1670,96 @@ else:
                                             else: st.error("Error de enlace.")
                                     else: st.toast("❌ Energía Insuficiente", icon="⚠️")
                         else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
+    with tab_misiones:
+        st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
+        st.caption("Inscríbete en Hazañas y Expediciones. El acceso se desbloqueará automáticamente a la hora señalada.")
+        
+        misiones = cargar_misiones_activas()
+        
+        if not misiones:
+            st.info("No hay operaciones activas en este momento.")
+        else:
+            # Zona horaria de Chile para comparar
+            chile_tz = pytz.timezone('America/Santiago')
+            now_chile = datetime.now(chile_tz)
 
+            for m in misiones:
+                # 1. Procesar Fechas
+                fecha_mision_dt = None
+                try:
+                    # Notion devuelve ISO 8601. Ej: 2023-10-27T15:00:00.000-03:00
+                    if "T" in m['fecha']:
+                        fecha_mision_dt = datetime.fromisoformat(m['fecha'].replace('Z', '+00:00'))
+                    else:
+                        # Si es solo fecha sin hora, asumimos 00:00 del día
+                        local_date = datetime.strptime(m['fecha'], "%Y-%m-%d")
+                        fecha_mision_dt = chile_tz.localize(local_date)
+                    
+                    # Asegurar comparación con timezone
+                    if fecha_mision_dt.tzinfo is None:
+                        fecha_mision_dt = pytz.utc.localize(fecha_mision_dt).astimezone(chile_tz)
+                    else:
+                        fecha_mision_dt = fecha_mision_dt.astimezone(chile_tz)
+                        
+                except: pass
+
+                # 2. Verificar Estado
+                esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
+                mision_abierta = now_chile >= fecha_mision_dt if fecha_mision_dt else False
+                
+                # 3. Diseño de la Tarjeta
+                # Color según tipo
+                border_color = "#bf360c" if m['tipo'] == "Expedición" else "#fbc02d" # Naranja vs Amarillo
+                icon_type = "🌋" if m['tipo'] == "Expedición" else "⚔️"
+                
+                with st.container():
+                    st.markdown(f"""
+                    <div style="border: 1px solid #333; border-left: 5px solid {border_color}; background: rgba(20,20,30,0.6); padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-family:'Orbitron'; font-size:1.1em; color:#fff;">{icon_type} {m['nombre']}</div>
+                            <div style="font-size:0.8em; color:#aaa;">{fecha_mision_dt.strftime('%d/%m %H:%M') if fecha_mision_dt else 'Fecha Pendiente'}</div>
+                        </div>
+                        <div style="color:#ccc; font-size:0.9em; margin-top:5px; margin-bottom:10px;">{m['descripcion']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    c_status, c_action = st.columns([2, 1])
+                    
+                    with c_status:
+                        if not esta_inscrito:
+                            st.warning("⚠️ No estás inscrito en esta operación.")
+                        elif not mision_abierta:
+                            # CÁLCULO DEL TIEMPO RESTANTE
+                            delta = fecha_mision_dt - now_chile
+                            dias = delta.days
+                            horas, resto = divmod(delta.seconds, 3600)
+                            minutos, _ = divmod(resto, 60)
+                            
+                            time_str = f"{horas}h {minutos}m"
+                            if dias > 0: time_str = f"{dias}d " + time_str
+                            
+                            st.info(f"🔒 **ENCRIPTADO** | Desbloqueo en: {time_str}")
+                        else:
+                            st.success("🔓 **ACCESO CONCEDIDO**")
+                            st.markdown(f"**Clave de Acceso:** `{m['password']}`")
+                            st.markdown(f"[>> ENLACE DE INMERSIÓN <<]({m['link']})")
+
+                    with c_action:
+                        if not esta_inscrito:
+                            # Botón de inscripción
+                            if st.button("📝 INSCRIBIRME", key=f"ins_{m['id']}", use_container_width=True):
+                                with st.spinner("Procesando solicitud..."):
+                                    if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                        st.toast("✅ Inscripción confirmada.")
+                                        st.rerun()
+                                    else:
+                                        st.error("Error al inscribir.")
+                        elif not mision_abierta:
+                            st.button("⏳ ESPERANDO SEÑAL", disabled=True, key=f"wait_{m['id']}", use_container_width=True)
+                        else:
+                            # Ya abierto, no requiere botón, pero podemos poner uno dummy
+                            st.button("🟢 OPERATIVO", disabled=True, key=f"open_{m['id']}", use_container_width=True)
+                            
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
         st.caption("Documentos clasificados recuperados de la Era Dorada.")
