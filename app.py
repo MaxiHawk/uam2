@@ -11,6 +11,7 @@ import io
 from datetime import datetime, timedelta, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
+from streamlit_lottie import st_lottie
 
 # --- GESTIÓN DE SECRETOS ---
 try:
@@ -468,6 +469,23 @@ st.markdown(f"""
 # --- HELPERS ---
 @st.cache_data(show_spinner=False)
 def get_img_as_base64(file_path):
+    # --- CARGADOR DE ANIMACIONES LOTTIE ---
+@st.cache_data(show_spinner=False)
+def cargar_lottie(url):
+    try:
+        r = requests.get(url)
+        if r.status_code != 200: return None
+        return r.json()
+    except: return None
+
+# --- BIBLIOTECA DE ASSETS TÁCTICOS ---
+# He seleccionado estas animaciones Sci-Fi/Tech gratuitas para ti:
+ASSETS_LOTTIE = {
+    "success_hack": "https://lottie.host/5aee9359-c29d-4357-b08e-5b62b1442152/c9C9C22y3W.json", # Candado digital abriéndose
+    "loot_epic": "https://lottie.host/9e013620-e22a-4467-9c98-154df2d63339/q5Z6y71q2R.json",    # Caja sci-fi abriéndose
+    "loot_legendary": "https://lottie.host/8b965825-7b56-4c4f-8f85-8495098a5840/hX21KjZ67n.json", # Explosión de energía dorada
+    "access_denied": "https://lottie.host/bc795328-9778-430c-8e0a-4299446d0286/9zD9Xj5K3o.json"  # Acceso denegado rojo
+}
     if not os.path.exists(file_path): return ""
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
@@ -1531,25 +1549,29 @@ else:
                     if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
                         tier, rewards, icon = generar_loot()
                         if procesar_suministro(rewards):
+                            # ... (código anterior donde procesas el suministro) ...
+                            
                             st.session_state.supply_claimed_session = True 
                             
                             reward_text = f"+{rewards['AP']} AP"
                             if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                             if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
                             
-                            if tier == "Común":
-                                st.toast(f"Recibido: {reward_text}", icon=icon)
-                            elif tier == "Raro":
-                                st.toast(f"¡Bien! {tier}: {reward_text}", icon=icon)
-                            elif tier == "Épico":
-                                st.toast(f"¡Increíble! {tier}: {reward_text}", icon=icon)
-                                st.balloons()
-                            elif tier == "Legendario":
-                                st.toast(f"¡LEYENDA! {reward_text}", icon=icon)
-                                st.snow()
-                                st.balloons()
+                            # ANIMACIÓN ÉPICA SEGÚN TIER
+                            if tier in ["Épico", "Legendario"]:
+                                lottie_url = ASSETS_LOTTIE["loot_legendary"] if tier == "Legendario" else ASSETS_LOTTIE["loot_epic"]
+                                ani_data = cargar_lottie(lottie_url)
+                                if ani_data:
+                                    # Mostramos la animación en el centro
+                                    st_lottie(ani_data, height=300, key=f"ani_loot_{time.time()}")
                             
-                            time.sleep(1.5)
+                            # Feedback de texto (Toast)
+                            icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
+                            st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
+                            
+                            # Eliminamos st.balloons() y st.snow() para siempre
+                            
+                            time.sleep(2.5) # Damos tiempo para ver la animación antes de recargar
                             actualizar_datos_sesion()
                         else:
                             st.error("Error de conexión al reclamar.")
@@ -2005,11 +2027,16 @@ else:
                         time.sleep(1) # Efecto dramático
                         success, msg = procesar_codigo_canje(code_input.strip())
                         if success:
-                            st.balloons()
+                            # ANIMACIÓN DE HACKEO EXITOSO
+                            ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
+                            if ani_hack:
+                                st_lottie(ani_hack, height=200, key="hack_ok")
+                            
                             st.success(f"✅ ACCESO CONCEDIDO: {msg}")
                             time.sleep(2)
                             actualizar_datos_sesion()
                         else:
+                            # ANIMACIÓN DE ERROR (Opcional)
                             st.error(f"⛔ ACCESO DENEGADO: {msg}")
                 else:
                     st.warning("⚠️ Ingrese una clave válida.")
