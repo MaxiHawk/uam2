@@ -1212,15 +1212,16 @@ def cerrar_sesion():
 
 # --- NUEVAS FUNCIONES: SISTEMA DE MISIONES ---
 
-@st.cache_data(ttl=600) # Cacheamos 10 mins para no saturar, limpiamos al inscribir
+@st.cache_data(ttl=30) # <--- CAMBIO: 30 segundos para ser preciso con los tiempos
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
     
-    # Filtramos solo las activas y ordenamos por fecha
+    # Filtramos solo las activas
     payload = {
         "filter": {"property": "Activa", "checkbox": {"equals": True}},
-        "sorts": [{"property": "Fecha Inicio", "direction": "ascending"}]
+        # Ordenamos por fecha de lanzamiento
+        "sorts": [{"property": "Lanzamiento", "direction": "ascending"}]
     }
     
     try:
@@ -1230,32 +1231,43 @@ def cargar_misiones_activas():
             for r in res.json()["results"]:
                 props = r["properties"]
                 try:
-                    # Extracción segura de datos
                     nombre = props["Nombre"]["title"][0]["text"]["content"]
-                    fecha_str = props["Fecha Inicio"]["date"]["start"]
                     tipo = props["Tipo"]["select"]["name"] if props["Tipo"]["select"] else "General"
                     link = props["Enlace"]["url"]
                     
-                    # Password y Descripción (Textos)
+                    # FECHAS CLAVE (Manejo de errores si están vacías)
+                    def get_date(prop_name):
+                        if prop_name in props and props[prop_name]["date"]:
+                            return props[prop_name]["date"]["start"]
+                        return None
+
+                    f_apertura = get_date("Apertura Inscripciones")
+                    f_cierre = get_date("Cierre Inscripciones")
+                    f_lanzamiento = get_date("Lanzamiento")
+
+                    # Si falta alguna fecha crítica, ignoramos la misión para evitar errores
+                    if not f_lanzamiento: continue 
+
                     pwd_obj = props.get("Password", {}).get("rich_text", [])
                     password = pwd_obj[0]["text"]["content"] if pwd_obj else "Sin Clave"
                     
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     desc = desc_obj[0]["text"]["content"] if desc_obj else ""
                     
-                    # Lista de inscritos (String separado por comas)
                     insc_obj = props.get("Inscritos", {}).get("rich_text", [])
                     inscritos_str = insc_obj[0]["text"]["content"] if insc_obj else ""
                     
                     misiones.append({
                         "id": r["id"],
                         "nombre": nombre,
-                        "fecha": fecha_str,
                         "tipo": tipo,
                         "link": link,
                         "password": password,
                         "descripcion": desc,
-                        "inscritos": inscritos_str
+                        "inscritos": inscritos_str,
+                        "f_apertura": f_apertura,
+                        "f_cierre": f_cierre,
+                        "f_lanzamiento": f_lanzamiento
                     })
                 except Exception as e: pass
         return misiones
@@ -1672,44 +1684,64 @@ else:
                         else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
     with tab_misiones:
         st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
-        st.caption("Inscríbete en Hazañas y Expediciones. El acceso se desbloqueará automáticamente a la hora señalada.")
+        st.caption("Calendario de despliegue de Hazañas y Expediciones.")
         
         misiones = cargar_misiones_activas()
         
-        if not misiones:
-            st.info("No hay operaciones activas en este momento.")
-        else:
-            # Zona horaria de Chile para comparar
-            chile_tz = pytz.timezone('America/Santiago')
-            now_chile = datetime.now(chile_tz)
+        # --- LÓGICA DE TIEMPO ---
+        chile_tz = pytz.timezone('America/Santiago')
+        now_chile = datetime.now(chile_tz)
 
+        # Helper para convertir strings ISO a objetos datetime con zona horaria
+        def parse_notion_date(date_str):
+            if not date_str: return None
+            try:
+                if "T" in date_str:
+                    dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                else:
+                    dt = datetime.strptime(date_str, "%Y-%m-%d")
+                    dt = chile_tz.localize(dt) # Asumimos 00:00 CL si no tiene hora
+                
+                # Normalizar a Chile
+                if dt.tzinfo is None: dt = pytz.utc.localize(dt).astimezone(chile_tz)
+                else: dt = dt.astimezone(chile_tz)
+                return dt
+            except: return None
+
+        if not misiones:
+            st.info("No hay operaciones programadas en el radar.")
+        else:
             for m in misiones:
                 # 1. Procesar Fechas
-                fecha_mision_dt = None
-                try:
-                    # Notion devuelve ISO 8601. Ej: 2023-10-27T15:00:00.000-03:00
-                    if "T" in m['fecha']:
-                        fecha_mision_dt = datetime.fromisoformat(m['fecha'].replace('Z', '+00:00'))
-                    else:
-                        # Si es solo fecha sin hora, asumimos 00:00 del día
-                        local_date = datetime.strptime(m['fecha'], "%Y-%m-%d")
-                        fecha_mision_dt = chile_tz.localize(local_date)
-                    
-                    # Asegurar comparación con timezone
-                    if fecha_mision_dt.tzinfo is None:
-                        fecha_mision_dt = pytz.utc.localize(fecha_mision_dt).astimezone(chile_tz)
-                    else:
-                        fecha_mision_dt = fecha_mision_dt.astimezone(chile_tz)
-                        
-                except: pass
-
-                # 2. Verificar Estado
-                esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
-                mision_abierta = now_chile >= fecha_mision_dt if fecha_mision_dt else False
+                dt_apertura = parse_notion_date(m['f_apertura'])
+                dt_cierre = parse_notion_date(m['f_cierre'])
+                dt_lanzamiento = parse_notion_date(m['f_lanzamiento'])
                 
-                # 3. Diseño de la Tarjeta
-                # Color según tipo
-                border_color = "#bf360c" if m['tipo'] == "Expedición" else "#fbc02d" # Naranja vs Amarillo
+                # Estado del Jugador
+                esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
+                
+                # --- MÁQUINA DE ESTADOS ---
+                # Estado 0: Alumni (Bloqueado siempre)
+                if is_alumni:
+                    estado_fase = "ALUMNI"
+                # Estado 1: Pre-Inscripción (Aún no abre)
+                elif dt_apertura and now_chile < dt_apertura:
+                    estado_fase = "PRE_INSCRIPCION"
+                # Estado 2: Inscripción Abierta (Entre apertura y cierre)
+                elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
+                    estado_fase = "INSCRIPCION_ABIERTA"
+                # Estado 3: Inscripción Cerrada (Pasó fecha cierre)
+                elif dt_cierre and now_chile > dt_cierre:
+                    estado_fase = "INSCRIPCION_CERRADA"
+                # Fallback por si faltan fechas de inscripción pero hay lanzamiento
+                else:
+                    estado_fase = "INSCRIPCION_CERRADA" 
+
+                # Estado de Lanzamiento (Independiente de la inscripción)
+                mision_lanzada = now_chile >= dt_lanzamiento
+
+                # --- RENDERIZADO TARJETA ---
+                border_color = "#bf360c" if m['tipo'] == "Expedición" else "#fbc02d"
                 icon_type = "🌋" if m['tipo'] == "Expedición" else "⚔️"
                 
                 with st.container():
@@ -1717,7 +1749,7 @@ else:
                     <div style="border: 1px solid #333; border-left: 5px solid {border_color}; background: rgba(20,20,30,0.6); padding: 15px; border-radius: 5px; margin-bottom: 15px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div style="font-family:'Orbitron'; font-size:1.1em; color:#fff;">{icon_type} {m['nombre']}</div>
-                            <div style="font-size:0.8em; color:#aaa;">{fecha_mision_dt.strftime('%d/%m %H:%M') if fecha_mision_dt else 'Fecha Pendiente'}</div>
+                            <div style="font-size:0.8em; color:#aaa;">Inicia: {dt_lanzamiento.strftime('%d/%m %H:%M')}</div>
                         </div>
                         <div style="color:#ccc; font-size:0.9em; margin-top:5px; margin-bottom:10px;">{m['descripcion']}</div>
                     </div>
@@ -1726,39 +1758,50 @@ else:
                     c_status, c_action = st.columns([2, 1])
                     
                     with c_status:
-                        if not esta_inscrito:
-                            st.warning("⚠️ No estás inscrito en esta operación.")
-                        elif not mision_abierta:
-                            # CÁLCULO DEL TIEMPO RESTANTE
-                            delta = fecha_mision_dt - now_chile
-                            dias = delta.days
-                            horas, resto = divmod(delta.seconds, 3600)
-                            minutos, _ = divmod(resto, 60)
-                            
-                            time_str = f"{horas}h {minutos}m"
-                            if dias > 0: time_str = f"{dias}d " + time_str
-                            
-                            st.info(f"🔒 **ENCRIPTADO** | Desbloqueo en: {time_str}")
+                        if esta_inscrito:
+                            if mision_lanzada:
+                                st.success("🔓 **ACCESO CONCEDIDO**")
+                                st.markdown(f"**Clave:** `{m['password']}`")
+                                st.markdown(f"[>> ENLACE DE INMERSIÓN <<]({m['link']})")
+                            else:
+                                # Cuenta regresiva para el LANZAMIENTO
+                                delta = dt_lanzamiento - now_chile
+                                dias = delta.days
+                                horas, resto = divmod(delta.seconds, 3600)
+                                mins, _ = divmod(resto, 60)
+                                time_str = f"{horas}h {mins}m"
+                                if dias > 0: time_str = f"{dias}d {time_str}"
+                                st.info(f"✅ INSCRITO | Esperando despliegue en: **{time_str}**")
                         else:
-                            st.success("🔓 **ACCESO CONCEDIDO**")
-                            st.markdown(f"**Clave de Acceso:** `{m['password']}`")
-                            st.markdown(f"[>> ENLACE DE INMERSIÓN <<]({m['link']})")
+                            # Mensajes para NO inscritos
+                            if estado_fase == "ALUMNI":
+                                st.error("⛔ Misión clasificada. Solo personal activo.")
+                            elif estado_fase == "PRE_INSCRIPCION":
+                                delta = dt_apertura - now_chile
+                                dias = delta.days
+                                horas, resto = divmod(delta.seconds, 3600)
+                                mins, _ = divmod(resto, 60)
+                                time_str = f"{horas}h {mins}m"
+                                if dias > 0: time_str = f"{dias}d {time_str}"
+                                st.warning(f"⏳ Inscripciones abren en: **{time_str}**")
+                            elif estado_fase == "INSCRIPCION_ABIERTA":
+                                st.info("🟢 Inscripciones habilitadas. ¡Asegura tu cupo!")
+                            elif estado_fase == "INSCRIPCION_CERRADA":
+                                st.error("🔒 Inscripciones cerradas. Oportunidad perdida.")
 
                     with c_action:
-                        if not esta_inscrito:
-                            # Botón de inscripción
+                        if estado_fase == "INSCRIPCION_ABIERTA" and not esta_inscrito:
                             if st.button("📝 INSCRIBIRME", key=f"ins_{m['id']}", use_container_width=True):
-                                with st.spinner("Procesando solicitud..."):
+                                with st.spinner("Procesando..."):
                                     if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
                                         st.toast("✅ Inscripción confirmada.")
                                         st.rerun()
                                     else:
                                         st.error("Error al inscribir.")
-                        elif not mision_abierta:
-                            st.button("⏳ ESPERANDO SEÑAL", disabled=True, key=f"wait_{m['id']}", use_container_width=True)
+                        elif esta_inscrito:
+                            st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
                         else:
-                            # Ya abierto, no requiere botón, pero podemos poner uno dummy
-                            st.button("🟢 OPERATIVO", disabled=True, key=f"open_{m['id']}", use_container_width=True)
+                             st.button("⛔ BLOQUEADO", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                             
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
