@@ -1212,54 +1212,54 @@ def cerrar_sesion():
 
 # --- NUEVAS FUNCIONES: SISTEMA DE MISIONES ---
 
-# @st.cache_data(ttl=600) # Cacheamos 10 mins para no saturar, limpiamos al inscribir
+# Versión DEBUG TEMPORAL (Sin caché para obligar a ejecutar)
 def cargar_misiones_activas():
-    if not DB_MISIONES_ID: return []
+    if not DB_MISIONES_ID: 
+        st.error("⚠️ Error Crítico: DB_MISIONES_ID no detectado en secrets.")
+        return []
+        
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
     
-    # Filtramos solo las activas y ordenamos por fecha
-    payload = {
-        "filter": {"property": "Activa", "checkbox": {"equals": True}},
-        "sorts": [{"property": "Fecha Inicio", "direction": "ascending"}]
-    }
+    # Quitamos filtros para ver si al menos conecta
+    payload = {} 
     
     try:
         res = requests.post(url, headers=headers, json=payload)
+        
+        if res.status_code != 200:
+            st.error(f"⚠️ Error de Conexión con Notion: {res.status_code} - {res.text}")
+            return []
+            
+        data = res.json()
+        results = data.get("results", [])
+        
+        if not results:
+            st.warning("⚠️ Conexión OK, pero la base de datos está vacía o el Bot no tiene acceso (Invítalo en 'Connections').")
+            return []
+
         misiones = []
-        if res.status_code == 200:
-            for r in res.json()["results"]:
-                props = r["properties"]
-                try:
-                    # Extracción segura de datos
-                    nombre = props["Nombre"]["title"][0]["text"]["content"]
-                    fecha_str = props["Fecha Inicio"]["date"]["start"]
-                    tipo = props["Tipo"]["select"]["name"] if props["Tipo"]["select"] else "General"
-                    link = props["Enlace"]["url"]
-                    
-                    # Password y Descripción (Textos)
-                    pwd_obj = props.get("Password", {}).get("rich_text", [])
-                    password = pwd_obj[0]["text"]["content"] if pwd_obj else "Sin Clave"
-                    
-                    desc_obj = props.get("Descripcion", {}).get("rich_text", [])
-                    desc = desc_obj[0]["text"]["content"] if desc_obj else ""
-                    
-                    # Lista de inscritos (String separado por comas)
-                    insc_obj = props.get("Inscritos", {}).get("rich_text", [])
-                    inscritos_str = insc_obj[0]["text"]["content"] if insc_obj else ""
-                    
-                    misiones.append({
-                        "id": r["id"],
-                        "nombre": nombre,
-                        "fecha": fecha_str,
-                        "tipo": tipo,
-                        "link": link,
-                        "password": password,
-                        "descripcion": desc,
-                        "inscritos": inscritos_str
-                    })
-                except Exception as e: st.error(f"Error leyendo misión: {e}")
+        for r in results:
+            props = r["properties"]
+            try:
+                # Intento de extracción con chivatos
+                if "Nombre" not in props: st.error(f"Falta columna 'Nombre' en ID {r['id']}")
+                if "Fecha Inicio" not in props: st.error(f"Falta columna 'Fecha Inicio' en ID {r['id']}")
+                
+                nombre = props["Nombre"]["title"][0]["text"]["content"]
+                # ... resto de tu lógica ...
+                
+                # Si llega aquí, todo bien con este ítem
+                st.success(f"Misión cargada correctamente: {nombre}") 
+                
+            except Exception as e:
+                st.error(f"🔥 Error procesando una misión: {e}")
+                # Imprimimos las columnas disponibles para que veas cómo se llaman realmente
+                st.write("Columnas detectadas:", list(props.keys()))
+                
         return misiones
-    except: return []
+    except Exception as e:
+        st.error(f"💀 Error fatal en la función: {e}")
+        return []
 
 def inscribir_jugador_mision(mision_id, inscritos_actuales, nombre_jugador):
     """Agrega al jugador a la lista de inscritos en Notion."""
