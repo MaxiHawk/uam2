@@ -1257,7 +1257,7 @@ def cargar_misiones_activas():
                         "descripcion": desc,
                         "inscritos": inscritos_str
                     })
-                except Exception as e: pass
+                except Exception as e: st.error(f"Error leyendo misión: {e}")
         return misiones
     except: return []
 
