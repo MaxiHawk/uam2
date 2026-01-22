@@ -1212,7 +1212,7 @@ def cerrar_sesion():
 
 # --- NUEVAS FUNCIONES: SISTEMA DE MISIONES ---
 
-@st.cache_data(ttl=600) # Cacheamos 10 mins para no saturar, limpiamos al inscribir
+# @st.cache_data(ttl=600) # Cacheamos 10 mins para no saturar, limpiamos al inscribir
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
