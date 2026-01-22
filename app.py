@@ -2010,34 +2010,53 @@ else:
                 with col_c:
                     if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
 
-    # --- NUEVA PESTAÑA: CÓDIGOS DE ACCESO (V101.0) ---
+   # --- PESTAÑA CÓDIGOS (OPTIMIZADA V2: FLUJO CINEMÁTICO) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
-        st.caption("Introduce las claves tácticas proporcionadas por el Sumo Cartógrafo para desbloquear recursos.")
+        st.caption("Introduce las claves tácticas para desbloquear recursos.")
+        
+        # 1. CREAMOS UN CONTENEDOR VACÍO PARA LA ANIMACIÓN (El "Escenario")
+        # Esto reserva el espacio arriba para que la animación se vea limpia
+        animation_spot = st.empty() 
         
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
-            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80) # Icono candado simple
+            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80)
             st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Input de texto normal
             code_input = st.text_input("CLAVE DE ACCESO:", key="redeem_input", placeholder="X-X-X-X")
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
                 if code_input:
+                    # Feedback inmediato de "Pensando..."
                     with st.spinner("Verificando firma digital..."):
-                        time.sleep(1) # Efecto dramático
+                        time.sleep(0.5) # Breve pausa técnica
                         success, msg = procesar_codigo_canje(code_input.strip())
+                        
                         if success:
-                            # ANIMACIÓN DE HACKEO
-                            ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
-                            if ani_hack:
-                                st_lottie(ani_hack, height=200, key="hack_ok")
+                            # --- SECUENCIA DE CINE ---
+                            with animation_spot: # Usamos el espacio reservado arriba
+                                ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
+                                if ani_hack:
+                                    # Renderizamos la animación GRANDE
+                                    st_lottie(ani_hack, height=300, key="hack_ok_anim")
                             
+                            # Dejamos que la animación corra sola por 2.5 segundos
+                            time.sleep(2.5)
+                            
+                            # ¡MAGIA! Borramos la animación para limpiar la pantalla
+                            animation_spot.empty()
+                            
+                            # Mostramos el resultado final
                             st.success(f"✅ ACCESO CONCEDIDO: {msg}")
-                            time.sleep(2)
-                            actualizar_datos_sesion()
+                            time.sleep(2) # Tiempo para leer
+                            
+                            # Limpiamos el input para el siguiente código (Fluidez)
+                            st.session_state["redeem_input"] = "" 
+                            actualizar_datos_sesion() # Esto recarga la app limpia
                         else:
-                            # ANIMACIÓN DE ERROR (Opcional)
                             st.error(f"⛔ ACCESO DENEGADO: {msg}")
                 else:
                     st.warning("⚠️ Ingrese una clave válida.")
