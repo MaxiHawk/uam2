@@ -157,6 +157,7 @@ if "trivia_feedback_mode" not in st.session_state: st.session_state.trivia_feedb
 if "trivia_last_result" not in st.session_state: st.session_state.trivia_last_result = None
 if "supply_claimed_session" not in st.session_state: st.session_state.supply_claimed_session = False
 if "previous_login_timestamp" not in st.session_state: st.session_state.previous_login_timestamp = None
+if "redeem_key_id" not in st.session_state: st.session_state.redeem_key_id = 0
 
 if st.session_state.get("jugador") is not None:
     if time.time() - st.session_state.last_active > SESSION_TIMEOUT:
@@ -2010,13 +2011,12 @@ else:
                 with col_c:
                     if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
 
-   # --- PESTAÑA CÓDIGOS (OPTIMIZADA V2: FLUJO CINEMÁTICO) ---
+  # --- PESTAÑA CÓDIGOS (VERSIÓN FINAL: SIN ERRORES DE ESTADO) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
         st.caption("Introduce las claves tácticas para desbloquear recursos.")
         
-        # 1. CREAMOS UN CONTENEDOR VACÍO PARA LA ANIMACIÓN (El "Escenario")
-        # Esto reserva el espacio arriba para que la animación se vea limpia
+        # 1. ESPACIO RESERVADO PARA CINE
         animation_spot = st.empty() 
         
         c1, c2, c3 = st.columns([1, 2, 1])
@@ -2024,38 +2024,38 @@ else:
             st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80)
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Input de texto normal
-            code_input = st.text_input("CLAVE DE ACCESO:", key="redeem_input", placeholder="X-X-X-X")
+            # --- EL TRUCO DEL CAMALEÓN ---
+            # Usamos una key dinámica. Si redeem_key_id cambia, este input se reinicia a vacío.
+            current_key = f"redeem_input_{st.session_state.redeem_key_id}"
+            
+            code_input = st.text_input("CLAVE DE ACCESO:", key=current_key, placeholder="X-X-X-X")
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
                 if code_input:
-                    # Feedback inmediato de "Pensando..."
                     with st.spinner("Verificando firma digital..."):
-                        time.sleep(0.5) # Breve pausa técnica
+                        time.sleep(0.5)
                         success, msg = procesar_codigo_canje(code_input.strip())
                         
                         if success:
-                            # --- SECUENCIA DE CINE ---
-                            with animation_spot: # Usamos el espacio reservado arriba
+                            # 1. Secuencia de Animación
+                            with animation_spot:
                                 ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
                                 if ani_hack:
-                                    # Renderizamos la animación GRANDE
-                                    st_lottie(ani_hack, height=300, key="hack_ok_anim")
+                                    st_lottie(ani_hack, height=300, key=f"anim_{time.time()}")
                             
-                            # Dejamos que la animación corra sola por 2.5 segundos
-                            time.sleep(2.5)
+                            time.sleep(2.5) # Disfrutar la vista
+                            animation_spot.empty() # Limpiar escenario
                             
-                            # ¡MAGIA! Borramos la animación para limpiar la pantalla
-                            animation_spot.empty()
-                            
-                            # Mostramos el resultado final
                             st.success(f"✅ ACCESO CONCEDIDO: {msg}")
-                            time.sleep(2) # Tiempo para leer
+                            time.sleep(2)
                             
-                            # Limpiamos el input para el siguiente código (Fluidez)
-                            st.session_state["redeem_input"] = "" 
-                            actualizar_datos_sesion() # Esto recarga la app limpia
+                            # 2. EL RESET REAL (Nuclear)
+                            # Incrementamos el contador. En el próximo rerun, la key del input será distinta
+                            # y aparecerá vacío automáticamente.
+                            st.session_state.redeem_key_id += 1
+                            
+                            actualizar_datos_sesion() # Esto hace el rerun
                         else:
                             st.error(f"⛔ ACCESO DENEGADO: {msg}")
                 else:
