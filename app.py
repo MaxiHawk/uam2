@@ -468,26 +468,24 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- HELPERS ---
-
 @st.cache_data(show_spinner=False)
 def get_img_as_base64(file_path):
     if not os.path.exists(file_path): return ""
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CARGADOR DE ANIMACIONES LOTTIE (MODO LOCAL - ROBUSTO) ---
+# --- CARGADOR DE ANIMACIONES (MODO LOCAL) ---
 @st.cache_data(show_spinner=False)
 def cargar_lottie(filepath):
-    # Ahora leemos del disco, no de internet. Cero errores 403.
+    # Carga desde el disco duro del servidor. Infalible.
     if not os.path.exists(filepath): return None
     try:
         with open(filepath, "r") as f:
             return json.load(f)
     except: return None
 
-# --- BIBLIOTECA DE ASSETS TÁCTICOS ---
+# --- RUTA DE ARCHIVOS TÁCTICOS ---
 ASSETS_LOTTIE = {
-    # Apuntamos a los archivos que acabas de subir
     "success_hack": "assets/animaciones/hack.json",
     "loot_epic": "assets/animaciones/loot_epic.json", 
     "loot_legendary": "assets/animaciones/loot_legendary.json"
@@ -1552,32 +1550,27 @@ else:
                     if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
                         tier, rewards, icon = generar_loot()
                         if procesar_suministro(rewards):
-                            # ... (código anterior donde procesas el suministro) ...
-                            
                             st.session_state.supply_claimed_session = True 
                             
                             reward_text = f"+{rewards['AP']} AP"
                             if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                             if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
                             
-                            # ANIMACIÓN ÉPICA SEGÚN TIER
+                            # ANIMACIÓN ÉPICA (Solo para Tier alto)
                             if tier in ["Épico", "Legendario"]:
-                                lottie_url = ASSETS_LOTTIE["loot_legendary"] if tier == "Legendario" else ASSETS_LOTTIE["loot_epic"]
-                                ani_data = cargar_lottie(lottie_url)
+                                lottie_file = ASSETS_LOTTIE["loot_legendary"] if tier == "Legendario" else ASSETS_LOTTIE["loot_epic"]
+                                ani_data = cargar_lottie(lottie_file)
                                 if ani_data:
-                                    # Mostramos la animación en el centro
                                     st_lottie(ani_data, height=300, key=f"ani_loot_{time.time()}")
                             
-                            # Feedback de texto (Toast)
+                            # Feedback de texto
                             icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
                             st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
                             
-                            # Eliminamos st.balloons() y st.snow() para siempre
-                            
-                            time.sleep(2.5) # Damos tiempo para ver la animación antes de recargar
+                            time.sleep(2.5)
                             actualizar_datos_sesion()
                         else:
-                            st.error("Error de conexión al reclamar.")
+                            st.error("Error de conexión.")
         
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
@@ -2030,7 +2023,7 @@ else:
                         time.sleep(1) # Efecto dramático
                         success, msg = procesar_codigo_canje(code_input.strip())
                         if success:
-                            # ANIMACIÓN DE HACKEO EXITOSO
+                            # ANIMACIÓN DE HACKEO
                             ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
                             if ani_hack:
                                 st_lottie(ani_hack, height=200, key="hack_ok")
