@@ -1429,7 +1429,7 @@ else:
     st.markdown("<br><br>", unsafe_allow_html=True)
     b64_ap = get_img_as_base64("assets/icon_ap.png")
 
-tab_perfil, tab_ranking, tab_habilidades, tab_misiones, tab_codice, tab_mercado, tab_trivia, tab_codes, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "🚀 MISIONES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "🔐 CÓDIGOS", "📡 COMUNICACIONES"])    
+    tab_perfil, tab_ranking, tab_habilidades, tab_misiones, tab_codice, tab_mercado, tab_trivia, tab_codes, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "🚀 MISIONES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "🔐 CÓDIGOS", "📡 COMUNICACIONES"])    
     with tab_perfil:
         # DIAGNOSTICO SUMINISTROS
         supply_status_text = "🔴 ENLACE DE SUMINISTROS: OFF"
