@@ -467,9 +467,14 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- HELPERS ---
+
 @st.cache_data(show_spinner=False)
 def get_img_as_base64(file_path):
-    # --- CARGADOR DE ANIMACIONES LOTTIE ---
+    if not os.path.exists(file_path): return ""
+    with open(file_path, "rb") as f: data = f.read()
+    return base64.b64encode(data).decode()
+
+# --- CARGADOR DE ANIMACIONES LOTTIE ---
 @st.cache_data(show_spinner=False)
 def cargar_lottie(url):
     try:
@@ -479,7 +484,6 @@ def cargar_lottie(url):
     except: return None
 
 # --- BIBLIOTECA DE ASSETS TÁCTICOS ---
-# He seleccionado estas animaciones Sci-Fi/Tech gratuitas para ti:
 ASSETS_LOTTIE = {
     "success_hack": "https://lottie.host/5aee9359-c29d-4357-b08e-5b62b1442152/c9C9C22y3W.json", # Candado digital abriéndose
     "loot_epic": "https://lottie.host/9e013620-e22a-4467-9c98-154df2d63339/q5Z6y71q2R.json",    # Caja sci-fi abriéndose
