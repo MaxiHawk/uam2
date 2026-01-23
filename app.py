@@ -476,14 +476,11 @@ def get_img_as_base64(file_path):
     return base64.b64encode(data).decode()
 
 # --- CARGADOR DE ANIMACIONES (CORREGIDO) ---
-@st.cache_data(show_spinner=False)
-def cargar_lottie(filepath):
-    # Validamos que exista
+def cargar_lottie_seguro(filepath):
     if not os.path.exists(filepath): return None
     try:
         with open(filepath, "r") as f:
-            # 🛑 IMPORTANTE: Usamos json.load(), NO f.read()
-            return json.load(f) 
+            return json.load(f) # <--- Ahora sí leerá el JSON
     except: return None
 
 # --- RUTA DE ARCHIVOS TÁCTICOS ---
