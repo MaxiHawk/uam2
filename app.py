@@ -1481,11 +1481,15 @@ else:
 
     tab_perfil, tab_ranking, tab_habilidades, tab_misiones, tab_codice, tab_mercado, tab_trivia, tab_codes, tab_comms = st.tabs(["👤 PERFIL", "🏆 RANKING", "⚡ HABILIDADES", "🚀 MISIONES", "📜 CÓDICE", "🛒 MERCADO", "🔮 ORÁCULO", "🔐 CÓDIGOS", "📡 COMUNICACIONES"])    
     with tab_perfil:
-        # DIAGNOSTICO SUMINISTROS
-        supply_status_text = "🔴 ENLACE DE SUMINISTROS: OFF"
-        supply_active = cargar_estado_suministros()
-        if supply_active: supply_status_text = "🟢 ENLACE DE SUMINISTROS: ON"
-        st.caption(supply_status_text)
+        # DIAGNOSTICO SUMINISTROS (SOLO ACTIVOS)
+        # Si es Alumni, no mostramos nada. Si es activo, mostramos el estado.
+        if not is_alumni:
+            supply_status_text = "🔴 ENLACE DE SUMINISTROS: OFF"
+            supply_active = cargar_estado_suministros()
+            if supply_active: supply_status_text = "🟢 ENLACE DE SUMINISTROS: ON"
+            st.caption(supply_status_text)
+        else:
+            supply_active = False # Forzamos apagado para Alumni por seguridad
         
         avatar_url = None
         try:
@@ -2025,55 +2029,67 @@ else:
                 with col_c:
                     if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
 
-  # --- PESTAÑA CÓDIGOS (VERSIÓN FINAL: SIN ERRORES DE ESTADO) ---
+ # --- PESTAÑA CÓDIGOS (BLINDADA) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
-        st.caption("Introduce las claves tácticas para desbloquear recursos.")
         
-        # 1. ESPACIO RESERVADO PARA CINE
-        animation_spot = st.empty() 
+        if is_alumni:
+            # PANTALLA DE BLOQUEO PARA VETERANOS
+            st.markdown("""
+            <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
+                <div style="font-size: 3em;">⛔</div>
+                <div style="font-family: 'Orbitron'; color: #ff4444; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">ACCESO DENEGADO</div>
+                <div style="color: #ccc; font-size: 0.9em;">
+                    El Protocolo de Desencriptación está reservado exclusivamente para agentes en servicio activo.<br>
+                    Tu credencial de veterano no tiene permisos de escritura en este terminal.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80)
-            st.markdown("<br>", unsafe_allow_html=True)
+        else:
+            # INTERFAZ NORMAL PARA ESTUDIANTES ACTIVOS
+            st.caption("Introduce las claves tácticas para desbloquear recursos.")
             
-            # --- EL TRUCO DEL CAMALEÓN ---
-            # Usamos una key dinámica. Si redeem_key_id cambia, este input se reinicia a vacío.
-            current_key = f"redeem_input_{st.session_state.redeem_key_id}"
+            # 1. ESPACIO RESERVADO PARA CINE
+            animation_spot = st.empty() 
             
-            code_input = st.text_input("CLAVE DE ACCESO:", key=current_key, placeholder="X-X-X-X")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
-                if code_input:
-                    with st.spinner("Verificando firma digital..."):
-                        time.sleep(0.5)
-                        success, msg = procesar_codigo_canje(code_input.strip())
-                        
-                        if success:
-                            # 1. Secuencia de Animación
-                            with animation_spot:
-                                ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
-                                if ani_hack:
-                                    st_lottie(ani_hack, height=300, key=f"anim_{time.time()}")
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c2:
+                st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80)
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Input con key dinámica
+                current_key = f"redeem_input_{st.session_state.redeem_key_id}"
+                
+                code_input = st.text_input("CLAVE DE ACCESO:", key=current_key, placeholder="X-X-X-X")
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                if st.button("🔓 DESENCRIPTAR CÓDIGO", use_container_width=True):
+                    if code_input:
+                        with st.spinner("Verificando firma digital..."):
+                            time.sleep(0.5)
+                            success, msg = procesar_codigo_canje(code_input.strip())
                             
-                            time.sleep(2.5) # Disfrutar la vista
-                            animation_spot.empty() # Limpiar escenario
-                            
-                            st.success(f"✅ ACCESO CONCEDIDO: {msg}")
-                            time.sleep(2)
-                            
-                            # 2. EL RESET REAL (Nuclear)
-                            # Incrementamos el contador. En el próximo rerun, la key del input será distinta
-                            # y aparecerá vacío automáticamente.
-                            st.session_state.redeem_key_id += 1
-                            
-                            actualizar_datos_sesion() # Esto hace el rerun
-                        else:
-                            st.error(f"⛔ ACCESO DENEGADO: {msg}")
-                else:
-                    st.warning("⚠️ Ingrese una clave válida.")
+                            if success:
+                                # Secuencia de Animación
+                                with animation_spot:
+                                    ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
+                                    if ani_hack:
+                                        st_lottie(ani_hack, height=300, key=f"anim_{time.time()}")
+                                
+                                time.sleep(2.5)
+                                animation_spot.empty()
+                                
+                                st.success(f"✅ ACCESO CONCEDIDO: {msg}")
+                                time.sleep(2)
+                                
+                                # Reset
+                                st.session_state.redeem_key_id += 1
+                                actualizar_datos_sesion()
+                            else:
+                                st.error(f"⛔ ACCESO DENEGADO: {msg}")
+                    else:
+                        st.warning("⚠️ Ingrese una clave válida.")
 
     with tab_comms:
         st.markdown("### 📡 TRANSMISIONES DE VALERIUS")
