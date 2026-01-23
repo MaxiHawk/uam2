@@ -2083,7 +2083,7 @@ else:
                             success, msg = procesar_codigo_canje(code_input.strip())
                             
                             if success:
-                                # Secuencia de Animación
+                                # --- CASO ÉXITO ---
                                 with animation_spot:
                                     ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
                                     if ani_hack:
@@ -2098,15 +2098,18 @@ else:
                                 # Reset
                                 st.session_state.redeem_key_id += 1
                                 actualizar_datos_sesion()
-                            else:
-                        # ANIMACIÓN DE ERROR
-                        with animation_spot:
-                            ani_error = cargar_lottie(ASSETS_LOTTIE.get("error_hack")) # Usa .get por seguridad
-                            if ani_error:
-                                st_lottie(ani_error, height=200, key="fail_anim")
-                        time.sleep(1.5)
-                        animation_spot.empty()
-                        st.error(f"⛔ ACCESO DENEGADO: {msg}")
+                            
+                            else: # <--- LÍNEA 2101 (aprox)
+                                # --- CASO ERROR (Corregido) ---
+                                with animation_spot: # <--- LÍNEA 2103 (Debe tener sangría extra)
+                                    # Usamos .get por seguridad por si no definiste "error_hack" aún
+                                    ani_error = cargar_lottie(ASSETS_LOTTIE.get("error_hack", "")) 
+                                    if ani_error:
+                                        st_lottie(ani_error, height=200, key=f"fail_{time.time()}")
+                                
+                                time.sleep(1.5)
+                                animation_spot.empty()
+                                st.error(f"⛔ ACCESO DENEGADO: {msg}")
                     else:
                         st.warning("⚠️ Ingrese una clave válida.")
 
