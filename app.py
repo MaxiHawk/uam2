@@ -476,12 +476,18 @@ def get_img_as_base64(file_path):
     return base64.b64encode(data).decode()
 
 # --- CARGADOR DE ANIMACIONES (CORREGIDO) ---
+# --- CARGADOR DE ANIMACIONES (VERSIÓN FINAL SEGURA) ---
 def cargar_lottie_seguro(filepath):
-    if not os.path.exists(filepath): return None
+    # 1. Verificamos que el archivo exista
+    if not os.path.exists(filepath): 
+        return None
+    
+    # 2. Intentamos leerlo COMO JSON (Diccionario), NO como Texto
     try:
         with open(filepath, "r") as f:
-            return json.load(f) # <--- Ahora sí leerá el JSON
-    except: return None
+            return json.load(f)  # <--- ¡ESTO ES LO IMPORTANTE! (json.load)
+    except Exception as e:
+        return None
 
 # --- RUTA DE ARCHIVOS TÁCTICOS ---
 ASSETS_LOTTIE = {
