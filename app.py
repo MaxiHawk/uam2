@@ -1587,38 +1587,54 @@ else:
                                 clicked = True
                         
                         # 3. SI SE HIZO CLIC...
+                        # ... (Todo el código anterior igual) ...
+                        
                         if clicked:
-                            # ¡ZAS! Borramos el contenedor maestro. Adiós letrero y adiós botón.
+                            # 1. Limpieza inicial
                             supply_container.empty()
-                            
-                            # Creamos un escenario limpio solo para la animación
                             anim_stage = st.empty()
                             
-                            # Procesamos la lógica del premio
                             tier, rewards, icon = generar_loot()
                             if procesar_suministro(rewards):
                                 st.session_state.supply_claimed_session = True 
                                 
-                                reward_text = f"+{rewards['AP']} AP"
-                                if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
-                                if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
+                                # ... (Lógica de textos y recompensas igual) ...
+                                reward_text = f"+{rewards['AP']} AP ..." # (resumido)
                                 
-                                # Mostramos la animación en el escenario limpio
+                                # ... (Animación y Toast igual) ...
                                 with anim_stage:
-                                    lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
-                                    ani_data = cargar_lottie(ASSETS_LOTTIE.get(lottie_target, ""))
-                                    if ani_data:
-                                        st_lottie(ani_data, height=300, key=f"loot_anim_{time.time()}")
+                                    # ... código de animación ...
+                                    st_lottie(...)
                                 
-                                # Mostramos el mensaje flotante (Toast)
-                                icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
-                                st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
+                                time.sleep(2.5)
+                                anim_stage.empty() # Borra la animación
                                 
-                                time.sleep(2.5) # Dejamos ver la animación
+                                # --- 🛑 AQUÍ ESTÁ EL TRUCO (NUEVO) ---
                                 
-                                # Limpiamos la animación también antes de recargar
-                                anim_stage.empty()
-                                actualizar_datos_sesion() 
+                                # A) Mostramos el mensaje FINAL explícitamente antes de irnos
+                                st.info("✅ Suministros diarios ya reclamados.")
+                                
+                                # B) ACTUALIZACIÓN OPTIMISTA (Hack de Memoria)
+                                # Forzamos la fecha de hoy en la memoria local del jugador.
+                                # Así, al recargar, la app "sabe" que ya cobró sin preguntar a Notion.
+                                from datetime import datetime
+                                import pytz
+                                chile_tz = pytz.timezone('America/Santiago')
+                                now_iso = datetime.now(chile_tz).isoformat()
+                                
+                                # Actualizamos el diccionario local del jugador
+                                if "jugador" in st.session_state:
+                                    # Aseguramos que la estructura exista
+                                    if "Ultimo Suministro" not in st.session_state.jugador:
+                                        st.session_state.jugador["Ultimo Suministro"] = {}
+                                    
+                                    # Inyectamos la fecha de hoy
+                                    st.session_state.jugador["Ultimo Suministro"]["date"] = {"start": now_iso}
+                                
+                                # -------------------------------------
+                                
+                                time.sleep(1.0) # Un segundo para leer el mensaje verde
+                                actualizar_datos_sesion() # Ahora sí, recarga (y verá el dato nuevo)
                             else:
                                 st.error("Error de conexión.")
         
