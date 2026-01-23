@@ -488,6 +488,7 @@ def cargar_lottie(filepath):
 # --- RUTA DE ARCHIVOS TÁCTICOS ---
 ASSETS_LOTTIE = {
     "success_hack": "assets/animaciones/hack.json",
+    "error_hack": "assets/animaciones/error.json",
     "loot_epic": "assets/animaciones/loot_epic.json", 
     "loot_legendary": "assets/animaciones/loot_legendary.json"
 }
@@ -1549,45 +1550,56 @@ else:
                 claimed_today = True
 
             if supply_active:
-                if claimed_today:
-                    st.info("✅ Suministros diarios ya reclamados. Vuelve en la próxima ventana táctica.")
-                else:
-                    st.markdown("""
-                    <div class="supply-box">
-                        <div class="supply-title">📡 SEÑAL DE SUMINISTROS DETECTADA</div>
-                        <div class="supply-desc">El Sumo Cartógrafo ha liberado un paquete de ayuda en tu sector.</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
-                        tier, rewards, icon = generar_loot()
-                        if procesar_suministro(rewards):
-                            st.session_state.supply_claimed_session = True 
+                    if claimed_today:
+                        st.info("✅ Suministros diarios ya reclamados.")
+                    else:
+                        st.markdown("""
+                        <div class="supply-box">
+                            <div class="supply-title">📡 SEÑAL DE SUMINISTROS DETECTADA</div>
+                            <div class="supply-desc">El Sumo Cartógrafo ha liberado un paquete de ayuda en tu sector.</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # --- MEJORA CINEMÁTICA LOOT ---
+                        # 1. Creamos el escenario (placeholder)
+                        loot_stage = st.empty()
+                        
+                        # 2. Dibujamos el botón DENTRO del escenario
+                        with loot_stage:
+                            trigger_btn = st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True)
+                        
+                        if trigger_btn:
+                            # 3. AL CLICAR: Limpiamos el escenario (Adiós botón)
+                            loot_stage.empty()
                             
-                            reward_text = f"+{rewards['AP']} AP"
-                            if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
-                            if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
-                            
-                            # --- MODIFICACIÓN: ANIMACIÓN SIEMPRE ---
-                            # Si es Legendario usa la animación dorada, para todo lo demás usa la caja (loot_epic)
-                            lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
-                            
-                            # Carga segura
-                            if lottie_target in ASSETS_LOTTIE:
-                                ani_data = cargar_lottie(ASSETS_LOTTIE[lottie_target])
-                                if ani_data:
-                                    # Mostramos la animación a todos
-                                    st_lottie(ani_data, height=300, key=f"ani_loot_{time.time()}")
-                            # ---------------------------------------
-                            
-                            # Feedback de texto
-                            icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
-                            st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
-                            
-                            time.sleep(2.5)
-                            actualizar_datos_sesion()
-                        else:
-                            st.error("Error de conexión.")
+                            # 4. Procesamos lógica
+                            tier, rewards, icon = generar_loot()
+                            if procesar_suministro(rewards):
+                                st.session_state.supply_claimed_session = True 
+                                
+                                reward_text = f"+{rewards['AP']} AP"
+                                if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
+                                if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
+                                
+                                # 5. ANIMACIÓN (Ocupa el lugar vacío del botón)
+                                with loot_stage:
+                                    # Lógica para elegir animación (Legendaria o Normal/Épica)
+                                    lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
+                                    
+                                    # Intento de carga robusta
+                                    if lottie_target in ASSETS_LOTTIE:
+                                        ani_data = cargar_lottie(ASSETS_LOTTIE[lottie_target])
+                                        if ani_data:
+                                            st_lottie(ani_data, height=300, key=f"loot_anim_{time.time()}")
+                                
+                                # Feedback Texto
+                                icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
+                                st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
+                                
+                                time.sleep(2.5) # Suspenso...
+                                actualizar_datos_sesion() # Recarga limpia
+                            else:
+                                st.error("Error de conexión.")
         
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
@@ -2087,7 +2099,14 @@ else:
                                 st.session_state.redeem_key_id += 1
                                 actualizar_datos_sesion()
                             else:
-                                st.error(f"⛔ ACCESO DENEGADO: {msg}")
+                        # ANIMACIÓN DE ERROR
+                        with animation_spot:
+                            ani_error = cargar_lottie(ASSETS_LOTTIE.get("error_hack")) # Usa .get por seguridad
+                            if ani_error:
+                                st_lottie(ani_error, height=200, key="fail_anim")
+                        time.sleep(1.5)
+                        animation_spot.empty()
+                        st.error(f"⛔ ACCESO DENEGADO: {msg}")
                     else:
                         st.warning("⚠️ Ingrese una clave válida.")
 
