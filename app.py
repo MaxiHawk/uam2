@@ -2133,7 +2133,7 @@ else:
                             if success:
                                 # --- CASO ÉXITO ---
                                 with animation_spot:
-                                    ani_hack = cargar_lottie(ASSETS_LOTTIE["success_hack"])
+                                    ani_hack = cargar_lottie_seguro(ASSETS_LOTTIE["success_hack"])
                                     if ani_hack:
                                         st_lottie(ani_hack, height=300, key=f"anim_{time.time()}")
                                 
@@ -2151,7 +2151,7 @@ else:
                                 # --- CASO ERROR (Corregido) ---
                                 with animation_spot: # <--- LÍNEA 2103 (Debe tener sangría extra)
                                     # Usamos .get por seguridad por si no definiste "error_hack" aún
-                                    ani_error = cargar_lottie(ASSETS_LOTTIE.get("error_hack", "")) 
+                                    ani_error = cargar_lottie_seguro(ASSETS_LOTTIE.get("error_hack", "")) 
                                     if ani_error:
                                         st_lottie(ani_error, height=200, key=f"fail_{time.time()}")
                                 
