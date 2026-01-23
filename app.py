@@ -1764,154 +1764,156 @@ else:
                         else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
     with tab_misiones:
         st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
-        st.caption("Calendario de despliegue de Hazañas y Expediciones.")
         
-        misiones = cargar_misiones_activas()
-        
-        # --- LÓGICA DE TIEMPO ---
-        chile_tz = pytz.timezone('America/Santiago')
-        now_chile = datetime.now(chile_tz)
-
-        # Helper para convertir strings ISO a objetos datetime con zona horaria
-        def parse_notion_date(date_str):
-            if not date_str: return None
-            try:
-                if "T" in date_str:
-                    dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                else:
-                    dt = datetime.strptime(date_str, "%Y-%m-%d")
-                    dt = chile_tz.localize(dt) # Asumimos 00:00 CL si no tiene hora
-                
-                # Normalizar a Chile
-                if dt.tzinfo is None: dt = pytz.utc.localize(dt).astimezone(chile_tz)
-                else: dt = dt.astimezone(chile_tz)
-                return dt
-            except: return None
-
-        if not misiones:
-            st.info("No hay operaciones programadas en el radar.")
+        if is_alumni:
+            # PANTALLA DE BLOQUEO PARA VETERANOS
+            st.markdown("""
+            <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
+                <div style="font-size: 3em;">⛔</div>
+                <div style="font-family: 'Orbitron'; color: #ff4444; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">ACCESO DENEGADO</div>
+                <div style="color: #ccc; font-size: 0.9em;">
+                    El Centro de Operaciones Tácticas está reservado para el despliegue de agentes activos.<br>
+                    Tu credencial de veterano no tiene autorización para nuevas misiones.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         else:
-            for m in misiones:
-                # --- NUEVO FILTRO TÁCTICO DE UNIVERSIDAD ---
-                uni_usuario = st.session_state.uni_actual # Ej: "Universidad de Valparaíso"
-                targets = m.get("target_unis", ["Todas"])
-                
-                # Lógica: Si "Todas" no está en la lista Y mi universidad tampoco...
-                # ...entonces esta misión es invisible para mí. ABORTAR.
-                if "Todas" not in targets and uni_usuario not in targets:
-                    continue
-                # 1. Procesar Fechas
-                dt_apertura = parse_notion_date(m['f_apertura'])
-                dt_cierre = parse_notion_date(m['f_cierre'])
-                dt_lanzamiento = parse_notion_date(m['f_lanzamiento'])
-                
-                # Estado del Jugador
-                esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
-                
-                # --- MÁQUINA DE ESTADOS ---
-                # Estado 0: Alumni (Bloqueado siempre)
-                if is_alumni:
-                    estado_fase = "ALUMNI"
-                # Estado 1: Pre-Inscripción (Aún no abre)
-                elif dt_apertura and now_chile < dt_apertura:
-                    estado_fase = "PRE_INSCRIPCION"
-                # Estado 2: Inscripción Abierta (Entre apertura y cierre)
-                elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
-                    estado_fase = "INSCRIPCION_ABIERTA"
-                # Estado 3: Inscripción Cerrada (Pasó fecha cierre)
-                elif dt_cierre and now_chile > dt_cierre:
-                    estado_fase = "INSCRIPCION_CERRADA"
-                # Fallback por si faltan fechas de inscripción pero hay lanzamiento
-                else:
-                    estado_fase = "INSCRIPCION_CERRADA" 
+            # LÓGICA NORMAL PARA ACTIVOS
+            st.caption("Calendario de despliegue de Hazañas y Expediciones.")
+            misiones = cargar_misiones_activas()
+            
+            # --- LÓGICA DE TIEMPO ---
+            chile_tz = pytz.timezone('America/Santiago')
+            now_chile = datetime.now(chile_tz)
 
-                # Estado de Lanzamiento (Independiente de la inscripción)
-                mision_lanzada = now_chile >= dt_lanzamiento
+            def parse_notion_date(date_str):
+                if not date_str: return None
+                try:
+                    if "T" in date_str:
+                        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    else:
+                        dt = datetime.strptime(date_str, "%Y-%m-%d")
+                        dt = chile_tz.localize(dt)
+                    if dt.tzinfo is None: dt = pytz.utc.localize(dt).astimezone(chile_tz)
+                    else: dt = dt.astimezone(chile_tz)
+                    return dt
+                except: return None
 
-                # --- RENDERIZADO TARJETA ---
-                border_color = "#bf360c" if m['tipo'] == "Expedición" else "#fbc02d"
-                icon_type = "🌋" if m['tipo'] == "Expedición" else "⚔️"
-                
-                with st.container():
-                    st.markdown(f"""
-                    <div style="border: 1px solid #333; border-left: 5px solid {border_color}; background: rgba(20,20,30,0.6); padding: 15px; border-radius: 5px; margin-bottom: 15px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div style="font-family:'Orbitron'; font-size:1.1em; color:#fff;">{icon_type} {m['nombre']}</div>
-                            <div style="font-size:0.8em; color:#aaa;">Inicia: {dt_lanzamiento.strftime('%d/%m %H:%M')}</div>
+            if not misiones:
+                st.info("No hay operaciones programadas en el radar.")
+            else:
+                for m in misiones:
+                    uni_usuario = st.session_state.uni_actual
+                    targets = m.get("target_unis", ["Todas"])
+                    
+                    if "Todas" not in targets and uni_usuario not in targets:
+                        continue
+                    
+                    dt_apertura = parse_notion_date(m['f_apertura'])
+                    dt_cierre = parse_notion_date(m['f_cierre'])
+                    dt_lanzamiento = parse_notion_date(m['f_lanzamiento'])
+                    
+                    esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
+                    
+                    # Máquina de Estados Simplificada (Ya sabemos que no es Alumni)
+                    if dt_apertura and now_chile < dt_apertura:
+                        estado_fase = "PRE_INSCRIPCION"
+                    elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
+                        estado_fase = "INSCRIPCION_ABIERTA"
+                    elif dt_cierre and now_chile > dt_cierre:
+                        estado_fase = "INSCRIPCION_CERRADA"
+                    else:
+                        estado_fase = "INSCRIPCION_CERRADA" 
+
+                    mision_lanzada = now_chile >= dt_lanzamiento
+                    border_color = "#bf360c" if m['tipo'] == "Expedición" else "#fbc02d"
+                    icon_type = "🌋" if m['tipo'] == "Expedición" else "⚔️"
+                    
+                    with st.container():
+                        st.markdown(f"""
+                        <div style="border: 1px solid #333; border-left: 5px solid {border_color}; background: rgba(20,20,30,0.6); padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-family:'Orbitron'; font-size:1.1em; color:#fff;">{icon_type} {m['nombre']}</div>
+                                <div style="font-size:0.8em; color:#aaa;">Inicia: {dt_lanzamiento.strftime('%d/%m %H:%M')}</div>
+                            </div>
+                            <div style="color:#ccc; font-size:0.9em; margin-top:5px; margin-bottom:10px;">{m['descripcion']}</div>
                         </div>
-                        <div style="color:#ccc; font-size:0.9em; margin-top:5px; margin-bottom:10px;">{m['descripcion']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    c_status, c_action = st.columns([2, 1])
-                    
-                    with c_status:
-                        if esta_inscrito:
-                            if mision_lanzada:
-                                st.success("🔓 **ACCESO CONCEDIDO**")
-                                st.markdown(f"**Clave:** `{m['password']}`")
-                                st.markdown(f"[>> ENLACE DE INMERSIÓN <<]({m['link']})")
+                        """, unsafe_allow_html=True)
+                        
+                        c_status, c_action = st.columns([2, 1])
+                        with c_status:
+                            if esta_inscrito:
+                                if mision_lanzada:
+                                    st.success("🔓 **ACCESO CONCEDIDO**")
+                                    st.markdown(f"**Clave:** `{m['password']}`")
+                                    st.markdown(f"[>> ENLACE DE INMERSIÓN <<]({m['link']})")
+                                else:
+                                    delta = dt_lanzamiento - now_chile
+                                    dias = delta.days
+                                    horas, resto = divmod(delta.seconds, 3600)
+                                    mins, _ = divmod(resto, 60)
+                                    time_str = f"{horas}h {mins}m"
+                                    if dias > 0: time_str = f"{dias}d {time_str}"
+                                    st.info(f"✅ INSCRITO | Esperando despliegue en: **{time_str}**")
                             else:
-                                # Cuenta regresiva para el LANZAMIENTO
-                                delta = dt_lanzamiento - now_chile
-                                dias = delta.days
-                                horas, resto = divmod(delta.seconds, 3600)
-                                mins, _ = divmod(resto, 60)
-                                time_str = f"{horas}h {mins}m"
-                                if dias > 0: time_str = f"{dias}d {time_str}"
-                                st.info(f"✅ INSCRITO | Esperando despliegue en: **{time_str}**")
-                        else:
-                            # Mensajes para NO inscritos
-                            if estado_fase == "ALUMNI":
-                                st.error("⛔ Misión clasificada. Solo personal activo.")
-                            elif estado_fase == "PRE_INSCRIPCION":
-                                delta = dt_apertura - now_chile
-                                dias = delta.days
-                                horas, resto = divmod(delta.seconds, 3600)
-                                mins, _ = divmod(resto, 60)
-                                time_str = f"{horas}h {mins}m"
-                                if dias > 0: time_str = f"{dias}d {time_str}"
-                                st.warning(f"⏳ Inscripciones abren en: **{time_str}**")
-                            elif estado_fase == "INSCRIPCION_ABIERTA":
-                                st.info("🟢 Inscripciones habilitadas. ¡Asegura tu cupo!")
-                            elif estado_fase == "INSCRIPCION_CERRADA":
-                                st.error("🔒 Inscripciones cerradas. Oportunidad perdida.")
+                                if estado_fase == "PRE_INSCRIPCION":
+                                    delta = dt_apertura - now_chile
+                                    dias = delta.days
+                                    horas, resto = divmod(delta.seconds, 3600)
+                                    mins, _ = divmod(resto, 60)
+                                    time_str = f"{horas}h {mins}m"
+                                    if dias > 0: time_str = f"{dias}d {time_str}"
+                                    st.warning(f"⏳ Inscripciones abren en: **{time_str}**")
+                                elif estado_fase == "INSCRIPCION_ABIERTA":
+                                    st.info("🟢 Inscripciones habilitadas. ¡Asegura tu cupo!")
+                                elif estado_fase == "INSCRIPCION_CERRADA":
+                                    st.error("🔒 Inscripciones cerradas. Oportunidad perdida.")
 
-                    with c_action:
-                        if estado_fase == "INSCRIPCION_ABIERTA" and not esta_inscrito:
-                            if st.button("📝 INSCRIBIRME", key=f"ins_{m['id']}", use_container_width=True):
-                                with st.spinner("Procesando..."):
-                                    if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
-                                        st.toast("✅ Inscripción confirmada.")
-                                        st.rerun()
-                                    else:
-                                        st.error("Error al inscribir.")
-                        elif esta_inscrito:
-                            st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
-                        else:
-                             st.button("⛔ BLOQUEADO", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
+                        with c_action:
+                            if estado_fase == "INSCRIPCION_ABIERTA" and not esta_inscrito:
+                                if st.button("📝 INSCRIBIRME", key=f"ins_{m['id']}", use_container_width=True):
+                                    with st.spinner("Procesando..."):
+                                        if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                            st.toast("✅ Inscripción confirmada.")
+                                            st.rerun()
+                                        else: st.error("Error al inscribir.")
+                            elif esta_inscrito:
+                                st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
+                            else:
+                                st.button("⛔ BLOQUEADO", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                             
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
-        st.caption("Documentos clasificados recuperados de la Era Dorada.")
-        codice_items = st.session_state.codice_data
-        if not codice_items: st.info("Sin registros en el Códice.")
+        
+        if is_alumni:
+            # PANTALLA DE BLOQUEO PARA VETERANOS
+            st.markdown("""
+            <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
+                <div style="font-size: 3em;">⛔</div>
+                <div style="font-family: 'Orbitron'; color: #ff4444; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">ACCESO DENEGADO</div>
+                <div style="color: #ccc; font-size: 0.9em;">
+                    Los Archivos Secretos contienen material sensible clasificado.<br>
+                    Tu autorización ha expirado al finalizar tu ciclo operativo.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         else:
-            for item in codice_items:
-                item_is_for_alumni = item["nombre"].startswith("[EX]") or item["nombre"].startswith("[ALUMNI]")
-                
-                if is_alumni and not item_is_for_alumni:
-                    lock_class, lock_icon = ("locked", "🔒")
-                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">⛔ CICLO CERRADO</span>'
-                elif nivel_num < item["nivel"]:
-                    lock_class, lock_icon = ("locked", "🔒")
-                    action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
-                else:
-                    lock_class, lock_icon = ("", "🔓")
-                    action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
+            st.caption("Documentos clasificados recuperados de la Era Dorada.")
+            codice_items = st.session_state.codice_data
+            if not codice_items: st.info("Sin registros en el Códice.")
+            else:
+                for item in codice_items:
+                    if nivel_num < item["nivel"]:
+                        lock_class, lock_icon = ("locked", "🔒")
+                        action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
+                    else:
+                        lock_class, lock_icon = ("", "🔓")
+                        action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
 
-                card_html = f"""<div class="codex-card {lock_class}"><div class="codex-icon">📄</div><div class="codex-info"><div class="codex-title">{item["nombre"]} {lock_icon}</div><div class="codex-desc">{item["descripcion"]}</div></div><div class="codex-action">{action_html}</div></div>"""
-                st.markdown(card_html, unsafe_allow_html=True)
+                    card_html = f"""<div class="codex-card {lock_class}"><div class="codex-icon">📄</div><div class="codex-info"><div class="codex-title">{item["nombre"]} {lock_icon}</div><div class="codex-desc">{item["descripcion"]}</div></div><div class="codex-action">{action_html}</div></div>"""
+                    st.markdown(card_html, unsafe_allow_html=True)
     
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
@@ -1957,105 +1959,116 @@ else:
 
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
-        st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
         
-        can_play = True
-        msg_wait = ""
-        
-        last_play_str = None
-        try:
-            recal_prop = p.get("Ultima Recalibracion")
-            if recal_prop:
-                last_play_str = recal_prop.get("date", {}).get("start") 
-        except: last_play_str = None
-
-        if last_play_str:
-            chile_tz = pytz.timezone('America/Santiago')
-            now_chile = datetime.now(chile_tz)
-            try:
-                if "T" in last_play_str:
-                    last_play_dt = datetime.fromisoformat(last_play_str.replace('Z', '+00:00'))
-                    last_play_dt = last_play_dt.astimezone(chile_tz)
-                else:
-                    dt_naive = datetime.strptime(last_play_str, "%Y-%m-%d")
-                    last_play_dt = chile_tz.localize(dt_naive)
-                
-                diff = now_chile - last_play_dt
-                if diff.total_seconds() < 86400: # 24 horas
-                    can_play = False
-                    remaining = timedelta(hours=24) - diff
-                    hours, remainder = divmod(remaining.seconds, 3600)
-                    minutes, seconds = divmod(remainder, 60)
-                    msg_wait = f"{hours}h {minutes}m"
-            except: can_play = True
-
         if is_alumni:
-            st.warning("⛔ El Oráculo no acepta conexiones de unidades retiradas.")
+            # PANTALLA DE BLOQUEO PARA VETERANOS
+            st.markdown("""
+            <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
+                <div style="font-size: 3em;">⛔</div>
+                <div style="font-family: 'Orbitron'; color: #ff4444; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">ACCESO DENEGADO</div>
+                <div style="color: #ccc; font-size: 0.9em;">
+                    El enlace neuronal con el Oráculo ha sido cortado.<br>
+                    La recalibración del sistema es tarea exclusiva de las unidades activas.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        elif st.session_state.trivia_feedback_mode:
-            res = st.session_state.trivia_last_result
-            if res['correct']:
-                st.markdown(f"""
-                <div class="feedback-box feedback-correct">
-                    <div class="feedback-title" style="color: #00e676;">✅ ¡SISTEMAS ESTABILIZADOS!</div>
-                    <div class="feedback-text">Has aportado coherencia a la red.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
-                    <br>
-                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation_correct']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="feedback-box feedback-wrong">
-                    <div class="feedback-title" style="color: #ff1744;">❌ ERROR DE COHERENCIA</div>
-                    <div class="feedback-text">Datos corruptos detectados. La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
-                    <br>
-                    <div style="font-size: 0.9em; color: #aaa;">{res['explanation_wrong']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
-                st.session_state.trivia_feedback_mode = False
-                st.session_state.trivia_question = None
-                actualizar_datos_sesion() 
-
-        elif not can_play:
-            st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
-            st.progress(100)
-
         else:
-            if not st.session_state.trivia_question:
-                with st.spinner("Escaneando sectores corruptos..."):
-                    q = cargar_pregunta_aleatoria()
-                    if q: st.session_state.trivia_question = q
-                    else: st.info("Sistemas al 100%. No se requieren reparaciones hoy.")
+            st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
             
-            if st.session_state.trivia_question:
-                q = st.session_state.trivia_question
-                st.markdown(f"""<div class="trivia-container"><div class="trivia-question">{q['pregunta']}</div></div>""", unsafe_allow_html=True)
-                
-                col_a, col_b, col_c = st.columns(3)
-                
-                def handle_choice(choice):
-                    is_correct = (choice == q['correcta'])
-                    reward = q['recompensa'] if is_correct else 0
-                    st.session_state.trivia_feedback_mode = True
-                    st.session_state.trivia_last_result = {
-                        "correct": is_correct,
-                        "reward": reward,
-                        "correct_option": q['correcta'],
-                        "explanation_correct": q.get("exp_correcta", "Respuesta Correcta."),
-                        "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
-                    }
-                    procesar_recalibracion(reward, is_correct, q['ref_id'])
-                    st.rerun()
+            can_play = True
+            msg_wait = ""
+            
+            last_play_str = None
+            try:
+                recal_prop = p.get("Ultima Recalibracion")
+                if recal_prop:
+                    last_play_str = recal_prop.get("date", {}).get("start") 
+            except: last_play_str = None
 
-                with col_a:
-                    if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
-                with col_b:
-                    if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
-                with col_c:
-                    if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
+            if last_play_str:
+                chile_tz = pytz.timezone('America/Santiago')
+                now_chile = datetime.now(chile_tz)
+                try:
+                    if "T" in last_play_str:
+                        last_play_dt = datetime.fromisoformat(last_play_str.replace('Z', '+00:00'))
+                        last_play_dt = last_play_dt.astimezone(chile_tz)
+                    else:
+                        dt_naive = datetime.strptime(last_play_str, "%Y-%m-%d")
+                        last_play_dt = chile_tz.localize(dt_naive)
+                    
+                    diff = now_chile - last_play_dt
+                    if diff.total_seconds() < 86400:
+                        can_play = False
+                        remaining = timedelta(hours=24) - diff
+                        hours, remainder = divmod(remaining.seconds, 3600)
+                        minutes, seconds = divmod(remainder, 60)
+                        msg_wait = f"{hours}h {minutes}m"
+                except: can_play = True
 
+            if st.session_state.trivia_feedback_mode:
+                res = st.session_state.trivia_last_result
+                if res['correct']:
+                    st.markdown(f"""
+                    <div class="feedback-box feedback-correct">
+                        <div class="feedback-title" style="color: #00e676;">✅ ¡SISTEMAS ESTABILIZADOS!</div>
+                        <div class="feedback-text">Has aportado coherencia a la red.<br>Recompensa: <strong>+{res['reward']} AP</strong></div>
+                        <br>
+                        <div style="font-size: 0.9em; color: #aaa;">{res['explanation_correct']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="feedback-box feedback-wrong">
+                        <div class="feedback-title" style="color: #ff1744;">❌ ERROR DE COHERENCIA</div>
+                        <div class="feedback-text">Datos corruptos detectados. La respuesta correcta era la opción <strong>{res['correct_option']}</strong>.</div>
+                        <br>
+                        <div style="font-size: 0.9em; color: #aaa;">{res['explanation_wrong']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
+                    st.session_state.trivia_feedback_mode = False
+                    st.session_state.trivia_question = None
+                    actualizar_datos_sesion() 
+
+            elif not can_play:
+                st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
+                st.progress(100)
+
+            else:
+                if not st.session_state.trivia_question:
+                    with st.spinner("Escaneando sectores corruptos..."):
+                        q = cargar_pregunta_aleatoria()
+                        if q: st.session_state.trivia_question = q
+                        else: st.info("Sistemas al 100%. No se requieren reparaciones hoy.")
+                
+                if st.session_state.trivia_question:
+                    q = st.session_state.trivia_question
+                    st.markdown(f"""<div class="trivia-container"><div class="trivia-question">{q['pregunta']}</div></div>""", unsafe_allow_html=True)
+                    
+                    col_a, col_b, col_c = st.columns(3)
+                    
+                    def handle_choice(choice):
+                        is_correct = (choice == q['correcta'])
+                        reward = q['recompensa'] if is_correct else 0
+                        st.session_state.trivia_feedback_mode = True
+                        st.session_state.trivia_last_result = {
+                            "correct": is_correct,
+                            "reward": reward,
+                            "correct_option": q['correcta'],
+                            "explanation_correct": q.get("exp_correcta", "Respuesta Correcta."),
+                            "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
+                        }
+                        procesar_recalibracion(reward, is_correct, q['ref_id'])
+                        st.rerun()
+
+                    with col_a:
+                        if st.button(f"A) {q['opcion_a']}", use_container_width=True): handle_choice("A")
+                    with col_b:
+                        if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
+                    with col_c:
+                        if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
  # --- PESTAÑA CÓDIGOS (BLINDADA) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
