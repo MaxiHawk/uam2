@@ -713,10 +713,17 @@ def generar_loot():
 
 def procesar_codigo_canje(codigo_input):
     # --- 🔒 NIVEL DE SEGURIDAD 1: VERIFICACIÓN DE ESTADO ---
-    # Solo los agentes con status "En Curso" tienen permiso de escritura en la base de datos de códigos.
-    # Esto bloquea a "Finalizado", "Expulsado", "Sin empezar", etc.
-    if st.session_state.estado_uam != "En Curso":
+    # Limpieza de datos: Quitamos espacios y normalizamos mayúsculas
+    estado_actual = str(st.session_state.get("estado_uam", "")).strip()
+    
+    # Lógica Inversa: BLOQUEAMOS solo a los que sabemos que no deben entrar (Veteranos/Finalizados)
+    # Así evitamos bloquear por error a "En curso", "Activo", "Sin empezar", etc.
+    if estado_actual in ["Finalizado", "Expulsado", "Retirado"]:
         return False, "⛔ Acceso denegado. Protocolo exclusivo para aspirantes activos."
+
+    # (Opcional) Si quieres ser estricto con que SOLO "En Curso" entre, usa esto en su lugar:
+    # if estado_actual.title() != "En Curso":
+    #    return False, f"⛔ Estado '{estado_actual}' no autorizado. Contacta al mando."
 
     # --- 🔒 NIVEL DE SEGURIDAD 2: CONFIGURACIÓN ---
     if not DB_CODIGOS_ID: return False, "Sistema de códigos no configurado."
@@ -733,10 +740,15 @@ def procesar_codigo_canje(codigo_input):
     
     try:
         res = requests.post(url, headers=headers, json=payload)
-        if res.status_code != 200: return False, "Error de conexión."
+        if res.status_code != 200: return False, "Error de conexión con la base de datos."
         
         results = res.json().get("results", [])
-        if not results: return False, "Código inválido o expirado."
+        
+        # --- AQUÍ ESTABA LA CONFUSIÓN ---
+        # Si no hay resultados, es porque el código NO EXISTE o NO ES VÁLIDO.
+        # El mensaje debe ser claro sobre eso.
+        if not results: 
+            return False, "❌ Código inválido, expirado o no existe."
         
         code_page = results[0]
         props = code_page["properties"]
@@ -746,14 +758,17 @@ def procesar_codigo_canje(codigo_input):
         if "Redimido Por" in props and props["Redimido Por"]["rich_text"]:
             redeemed_text = props["Redimido Por"]["rich_text"][0]["text"]["content"]
         
-        if st.session_state.nombre in redeemed_text.split(","):
-            return False, "Ya has canjeado este código."
+        # Normalizamos nombres para evitar errores de espacios
+        lista_redimidos = [x.strip() for x in redeemed_text.split(",")]
+        
+        if st.session_state.nombre in lista_redimidos:
+            return False, "⚠️ Ya has canjeado este código previamente."
             
         limit = props.get("Limite Usos", {}).get("number")
         current_uses = props.get("Usos Actuales", {}).get("number") or 0
         
         if limit is not None and current_uses >= limit:
-            return False, "Este código ha alcanzado su límite de usos."
+            return False, "⚠️ Este código ha alcanzado su límite máximo de usos."
             
         rew_ap = props.get("Valor AP", {}).get("number") or 0
         rew_mp = props.get("Valor MP", {}).get("number") or 0
