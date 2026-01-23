@@ -9,10 +9,10 @@ import random
 import unicodedata
 import io
 import json
+from streamlit_lottie import st_lottie
 from datetime import datetime, timedelta, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
-from streamlit_lottie import st_lottie
 
 # --- GESTIÓN DE SECRETOS ---
 try:
