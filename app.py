@@ -1593,6 +1593,7 @@ else:
                         # 3. SI SE HIZO CLIC...
                         # ... (Todo el código anterior igual) ...
                         
+                        # 3. SI SE HIZO CLIC...
                         if clicked:
                             # 1. Limpieza inicial
                             supply_container.empty()
@@ -1602,43 +1603,44 @@ else:
                             if procesar_suministro(rewards):
                                 st.session_state.supply_claimed_session = True 
                                 
-                                # ... (Lógica de textos y recompensas igual) ...
-                                reward_text = f"+{rewards['AP']} AP ..." # (resumido)
+                                # Construimos el texto real de recompensas
+                                reward_text = f"+{rewards['AP']} AP"
+                                if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
+                                if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
                                 
-                                # ... (Animación y Toast igual) ...
+                                # Lógica de Animación (EL CÓDIGO QUE FALTABA)
                                 with anim_stage:
-                                    # ... código de animación ...
-                                    st_lottie(...)
+                                    lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
+                                    # Usamos la función segura
+                                    ani_data = cargar_lottie_seguro(ASSETS_LOTTIE.get(lottie_target, ""))
+                                    if ani_data:
+                                        st_lottie(ani_data, height=300, key=f"loot_anim_{time.time()}")
+                                
+                                # Feedback Texto
+                                icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
+                                st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
                                 
                                 time.sleep(2.5)
                                 anim_stage.empty() # Borra la animación
                                 
-                                # --- 🛑 AQUÍ ESTÁ EL TRUCO (NUEVO) ---
+                                # --- TRUCO DE MEMORIA (Optimistic UI) ---
                                 
-                                # A) Mostramos el mensaje FINAL explícitamente antes de irnos
+                                # A) Mensaje verde final
                                 st.info("✅ Suministros diarios ya reclamados.")
                                 
-                                # B) ACTUALIZACIÓN OPTIMISTA (Hack de Memoria)
-                                # Forzamos la fecha de hoy en la memoria local del jugador.
-                                # Así, al recargar, la app "sabe" que ya cobró sin preguntar a Notion.
+                                # B) Hack de Memoria para bloqueo instantáneo
                                 from datetime import datetime
                                 import pytz
                                 chile_tz = pytz.timezone('America/Santiago')
                                 now_iso = datetime.now(chile_tz).isoformat()
                                 
-                                # Actualizamos el diccionario local del jugador
                                 if "jugador" in st.session_state:
-                                    # Aseguramos que la estructura exista
                                     if "Ultimo Suministro" not in st.session_state.jugador:
                                         st.session_state.jugador["Ultimo Suministro"] = {}
-                                    
-                                    # Inyectamos la fecha de hoy
                                     st.session_state.jugador["Ultimo Suministro"]["date"] = {"start": now_iso}
                                 
-                                # -------------------------------------
-                                
-                                time.sleep(1.0) # Un segundo para leer el mensaje verde
-                                actualizar_datos_sesion() # Ahora sí, recarga (y verá el dato nuevo)
+                                time.sleep(1.0)
+                                actualizar_datos_sesion() 
                             else:
                                 st.error("Error de conexión.")
         
