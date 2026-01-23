@@ -1587,15 +1587,22 @@ else:
         
         c_egg1, c_egg2, c_egg3 = st.columns([1.5, 1, 1.5]) 
         with c_egg2:
-            if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
-                now = time.time()
-                if now - st.session_state.last_easter_egg > 60:
-                    st.session_state.last_easter_egg = now
-                    msg = random.choice(SYSTEM_MESSAGES)
-                    st.toast(msg, icon="🤖")
-                    if random.random() < 0.1:
-                        enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
-                else: st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
+            # --- CORRECCIÓN: BLOQUEO PARA ALUMNI ---
+            if is_alumni:
+                # Botón gris y desactivado para los retirados
+                st.button("⛔ SISTEMA OFFLINE", disabled=True, key="status_alumni", use_container_width=True)
+            else:
+                # Botón funcional para los activos
+                if st.button("💠 STATUS DEL SISTEMA", use_container_width=True):
+                    now = time.time()
+                    if now - st.session_state.last_easter_egg > 60:
+                        st.session_state.last_easter_egg = now
+                        msg = random.choice(SYSTEM_MESSAGES)
+                        st.toast(msg, icon="🤖")
+                        # 10% de probabilidad de ganar AP extra
+                        if random.random() < 0.1:
+                            enviar_solicitud("SISTEMA", "EASTER EGG ACTIVADO", f"El usuario {st.session_state.nombre} encontró el secreto.", "Sistema")
+                    else: st.toast("⚠️ Sistemas de enfriamiento activos. Espera...", icon="❄️")
         
         b64_mp = get_img_as_base64("assets/icon_mp.png")
         b64_vp = get_img_as_base64("assets/icon_vp.png")
