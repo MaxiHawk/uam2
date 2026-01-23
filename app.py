@@ -1568,25 +1568,33 @@ else:
                     if claimed_today:
                         st.info("✅ Suministros diarios ya reclamados.")
                     else:
-                        st.markdown("""
-                        <div class="supply-box">
-                            <div class="supply-title">📡 SEÑAL DE SUMINISTROS DETECTADA</div>
-                            <div class="supply-desc">El Sumo Cartógrafo ha liberado un paquete de ayuda en tu sector.</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # 1. Creamos el escenario
-                        loot_stage = st.empty()
-                        
-                        # 2. Dibujamos el botón DENTRO del escenario
-                        with loot_stage:
-                            trigger_btn = st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True)
-                        
-                        if trigger_btn:
-                            # 3. AL CLICAR: Limpiamos el escenario (Adiós botón)
-                            loot_stage.empty()
+                        # --- INICIO DEL CONTENEDOR MAESTRO ---
+                        # 1. Creamos un espacio único para TODO (Texto + Botón)
+                        supply_container = st.empty()
+                        clicked = False
+
+                        # 2. Dibujamos el Banner y el Botón DENTRO de ese espacio
+                        with supply_container.container():
+                            st.markdown("""
+                            <div class="supply-box">
+                                <div class="supply-title">📡 SEÑAL DE SUMINISTROS DETECTADA</div>
+                                <div class="supply-desc">El Sumo Cartógrafo ha liberado un paquete de ayuda en tu sector.</div>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
-                            # 4. Procesamos lógica
+                            # Capturamos el clic en una variable
+                            if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
+                                clicked = True
+                        
+                        # 3. SI SE HIZO CLIC...
+                        if clicked:
+                            # ¡ZAS! Borramos el contenedor maestro. Adiós letrero y adiós botón.
+                            supply_container.empty()
+                            
+                            # Creamos un escenario limpio solo para la animación
+                            anim_stage = st.empty()
+                            
+                            # Procesamos la lógica del premio
                             tier, rewards, icon = generar_loot()
                             if procesar_suministro(rewards):
                                 st.session_state.supply_claimed_session = True 
@@ -1595,25 +1603,22 @@ else:
                                 if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                                 if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
                                 
-                                # 5. ANIMACIÓN (Ocupa el lugar vacío)
-                                with loot_stage:
+                                # Mostramos la animación en el escenario limpio
+                                with anim_stage:
                                     lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
-                                    # Usamos .get por seguridad
                                     ani_data = cargar_lottie(ASSETS_LOTTIE.get(lottie_target, ""))
                                     if ani_data:
                                         st_lottie(ani_data, height=300, key=f"loot_anim_{time.time()}")
                                 
-                                # Feedback Texto
+                                # Mostramos el mensaje flotante (Toast)
                                 icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
                                 st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
                                 
-                                time.sleep(2.5) # Suspenso...
+                                time.sleep(2.5) # Dejamos ver la animación
                                 
-                                # --- 🛑 CORRECCIÓN: LIMPIEZA EXPLÍCITA ---
-                                loot_stage.empty() # <--- ESTA LÍNEA BORRA LA ANIMACIÓN
-                                # -----------------------------------------
-                                
-                                actualizar_datos_sesion() # Recarga limpia
+                                # Limpiamos la animación también antes de recargar
+                                anim_stage.empty()
+                                actualizar_datos_sesion() 
                             else:
                                 st.error("Error de conexión.")
         
