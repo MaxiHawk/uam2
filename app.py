@@ -475,14 +475,15 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CARGADOR DE ANIMACIONES (MODO LOCAL) ---
+# --- CARGADOR DE ANIMACIONES (CORREGIDO) ---
 @st.cache_data(show_spinner=False)
 def cargar_lottie(filepath):
-    # Carga desde el disco duro del servidor. Infalible.
+    # Validamos que exista
     if not os.path.exists(filepath): return None
     try:
         with open(filepath, "r") as f:
-            return json.load(f)
+            # 🛑 IMPORTANTE: Usamos json.load(), NO f.read()
+            return json.load(f) 
     except: return None
 
 # --- RUTA DE ARCHIVOS TÁCTICOS ---
