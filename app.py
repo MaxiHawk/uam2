@@ -1575,8 +1575,7 @@ else:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # --- MEJORA CINEMÁTICA LOOT ---
-                        # 1. Creamos el escenario (placeholder)
+                        # 1. Creamos el escenario
                         loot_stage = st.empty()
                         
                         # 2. Dibujamos el botón DENTRO del escenario
@@ -1596,22 +1595,24 @@ else:
                                 if rewards['MP'] > 0: reward_text += f" | +{rewards['MP']} MP"
                                 if rewards['VP'] > 0: reward_text += f" | +{rewards['VP']} VP"
                                 
-                                # 5. ANIMACIÓN (Ocupa el lugar vacío del botón)
+                                # 5. ANIMACIÓN (Ocupa el lugar vacío)
                                 with loot_stage:
-                                    # Lógica para elegir animación (Legendaria o Normal/Épica)
                                     lottie_target = "loot_legendary" if tier == "Legendario" else "loot_epic"
-                                    
-                                    # Intento de carga robusta
-                                    if lottie_target in ASSETS_LOTTIE:
-                                        ani_data = cargar_lottie(ASSETS_LOTTIE[lottie_target])
-                                        if ani_data:
-                                            st_lottie(ani_data, height=300, key=f"loot_anim_{time.time()}")
+                                    # Usamos .get por seguridad
+                                    ani_data = cargar_lottie(ASSETS_LOTTIE.get(lottie_target, ""))
+                                    if ani_data:
+                                        st_lottie(ani_data, height=300, key=f"loot_anim_{time.time()}")
                                 
                                 # Feedback Texto
                                 icon_map = {"Común": "📦", "Raro": "💼", "Épico": "💠", "Legendario": "👑"}
                                 st.toast(f"SUMINISTRO {tier.upper()}: {reward_text}", icon=icon_map.get(tier, "📦"))
                                 
                                 time.sleep(2.5) # Suspenso...
+                                
+                                # --- 🛑 CORRECCIÓN: LIMPIEZA EXPLÍCITA ---
+                                loot_stage.empty() # <--- ESTA LÍNEA BORRA LA ANIMACIÓN
+                                # -----------------------------------------
+                                
                                 actualizar_datos_sesion() # Recarga limpia
                             else:
                                 st.error("Error de conexión.")
