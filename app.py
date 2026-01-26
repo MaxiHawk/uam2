@@ -13,32 +13,10 @@ from streamlit_lottie import st_lottie
 from datetime import datetime, timedelta, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
+# --- IMPORTS MODULARES (NUEVO) ---
+from config import NOTION_TOKEN, HEADERS, THEME, ASSETS_LOTTIE, SYSTEM_MESSAGES, DB_JUGADORES_ID, DB_CODIGOS_ID, DB_LOGS_ID
+from modules.utils import cargar_lottie_seguro, cargar_imagen_circular, generar_loot
 
-# --- GESTIÓN DE SECRETOS ---
-try:
-    NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
-    DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
-    DB_HABILIDADES_ID = st.secrets["DB_HABILIDADES_ID"]
-    DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
-    DB_NOTICIAS_ID = st.secrets.get("DB_NOTICIAS_ID", None)
-    DB_CODICE_ID = st.secrets.get("DB_CODICE_ID", None)
-    DB_MERCADO_ID = st.secrets.get("DB_MERCADO_ID", None)
-    DB_ANUNCIOS_ID = st.secrets.get("DB_ANUNCIOS_ID", None)
-    DB_TRIVIA_ID = st.secrets.get("DB_TRIVIA_ID", None)
-    DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
-    DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
-    DB_CODIGOS_ID = st.secrets.get("DB_CODIGOS_ID", None)
-    DB_MISIONES_ID = st.secrets.get("DB_MISIONES_ID", None)
-except FileNotFoundError:
-    st.error("⚠️ Error: Faltan configurar los secretos en Streamlit Cloud.")
-    st.stop()
-
-# --- CONFIGURACIÓN GLOBAL ---
-headers = {
-    "Authorization": "Bearer " + NOTION_TOKEN,
-    "Content-Type": "application/json",
-    "Notion-Version": "2022-06-28"
-}
 
 SESSION_TIMEOUT = 900 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
@@ -95,14 +73,6 @@ if verificar_modo_mantenimiento():
 
 # --- CONSTANTES ---
 NOMBRES_NIVELES = { 1: "🧪 Aprendiz", 2: "🚀 Navegante", 3: "🎯 Caza Arterias", 4: "🔍 Clarividente", 5: "👑 AngioMaster" }
-
-SYSTEM_MESSAGES = [
-    "📡 Enlace neuronal estable. Latencia: 0.04ms", "🛡️ Escudos de deflexión al 100%.", "👁️ Valerius está observando tu progreso...",
-    "⚠️ Anomalía detectada en el Sector 7G. Ignorando...", "💉 Niveles de contraste en sangre: Óptimos.", "💠 Sincronización con la Matriz completada.",
-    "🤖 ¿Sueñan los estudiantes con ovejas eléctricas?", "⚡ Energía del núcleo: Estable.", "📂 Desencriptando archivos secretos...",
-    "🍕 Se recomienda una pausa para reabastecimiento.", "🌟 La suerte favorece a los audaces.", "🚫 Acceso denegado al Área 51... por ahora.",
-    "🎲 Tira los dados, el destino aguarda."
-]
 
 SQUAD_THEMES = {
     "Default": { "primary": "#00ff9d", "glow": "rgba(0, 255, 157, 0.5)", "gradient_start": "#004d40", "gradient_end": "#00bfa5", "text_highlight": "#69f0ae" },
@@ -475,27 +445,6 @@ def get_img_as_base64(file_path):
     with open(file_path, "rb") as f: data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CARGADOR DE ANIMACIONES (CORREGIDO) ---
-# --- CARGADOR DE ANIMACIONES (VERSIÓN FINAL SEGURA) ---
-def cargar_lottie_seguro(filepath):
-    # 1. Verificamos que el archivo exista
-    if not os.path.exists(filepath): 
-        return None
-    
-    # 2. Intentamos leerlo COMO JSON (Diccionario), NO como Texto
-    try:
-        with open(filepath, "r") as f:
-            return json.load(f)  # <--- ¡ESTO ES LO IMPORTANTE! (json.load)
-    except Exception as e:
-        return None
-
-# --- RUTA DE ARCHIVOS TÁCTICOS ---
-ASSETS_LOTTIE = {
-    "success_hack": "assets/animaciones/hack.json",
-    "error_hack": "assets/animaciones/error.json",
-    "loot_epic": "assets/animaciones/loot_epic.json", 
-    "loot_legendary": "assets/animaciones/loot_legendary.json"
-}
 
 def normalize_text(text):
     if not text: return ""
@@ -707,13 +656,6 @@ def procesar_suministro(rewards):
             return True
     except: pass
     return False
-
-def generar_loot():
-    roll = random.randint(1, 100)
-    if roll <= 60: return "Común", {"AP": random.randint(5, 10), "MP": 0, "VP": 0}, "📦"
-    elif roll <= 90: return "Raro", {"AP": random.randint(15, 25), "MP": 0, "VP": 0}, "💼"
-    elif roll <= 99: return "Épico", {"AP": random.randint(40, 60), "MP": random.randint(5, 10), "VP": random.randint(5, 10)}, "💎"
-    else: return "Legendario", {"AP": 100, "MP": random.randint(20, 30), "VP": random.randint(20, 30)}, "🌟"
 
 def procesar_codigo_canje(codigo_input):
     # --- 🔒 NIVEL DE SEGURIDAD 1: VERIFICACIÓN DE ESTADO ---
