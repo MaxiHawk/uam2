@@ -13,14 +13,19 @@ from streamlit_lottie import st_lottie
 from datetime import datetime, timedelta, date
 import pytz
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
-# --- IMPORTS MODULARES (CORREGIDO) ---
+# --- IMPORTS MODULARES (CORREGIDO Y COMPLETO) ---
 from config import (
     NOTION_TOKEN, HEADERS, THEME, ASSETS_LOTTIE, SYSTEM_MESSAGES,
     DB_JUGADORES_ID, DB_CODIGOS_ID, DB_LOGS_ID, DB_CONFIG_ID,
     DB_HABILIDADES_ID, DB_SOLICITUDES_ID, DB_NOTICIAS_ID, 
-    DB_CODICE_ID, DB_MERCADO_ID, DB_ANUNCIOS_ID, DB_TRIVIA_ID
+    DB_CODICE_ID, DB_MERCADO_ID, DB_ANUNCIOS_ID, DB_TRIVIA_ID,
+    DB_MISIONES_ID # <--- Agregamos la que faltaba
 )
 from modules.utils import cargar_lottie_seguro, cargar_imagen_circular, generar_loot
+
+# --- PUENTE DE COMPATIBILIDAD (EL FIX MÁGICO) ---
+# Tu código usa "headers" (minúscula), así que creamos un alias.
+headers = HEADERS
 
 SESSION_TIMEOUT = 900 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
