@@ -1,0 +1,72 @@
+Reunión Proyecto ADIGEA - Radiodiagnóstico II (TMED532)
+Mon, Jan 12, 2026
+
+Summary:
+
+Se discutieron los avances y la estructura del Proyecto ADIGEA, enfocado en mejorar el estudio autónomo en el ámbito educativo, destacando la necesidad de que los docentes se involucren y se familiaricen con los recursos tecnológicos. Se presentaron las dos primeras fases del proyecto, donde varios miembros del equipo jugaron un papel crucial en la recopilación de material. Se enfatizó la importancia de adaptar las actividades a las características de cada cátedra y de no sobrecargar a los docentes con tareas administrativas.
+
+Matías Salvador Villarroel Vera presentó los avances en el proyecto de radiodiagnóstico, incluyendo la implementación de actividades de autoestudio en Canvas, que incorporarán cuestionarios generados por inteligencia artificial. Se discutió la validación de preguntas para el proyecto, sugiriendo que los docentes revisen el contenido antes de su publicación. Se propuso un sistema de evaluación que incentive la participación de los estudiantes, permitiendo que aquellos que cumplan con los plazos reciban calificaciones positivas. La retroalimentación inmediata se consideró esencial para mejorar la experiencia de aprendizaje.
+
+Se abordó la integración de la anatomía en el curso de Radiodiagnóstico, con propuestas para simplificar las actividades y mejorar la organización del contenido. Se sugirió la creación de un botón específico para el módulo de mamografía y se acordó que los docentes deben estar atentos a los plazos y a la organización del material. Además, se destacó la importancia de construir una plantilla adecuada para la recolección de datos en investigaciones educativas. La reunión concluyó con un agradecimiento a los participantes y una invitación a un evento programado para el 16 de enero.
+
+
+Chapters & Topics:
+
+Proyecto ADIGEA - Radiodiagnóstico II
+Jessica Paulina Goset Poblete explicó el contexto del Proyecto ADIGEA, que tiene como objetivo guiar y favorecer las actividades de estudio autónomo. Se mencionó la necesidad de que los docentes se apropien de este proyecto y se destacó la colaboración previa entre Matías Salvador Villarroel Vera, Felipe y Vanessa en las fases iniciales del mismo.
+* Estrategias para fomentar la autorregulación en los estudiantes.
+* Implementación del Proyecto Adhigia y su estructura.
+
+Avances en el Proyecto ADIGEA - Radiodiagnóstico II
+Matías Salvador Villarroel Vera expuso sobre la estructura del programa de radiodiagnóstico, mencionando la variabilidad en el orden de los contenidos entre diferentes sedes. Se propuso la inclusión de actividades de autoestudio en Canvas, como cuestionarios que utilizarán inteligencia artificial para generar preguntas. María José Prokes Hewitt mostró comprensión sobre la organización de las semanas de contenido.
+
+Evaluación de Imágenes Radiográficas
+Matías Salvador Villarroel Vera explica cómo se evaluarán las imágenes radiográficas, señalando errores comunes en la colimación y la identificación de proyecciones. Ines Maluenda Salfate apoya la idea de que los estudiantes recibirán retroalimentación instantánea sobre sus respuestas, lo que facilitará su aprendizaje.
+
+Discusión sobre la validación de preguntas y evaluación en el Proyecto ADIGEA
+Matías Salvador Villarroel Vera propuso enviar un conjunto de preguntas a los docentes para su validación antes de ser subidas a la plataforma. María José Prokes Hewitt destacó la importancia de unificar criterios en la formulación de preguntas para evitar confusiones entre los estudiantes. Además, se discutió un sistema de evaluación que fomente la participación activa de los estudiantes.
+* Validación de preguntas y actividades para los estudiantes.
+
+Actividades y Evaluaciones en el Proyecto ADIGEA
+Matías Salvador Villarroel Vera detalló la estructura de las actividades del curso, que abarcan tanto teoría como práctica en diferentes áreas de radiodiagnóstico. Vanessa Elena Torres Morales introdujo una metodología interactiva que utiliza encuestas clínicas para desarrollar habilidades blandas en los estudiantes, permitiendo una evaluación más efectiva de su desempeño.
+* Uso de la plataforma Canvas para la gestión de actividades.
+
+Discusión sobre la estructura del sílabo y uso de la plataforma Canvas
+Matías Salvador Villarroel Vera y Jessica Paulina Goset Poblete abordaron la organización de los módulos en Canvas, destacando que cada docente podrá subir su propio contenido sin afectar a los NRC de otros. María José Prokes Hewitt planteó dudas sobre la carga de materiales, a lo que Matías aclaró que todo se integrará en un solo espacio para los estudiantes.
+
+Propuestas y Organización del Contenido del Curso
+Se plantea la importancia de que los estudiantes manejen la anatomía para el curso de Radiodiagnóstico. Matías Salvador Villarroel Vera y Felipe Enrique Beuzenberg Guzman sugieren reemplazar algunas actividades por preguntas sobre estructuras anatómicas. Jessica Paulina Goset Poblete menciona la necesidad de un control más efectivo de las actividades a través de la plataforma Canvas.
+* Coordinación entre sedes para unificar contenidos y actividades.
+
+Discusión sobre el módulo de mamografía y su integración en el programa
+Vanessa Elena Torres Morales planteó la necesidad de un botón específico para mamografía en el programa, sugiriendo que se agrupe el contenido en la semana diez. Jessica Paulina Goset Poblete y Matías Salvador Villarroel Vera coincidieron en que esto facilitaría la organización del contenido. Además, se discutió la importancia de cambiar el nombre del botón de cierre a mamografía para mayor claridad.
+* Organización de los contenidos de mamografía en el calendario.
+* Modificación del botón de cierre a mamografía.
+* Importancia de la retribución en el tándem.
+* Creación del módulo de mamografía en el cronograma.
+* Presentación de trabajos en la jornada del 16 de enero.
+
+
+Action Items:
+
+* Matías Salvador Villarroel Vera se encargará de revisar y validar las preguntas de imagen y teoría antes de ingresarlas a la plataforma Canvas.
+* Matías Salvador Villarroel Vera coordinará con los docentes para que validen las actividades antes de subirlas a la plataforma.
+* Vanessa Elena Torres Morales implementará una encuesta clínica aplicada en un chat para abordar la fisiopatología y epidemiología en su asignatura.
+* Matías Salvador Villarroel Vera se encargará de enviar el listado de preguntas a los coordinadores para que ellos lo distribuyan a los docentes.
+* Jessica Paulina Goset Poblete enviará un correo con todos los correos de los profesores para compartir un video tutorial sobre cómo trabajar en la plataforma.
+* Jessica Paulina Goset Poblete pedirá cambiar el nombre del botón de cierre por mamografía.
+* Ines Maluenda Salfate solicitará que el módulo de cierre sea renombrado a mamografía.
+* Matías Salvador Villarroel Vera se encargará de crear el módulo de mamografía al final del cronograma.
+
+
+Key Questions:
+
+* ¿Las preguntas que colocaste ahí se arman solas con las clases?
+* ¿Cómo se asegurará que las preguntas de imagen y teoría sean correctas antes de ser ingresadas a la plataforma?
+* ¿Qué medidas se tomarán para evitar que los estudiantes copien las respuestas en las actividades?
+* ¿Qué contenidos se incluirán en el módulo de mamografía?
+
+
+Notepad:
+
+* No notes
