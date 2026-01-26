@@ -38,6 +38,45 @@ headers = HEADERS
 SESSION_TIMEOUT = 900 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
+# --- 🕵️‍♂️ ESCÁNER DE BASES DE DATOS (TEMPORAL) ---
+# Pega esto justo después de los imports y st.set_page_config en app.py
+
+if st.checkbox("🔍 ACTIVAR MODO DIAGNÓSTICO NOTION"):
+    st.warning("⚠️ MODO DIAGNÓSTICO ACTIVO - REVISANDO ESTRUCTURA NOTION")
+    
+    # Importamos las IDs directamente para asegurar
+    from config import HEADERS, DB_CONFIG_ID, DB_LOGS_ID, DB_HABILIDADES_ID, DB_JUGADORES_ID, DB_SOLICITUDES_ID
+    import requests
+
+    def escanear_db(nombre, db_id):
+        if not db_id: return f"❌ {nombre}: ID no configurado en secrets"
+        try:
+            url = f"https://api.notion.com/v1/databases/{db_id}"
+            res = requests.get(url, headers=HEADERS)
+            if res.status_code == 200:
+                props = res.json().get("properties", {})
+                
+                # Formateamos bonito para copiar y pegar
+                resultado = f"✅ **{nombre} ({db_id[-4:]})**:\n"
+                for key, val in props.items():
+                    tipo = val['type']
+                    resultado += f"- `{key}` ({tipo})\n"
+                return resultado
+            else:
+                return f"❌ {nombre}: Error {res.status_code} - {res.text}"
+        except Exception as e: return f"❌ {nombre}: Error Técnico {e}"
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(escanear_db("CONFIGURACIÓN", DB_CONFIG_ID))
+        st.markdown(escanear_db("LOGS", DB_LOGS_ID))
+        st.markdown(escanear_db("SOLICITUDES", DB_SOLICITUDES_ID))
+    with c2:
+        st.markdown(escanear_db("HABILIDADES", DB_HABILIDADES_ID))
+        st.markdown(escanear_db("JUGADORES", DB_JUGADORES_ID))
+        
+    st.stop() # Detiene la app aquí para que puedas leer tranquilo
+# -------------------------------------------------------
 # --- 🛡️ MODO MANTENIMIENTO (KILL SWITCH) ---
 
 if verificar_modo_mantenimiento():
