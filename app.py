@@ -1303,13 +1303,29 @@ else:
                         elif desbloqueada:
                             with st.popover("💠 PREPARAR", use_container_width=True):
                                 st.markdown(f"### ⚠️ Confirmación de Conjuro\nEstás a punto de activar **{nombre}**.\n\n⚡ Costo: **{costo} AP**")
+                                
+                                # --- AQUÍ ESTÁ EL CAMBIO ---
                                 if st.button("🔥 CONFIRMAR", key=f"confirm_{hab['id']}"):
                                     if puede_pagar:
                                         with st.spinner("Canalizando..."):
                                             time.sleep(1)
-                                            if enviar_solicitud("HABILIDAD", nombre, str(costo), st.session_state.nombre): st.toast("✅ Solicitud Enviada")
-                                            else: st.error("Error de enlace.")
-                                    else: st.toast("❌ Energía Insuficiente", icon="⚠️")
+                                            # Llamamos a la NUEVA función del motor
+                                            exito, msg = procesar_compra_habilidad(
+                                                skill_name=nombre,
+                                                cost_ap=costo,
+                                                cost_mp=0, # Asumimos coste MP 0 por ahora
+                                                skill_id_notion=hab['id']
+                                            )
+                                            
+                                            if exito:
+                                                st.toast(f"✅ {msg}")
+                                                time.sleep(1)
+                                                actualizar_datos_sesion()
+                                            else:
+                                                st.error(f"Error: {msg}")
+                                    else: 
+                                        st.toast("❌ Energía Insuficiente", icon="⚠️")
+                                # ---------------------------
                         else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
     with tab_misiones:
         st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
