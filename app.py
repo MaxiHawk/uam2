@@ -876,8 +876,6 @@ def cerrar_sesion():
     st.rerun()
 
 # --- NUEVAS FUNCIONES: SISTEMA DE MISIONES ---
-
-@st.cache_data(ttl=30)
     
 # ================= UI PRINCIPAL =================
 
