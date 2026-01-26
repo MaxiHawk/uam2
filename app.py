@@ -32,14 +32,13 @@ from modules.notion_api import (
 from modules.utils import cargar_lottie_seguro, cargar_imagen_circular, generar_loot
 
 # --- PUENTE DE COMPATIBILIDAD (EL FIX MÁGICO) ---
-# Tu código usa "headers" (minúscula), así que creamos un alias.
 headers = HEADERS
 
 SESSION_TIMEOUT = 900 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
 # --- 🛡️ MODO MANTENIMIENTO (KILL SWITCH) ---
-@st.cache_data(ttl=60, show_spinner=False)
+
 if verificar_modo_mantenimiento():
     st.markdown("""
         <style>
