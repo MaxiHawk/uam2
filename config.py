@@ -17,6 +17,7 @@ try:
     DB_CONFIG_ID = st.secrets.get("DB_CONFIG_ID", None)
     DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
     DB_CODIGOS_ID = st.secrets.get("DB_CODIGOS_ID", None)
+    DB_MISIONES_ID = st.secrets.get("DB_MISIONES_ID", None)
     
 except KeyError as e:
     st.error(f"❌ Error Crítico: Falta el secreto {e} en .streamlit/secrets.toml")
