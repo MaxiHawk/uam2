@@ -27,7 +27,7 @@ from modules.notion_api import (
     cargar_misiones_activas, inscribir_jugador_mision, enviar_solicitud,
     procesar_codigo_canje, cargar_pregunta_aleatoria, procesar_recalibracion,
     cargar_estado_suministros, procesar_suministro,
-    cargar_anuncios
+    cargar_anuncios, procesar_compra_habilidad
 )
 
 from modules.utils import cargar_lottie_seguro, cargar_imagen_circular, generar_loot
@@ -555,7 +555,6 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     buf.seek(0)
     return buf
 
-# --- FUNCIONES DE LOGGING (CAJA NEGRA) ---
 # --- FUNCIONES LÓGICAS ---
 def actualizar_ultima_conexion(page_id):
     url = f"https://api.notion.com/v1/pages/{page_id}"
