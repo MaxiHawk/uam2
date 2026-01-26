@@ -27,7 +27,7 @@ def verificar_modo_mantenimiento():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
-        # CORRECCIÓN: Según app (5).py, la propiedad se llama "Nombre"
+        # BUSCAMOS "MODO_MANTENIMIENTO" en la propiedad "Nombre" (Title)
         payload = {
             "filter": {
                 "property": "Nombre", 
@@ -38,12 +38,24 @@ def verificar_modo_mantenimiento():
         if res.status_code == 200:
             results = res.json().get("results", [])
             if results:
-                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
+                # Si encuentra la fila, mira si el checkbox "Activo" está marcado
+                val = results[0]["properties"].get("Activo", {}).get("checkbox", False)
+                print(f"🔧 MANTENIMIENTO: Encontrado = {val}") # DEBUG
+                return val
+            else:
+                print("🔧 MANTENIMIENTO: No se encontró la fila 'MODO_MANTENIMIENTO'") # DEBUG
+        else:
+            print(f"⚠️ ERROR NOTION MANTENIMIENTO: {res.status_code} - {res.text}") # DEBUG
         return False
-    except: return False
+    except Exception as e: 
+        print(f"⚠️ EXCEPCION MANTENIMIENTO: {e}")
+        return False
 
 def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
-    if not DB_LOGS_ID: return
+    if not DB_LOGS_ID: 
+        print("⚠️ LOGS: No hay ID de base de datos")
+        return
+    
     url = "https://api.notion.com/v1/pages"
     payload = {
         "parent": {"database_id": DB_LOGS_ID},
@@ -55,11 +67,15 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
             "Fecha": {"date": {"start": get_chile_time_iso()}}
         }
     }
-    try: requests.post(url, headers=headers, json=payload, timeout=2)
-    except: pass
+    try: 
+        res = requests.post(url, headers=headers, json=payload, timeout=2)
+        if res.status_code != 200:
+            print(f"⚠️ ERROR LOGS: {res.text}") # DEBUG CRÍTICO
+    except Exception as e:
+        print(f"⚠️ EXCEPCION LOGS: {e}")
 
 # --- 👤 JUGADORES ---
-@st.cache_data(ttl=300, show_spinner="Sincronizando perfil...")
+@st.cache_data(ttl=10, show_spinner="Sincronizando perfil...") # TTL bajo para pruebas
 def cargar_datos_jugador(email):
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     payload = {
@@ -73,11 +89,13 @@ def cargar_datos_jugador(email):
         if response.status_code == 200:
             results = response.json().get("results", [])
             if results: return results[0]
+        else:
+            print(f"⚠️ ERROR LOGIN: {response.text}")
         return None
     except: return None
 
 # --- 📢 ANUNCIOS ---
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
@@ -90,10 +108,12 @@ def cargar_anuncios():
         anuncios = []
         if res.status_code == 200:
             for r in res.json().get("results", []):
-                props = r["properties"]
                 try:
+                    props = r["properties"]
+                    # Extracción defensiva (si falta algo, no rompe todo)
                     titulo_list = props.get("Titulo", {}).get("title", [])
                     titulo = titulo_list[0]["text"]["content"] if titulo_list else "Anuncio"
+                    
                     cont_list = props.get("Contenido", {}).get("rich_text", [])
                     contenido = cont_list[0]["text"]["content"] if cont_list else ""
                     
@@ -108,12 +128,14 @@ def cargar_anuncios():
                         "titulo": titulo, "contenido": contenido,
                         "universidad": uni_target, "año": ano_target, "fecha": fecha
                     })
-                except: pass
+                except Exception as e:
+                    print(f"⚠️ ERROR PARSING ANUNCIO: {e}")
+                    continue
         return anuncios
     except: return []
 
-# --- 🚀 MISIONES ---
-@st.cache_data(ttl=600)
+# --- 🚀 MISIONES (CORREGIDO) ---
+@st.cache_data(ttl=60)
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
@@ -126,30 +148,42 @@ def cargar_misiones_activas():
         misiones = []
         if response.status_code == 200:
             for p in response.json().get("results", []):
-                props = p["properties"]
-                # Extracción robusta
-                def get_text(prop_name):
-                    l = props.get(prop_name, {}).get("rich_text", [])
-                    return l[0]["text"]["content"] if l else ""
-                
-                def get_title(prop_name):
-                    l = props.get(prop_name, {}).get("title", [])
-                    return l[0]["text"]["content"] if l else "Sin Título"
+                try: # Try por CADA misión, así si una falla, las otras cargan
+                    props = p["properties"]
+                    
+                    def get_text(prop_name):
+                        l = props.get(prop_name, {}).get("rich_text", [])
+                        return l[0]["text"]["content"] if l else ""
+                    
+                    def get_title(prop_name):
+                        l = props.get(prop_name, {}).get("title", [])
+                        return l[0]["text"]["content"] if l else "Sin Título"
 
-                misiones.append({
-                    "id": p["id"],
-                    "nombre": get_title("Misión"),
-                    "descripcion": get_text("Descripción"),
-                    "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
-                    "f_apertura": props.get("Fecha Apertura", {}).get("date", {}).get("start"),
-                    "f_cierre": props.get("Fecha Cierre", {}).get("date", {}).get("start"),
-                    "inscritos": get_text("Inscritos"),
-                    "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])],
-                    "password": get_text("Password"),
-                    "link": props.get("Link", {}).get("url", "#")
-                })
+                    # Parseo seguro de fechas
+                    f_apertura = props.get("Fecha Apertura", {}).get("date", {}).get("start")
+                    f_cierre = props.get("Fecha Cierre", {}).get("date", {}).get("start")
+                    
+                    misiones.append({
+                        "id": p["id"],
+                        "nombre": get_title("Misión"),
+                        "descripcion": get_text("Descripción"),
+                        "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
+                        "f_apertura": f_apertura,
+                        "f_cierre": f_cierre,
+                        "inscritos": get_text("Inscritos"),
+                        "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])],
+                        "password": get_text("Password"),
+                        "link": props.get("Link", {}).get("url", "#")
+                    })
+                except Exception as item_error:
+                    print(f"⚠️ ERROR EN UNA MISIÓN: {item_error}")
+                    continue
+        else:
+            print(f"⚠️ ERROR QUERY MISIONES: {response.text}")
         return misiones
-    except: return []
+    except Exception as e: 
+        print(f"⚠️ ERROR GENERAL MISIONES: {e}")
+        return []
 
 def inscribir_jugador_mision(page_id, inscritos_actuales, nombre_jugador):
     nuevos_inscritos = f"{inscritos_actuales}, {nombre_jugador}" if inscritos_actuales else nombre_jugador
@@ -168,7 +202,7 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     if not DB_SOLICITUDES_ID: return False
     url = "https://api.notion.com/v1/pages"
     
-    # CORRECCIÓN: En app (5).py línea 1326, la propiedad Title es "Usuario"
+    # INTENTO 1: Usando "Usuario" como Title (Estándar app 5)
     payload = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
         "properties": {
@@ -183,11 +217,13 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     try:
         res = requests.post(url, headers=headers, json=payload)
         if res.status_code != 200:
-            print(f"❌ Error Solicitud Notion: {res.text}") # Debug en logs
+            print(f"❌ ERROR SOLICITUD NOTION: {res.text}") 
         return res.status_code == 200
-    except: return False
+    except Exception as e:
+        print(f"❌ EXCEPCION SOLICITUD: {e}")
+        return False
 
-# --- 🛍️ MERCADO DE HABILIDADES (CORREGIDO) ---
+# --- 🛍️ MERCADO DE HABILIDADES ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
     current_mp = st.session_state.jugador.get("MP", {}).get("number", 0)
@@ -198,7 +234,7 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
     new_ap = current_ap - cost_ap
     new_mp = current_mp - cost_mp
     
-    # CORRECCIÓN: Aseguramos obtener la lista actual correctamente
+    # OBTENCIÓN ROBUSTA DE HABILIDADES
     current_skills = st.session_state.jugador.get("Habilidades", {}).get("relation", [])
     current_ids = [k["id"] for k in current_skills]
     
@@ -207,7 +243,6 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
         
     current_ids.append(skill_id_notion)
 
-    # 3. Guardar en Notion
     url = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
     
     # Payload estricto para Relations
@@ -215,7 +250,8 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
         "properties": {
             "AP": {"number": new_ap},
             "MP": {"number": new_mp},
-            "Habilidades": {"relation": [{"id": x} for x in current_ids]}
+            # 🛑 CRÍTICO: ¿La columna se llama 'Habilidades' en la DB Jugadores?
+            "Habilidades": {"relation": [{"id": x} for x in current_ids]} 
         }
     }
     
@@ -225,7 +261,7 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
             registrar_evento_sistema(st.session_state.nombre, "Compra Habilidad", f"Skill: {skill_name}")
             return True, f"¡{skill_name} adquirida!"
         else:
-            print(f"❌ Error Compra Notion: {res.text}") # Debug crítico
+            print(f"❌ ERROR COMPRA NOTION: {res.text}") # ESTO NOS DIRÁ QUÉ PASA
             return False, "Error de enlace con el servidor."
     except Exception as e:
         return False, f"Error técnico: {str(e)}"
@@ -235,7 +271,7 @@ def cargar_estado_suministros():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
-        # CORRECCIÓN: Buscamos "DROP_SUMINISTROS" en la propiedad "Nombre"
+        # Busca "DROP_SUMINISTROS" en columna "Nombre"
         payload = {
             "filter": {
                 "property": "Nombre", 
@@ -246,7 +282,11 @@ def cargar_estado_suministros():
         if res.status_code == 200:
             results = res.json().get("results", [])
             if results:
-                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
+                val = results[0]["properties"].get("Activo", {}).get("checkbox", False)
+                print(f"📦 SUMINISTROS: {val}") # Debug
+                return val
+            else:
+                print("📦 SUMINISTROS: No se encontró la fila 'DROP_SUMINISTROS'")
         return False
     except: return False
 
@@ -271,6 +311,8 @@ def procesar_suministro(rewards):
         if res.status_code == 200:
             registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", str(rewards))
             return True
+        else:
+            print(f"❌ ERROR COBRO SUMINISTRO: {res.text}")
         return False
     except: return False
 
@@ -297,7 +339,7 @@ def procesar_codigo_canje(codigo_input):
         props = code_page["properties"]
         page_id = code_page["id"]
         
-        # Validación: ¿Ya lo usó?
+        # Validación
         redeemed_text = ""
         if props.get("Redimido Por", {}).get("rich_text"):
             redeemed_text = props["Redimido Por"]["rich_text"][0]["text"]["content"]
@@ -305,12 +347,6 @@ def procesar_codigo_canje(codigo_input):
         if st.session_state.nombre in [x.strip() for x in redeemed_text.split(",")]:
             return False, "⚠️ Ya canjeaste este código."
 
-        # Validación: Límites
-        limit = props.get("Limite Usos", {}).get("number")
-        current_uses = props.get("Usos Actuales", {}).get("number", 0)
-        if limit is not None and current_uses >= limit:
-            return False, "⚠️ Código agotado."
-            
         # Recompensas
         rew_ap = props.get("Valor AP", {}).get("number", 0)
         rew_mp = props.get("Valor MP", {}).get("number", 0)
@@ -332,12 +368,15 @@ def procesar_codigo_canje(codigo_input):
             new_list = f"{redeemed_text}, {st.session_state.nombre}" if redeemed_text else st.session_state.nombre
             requests.patch(f"https://api.notion.com/v1/pages/{page_id}", headers=headers, json={
                 "properties": {
-                    "Usos Actuales": {"number": current_uses + 1},
+                    "Usos Actuales": {"number": props.get("Usos Actuales", {}).get("number", 0) + 1},
                     "Redimido Por": {"rich_text": [{"text": {"content": new_list}}]}
                 }
             })
+            # LOG
             registrar_evento_sistema(st.session_state.nombre, "Canje Código", f"Code: {codigo_input}")
             return True, f"¡Canjeado! +{rew_ap} AP"
+        else:
+            print(f"❌ ERROR APLICAR CÓDIGO A JUGADOR: {req_p.text}")
         return False, "Error al actualizar perfil."
     except Exception as e: return False, str(e)
 
@@ -362,10 +401,12 @@ def cargar_pregunta_aleatoria():
             "opcion_c": p["Opción C"]["rich_text"][0]["text"]["content"],
             "correcta": p["Correcta"]["select"]["name"],
             "recompensa": p["Recompensa AP"]["number"],
-            "exp_correcta": p["Explicación Correcta"]["rich_text"][0]["text"]["content"] if p.get("Explicación Correcta", {}).get("rich_text") else "¡Bien!",
-            "exp_incorrecta": p["Explicación Incorrecta"]["rich_text"][0]["text"]["content"] if p.get("Explicación Incorrecta", {}).get("rich_text") else "Mal."
+            "exp_correcta": p.get("Explicación Correcta", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "Correcto"),
+            "exp_incorrecta": p.get("Explicación Incorrecta", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "Incorrecto")
         }
-    except: return None
+    except Exception as e:
+        print(f"⚠️ ERROR TRIVIA: {e}")
+        return None
 
 def procesar_recalibracion(reward_ap, is_correct, question_id):
     if is_correct and reward_ap > 0:
