@@ -318,7 +318,7 @@ def cargar_estado_suministros():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
-        payload = {"filter": {"property": "Clave", "title": {"equals": "SUMINISTROS_ACTIVOS"}}}
+        payload = {"filter": {"property": "Clave", "title": {"equals": "DROP_SUMINISTROS"}}}
         res = requests.post(url, headers=headers, json=payload)
         if res.status_code == 200:
             results = res.json().get("results", [])
