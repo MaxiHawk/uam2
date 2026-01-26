@@ -9,7 +9,8 @@ import random
 from config import (
     HEADERS, 
     DB_CONFIG_ID, DB_LOGS_ID, DB_JUGADORES_ID, DB_MISIONES_ID, 
-    DB_SOLICITUDES_ID, DB_CODIGOS_ID, DB_TRIVIA_ID, DB_HABILIDADES_ID
+    DB_SOLICITUDES_ID, DB_CODIGOS_ID, DB_TRIVIA_ID, DB_HABILIDADES_ID,
+    DB_ANUNCIOS_ID
 )
 
 # --- ALIAS DE COMPATIBILIDAD ---
@@ -356,3 +357,49 @@ def procesar_suministro(rewards):
             return True
         return False
     except: return False
+
+# --- 📢 ANUNCIOS ---
+@st.cache_data(ttl=600)
+def cargar_anuncios():
+    if not DB_ANUNCIOS_ID: return []
+    url = f"https://api.notion.com/v1/databases/{DB_ANUNCIOS_ID}/query"
+    payload = {
+        "filter": {"property": "Activo", "checkbox": {"equals": True}},
+        "sorts": [{"timestamp": "created_time", "direction": "descending"}]
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        anuncios = []
+        if res.status_code == 200:
+            for r in res.json().get("results", []):
+                props = r["properties"]
+                try:
+                    titulo_list = props.get("Titulo", {}).get("title", [])
+                    titulo = titulo_list[0]["text"]["content"] if titulo_list else "Anuncio"
+                    cont_list = props.get("Contenido", {}).get("rich_text", [])
+                    contenido = cont_list[0]["text"]["content"] if cont_list else ""
+                    
+                    uni_target = []
+                    if "Universidad" in props:
+                        uni_data = props["Universidad"].get("multi_select", [])
+                        uni_target = [u["name"] for u in uni_data]
+                    
+                    ano_target = []
+                    if "Año" in props:
+                        ano_data = props["Año"].get("multi_select", [])
+                        ano_target = [a["name"] for a in ano_data]
+
+                    fecha = r["created_time"]
+                    if "Fecha" in props and props["Fecha"]["date"]:
+                        fecha = props["Fecha"]["date"]["start"]
+
+                    anuncios.append({
+                        "titulo": titulo,
+                        "contenido": contenido,
+                        "universidad": uni_target,
+                        "año": ano_target,
+                        "fecha": fecha
+                    })
+                except: pass
+        return anuncios
+    except: return []
