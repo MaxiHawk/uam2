@@ -403,3 +403,55 @@ def cargar_anuncios():
                 except: pass
         return anuncios
     except: return []
+
+# --- 🛍️ MERCADO DE HABILIDADES ---
+def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
+    """
+    Descuenta el costo y agrega la habilidad a la relación del jugador.
+    Retorna: (Exito: bool, Mensaje: str)
+    """
+    # 1. Verificar saldo local (para ahorrar petición si no alcanza)
+    current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
+    current_mp = st.session_state.jugador.get("MP", {}).get("number", 0)
+    
+    if current_ap < cost_ap or current_mp < cost_mp:
+        return False, "Saldo insuficiente."
+
+    # 2. Preparar los datos nuevos
+    new_ap = current_ap - cost_ap
+    new_mp = current_mp - cost_mp
+    
+    # Obtenemos las habilidades actuales (Relación) para no borrar las que ya tiene
+    current_skills_relation = st.session_state.jugador.get("Habilidades", {}).get("relation", [])
+    current_ids = [k["id"] for k in current_skills_relation]
+    
+    # Agregamos la nueva si no existe
+    if skill_id_notion not in current_ids:
+        current_ids.append(skill_id_notion)
+    else:
+        return False, "Ya posees esta habilidad."
+
+    # 3. Guardar en Notion
+    url = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
+    
+    # Formateamos la relación para Notion
+    final_relation = [{"id": x} for x in current_ids]
+    
+    payload = {
+        "properties": {
+            "AP": {"number": new_ap},
+            "MP": {"number": new_mp},
+            "Habilidades": {"relation": final_relation}
+        }
+    }
+    
+    try:
+        res = requests.patch(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            # Registrar Log
+            registrar_evento_sistema(st.session_state.nombre, "Compra Habilidad", f"Adquirido: {skill_name}")
+            return True, f"¡Habilidad {skill_name} adquirida!"
+        else:
+            return False, f"Error Notion: {res.status_code}"
+    except Exception as e:
+        return False, f"Error técnico: {str(e)}"
