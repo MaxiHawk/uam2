@@ -151,7 +151,7 @@ def inscribir_jugador_mision(page_id, inscritos_actuales, nombre_jugador):
         return False
     except: return False
 
-# --- 📩 SOLICITUDES ---
+# --- 📩 SOLICITUDES (VERSIÓN CORREGIDA) ---
 def enviar_solicitud(tipo, mensaje, detalles, usuario):
     if not DB_SOLICITUDES_ID: return False
     url = "https://api.notion.com/v1/pages"
@@ -159,19 +159,36 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     chile_tz = pytz.timezone('America/Santiago')
     now = datetime.now(chile_tz).isoformat()
     
+    # INTENTO 1: Estructura Estándar
+    # Asegúrate de que en Notion las columnas se llamen:
+    # - "Usuario" (Title o Rich Text) <-- Aquí suele fallar
+    # - "Tipo" (Select)
+    # - "Mensaje" (Rich Text)
+    # - "Detalles" (Rich Text)
+    
+    properties = {
+        "Tipo": {"select": {"name": tipo}},
+        "Mensaje": {"rich_text": [{"text": {"content": mensaje}}]},
+        "Detalles": {"rich_text": [{"text": {"content": detalles}}]},
+        "Estado": {"status": {"name": "Pendiente"}},
+        "Fecha": {"date": {"start": now}}
+    }
+
+    # TRUCO: Intentamos enviar el nombre de usuario en la propiedad "Usuario"
+    # Si tu base de datos tiene la propiedad Title llamada "Name" o "Nombre", esto hay que ajustarlo.
+    # Por defecto probamos "Usuario" como Title.
+    properties["Usuario"] = {"title": [{"text": {"content": usuario}}]} 
+
     payload = {
         "parent": {"database_id": DB_SOLICITUDES_ID},
-        "properties": {
-            "Usuario": {"title": [{"text": {"content": usuario}}]},
-            "Tipo": {"select": {"name": tipo}},
-            "Mensaje": {"rich_text": [{"text": {"content": mensaje}}]},
-            "Detalles": {"rich_text": [{"text": {"content": detalles}}]},
-            "Estado": {"status": {"name": "Pendiente"}},
-            "Fecha": {"date": {"start": now}}
-        }
+        "properties": properties
     }
+    
     try:
         res = requests.post(url, headers=headers, json=payload)
+        # Si falla, imprimimos el error en la consola de Streamlit Cloud (logs) para verlo
+        if res.status_code != 200:
+            print(f"❌ Error Notion Solicitud: {res.text}")
         return res.status_code == 200
     except: return False
 
