@@ -1149,10 +1149,7 @@ else:
                             # Capturamos el clic en una variable
                             if st.button("📦 RECLAMAR SUMINISTROS", use_container_width=True):
                                 clicked = True
-                        
-                        # 3. SI SE HIZO CLIC...
-                        # ... (Todo el código anterior igual) ...
-                        
+
                         # 3. SI SE HIZO CLIC...
                         if clicked:
                             # 1. Limpieza inicial
@@ -1160,8 +1157,8 @@ else:
                             anim_stage = st.empty()
                             
                             tier, rewards, icon = generar_loot()
-                            if procesar_suministro(rewards):
-                                st.session_state.supply_claimed_session = True 
+                            if procesar_suministro(tier, rewards):
+                                st.session_state.supply_claimed_session = True
                                 
                                 # Construimos el texto real de recompensas
                                 reward_text = f"+{rewards['AP']} AP"
