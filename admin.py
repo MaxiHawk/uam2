@@ -5,26 +5,24 @@ import time
 from datetime import datetime
 import pytz 
 
-# --- GESTIÓN DE SECRETOS ---
+# --- REEMPLAZA DESDE "GESTIÓN DE SECRETOS" HASTA LA DEFINICIÓN DE "headers" CON ESTO ---
+from config import (
+    NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
+    DB_LOGS_ID, NOTION_TOKEN # Importamos lo necesario
+)
+
+# Recuperamos la contraseña de admin directo de los secrets (esa no está en config.py usualmente)
 try:
-    NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
-    DB_JUGADORES_ID = st.secrets["DB_JUGADORES_ID"]
-    DB_SOLICITUDES_ID = st.secrets["DB_SOLICITUDES_ID"]
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
-    DB_LOGS_ID = st.secrets.get("DB_LOGS_ID", None)
 except FileNotFoundError:
-    st.error("⚠️ Error: Faltan secretos. Configura ADMIN_PASSWORD y DBs en secrets.toml")
+    st.error("⚠️ Error: Falta ADMIN_PASSWORD en .streamlit/secrets.toml")
     st.stop()
 
-# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 
-headers = {
-    "Authorization": "Bearer " + NOTION_TOKEN,
-    "Content-Type": "application/json",
-    "Notion-Version": "2022-06-28"
-}
-
+# Usamos los headers que ya definiste en config.py
+headers = HEADERS
+# ---------------------------------------------------------------------------------------
 # --- GENERACIÓN DE LISTA DE INSIGNIAS (Sincronizado con APP) ---
 BADGE_OPTIONS = []
 for i in range(1, 10): BADGE_OPTIONS.append(f"Misión {i}")
