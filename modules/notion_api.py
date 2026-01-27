@@ -11,7 +11,7 @@ from config import (
     HEADERS, 
     DB_CONFIG_ID, DB_LOGS_ID, DB_JUGADORES_ID, DB_MISIONES_ID, 
     DB_SOLICITUDES_ID, DB_CODIGOS_ID, DB_TRIVIA_ID, DB_HABILIDADES_ID,
-    DB_ANUNCIOS_ID
+    DB_ANUNCIOS_ID, DB_MERCADO_ID
 )
 
 # --- ALIAS DE COMPATIBILIDAD ---
@@ -22,37 +22,53 @@ def get_chile_time_iso():
     return datetime.now(pytz.timezone('America/Santiago')).isoformat()
 
 def get_player_metadata():
-    """
-    Extrae Universidad y Año de la sesión actual de forma segura y CON DEBUG.
-    """
+    """Extrae Universidad y Año de la sesión actual de forma segura."""
     try:
         if "jugador" in st.session_state and st.session_state.jugador:
             props = st.session_state.jugador.get("properties", {})
-            
-            # Debug: Ver qué llaves hay disponibles
-            # print(f"🔍 DEBUG PROPS KEYS: {list(props.keys())}")
-            
-            # INTENTO 1: Extracción Directa
             uni = None
             if "Universidad" in props:
                 sel = props["Universidad"].get("select")
                 if sel: uni = sel.get("name")
-            
             ano = None
             if "Año" in props:
                 sel = props["Año"].get("select")
                 if sel: ano = sel.get("name")
-
-            # Reporte en consola
-            if not uni or not ano:
-                print(f"⚠️ METADATA INCOMPLETA: Uni={uni}, Año={ano}")
-            else:
-                print(f"✅ METADATA OK: Uni={uni}, Año={ano}")
-                
             return uni, ano
     except Exception as e: 
         print(f"❌ ERROR METADATA: {e}")
     return None, None
+
+def notion_fetch_all(url, payload):
+    """
+    Función maestra para traer MÁS de 100 resultados (Paginación automática).
+    """
+    results = []
+    has_more = True
+    next_cursor = None
+    
+    # Aseguramos que payload sea un diccionario
+    if payload is None: payload = {}
+
+    while has_more:
+        if next_cursor:
+            payload["start_cursor"] = next_cursor
+            
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                data = response.json()
+                results.extend(data.get("results", []))
+                has_more = data.get("has_more", False)
+                next_cursor = data.get("next_cursor", None)
+            else:
+                print(f"❌ Error Notion {response.status_code}: {response.text}")
+                has_more = False
+        except Exception as e:
+            print(f"❌ Error Conexión: {e}")
+            has_more = False
+            
+    return results
 
 # --- 🛡️ SISTEMA (CONFIG & LOGS) ---
 @st.cache_data(ttl=60, show_spinner=False)
@@ -60,12 +76,7 @@ def verificar_modo_mantenimiento():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
-        payload = {
-            "filter": {
-                "property": "Clave", 
-                "title": {"equals": "MODO_MANTENIMIENTO"}
-            }
-        }
+        payload = {"filter": {"property": "Clave", "title": {"equals": "MODO_MANTENIMIENTO"}}}
         res = requests.post(url, headers=headers, json=payload, timeout=5)
         if res.status_code == 200:
             results = res.json().get("results", [])
@@ -77,8 +88,6 @@ def verificar_modo_mantenimiento():
 def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
-    
-    # Obtenemos metadata fresca
     uni, ano = get_player_metadata()
     
     properties = {
@@ -88,32 +97,19 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
         "Tipo": {"select": {"name": tipo}},
         "Fecha": {"date": {"start": get_chile_time_iso()}}
     }
-
-    # Agregamos Universidad y Año si existen
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
-    payload = {
-        "parent": {"database_id": DB_LOGS_ID},
-        "properties": properties
-    }
-    try: 
-        res = requests.post(url, headers=headers, json=payload, timeout=2)
-        if res.status_code != 200:
-            print(f"❌ ERROR LOG NOTION: {res.text}")
-    except Exception as e:
-        print(f"❌ EXCEPCION LOG: {e}")
+    payload = {"parent": {"database_id": DB_LOGS_ID}, "properties": properties}
+    try: requests.post(url, headers=headers, json=payload, timeout=2)
+    except: pass
 
 # --- 👤 JUGADORES ---
 @st.cache_data(ttl=300, show_spinner="Sincronizando perfil...")
 def cargar_datos_jugador(email):
+    # Aquí NO usamos paginación porque buscamos 1 solo usuario específico
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    payload = {
-        "filter": {
-            "property": "Correo electrónico",
-            "email": {"equals": email}
-        }
-    }
+    payload = {"filter": {"property": "Correo electrónico", "email": {"equals": email}}}
     try:
         response = requests.post(url, headers=headers, json=payload)
         if response.status_code == 200:
@@ -122,7 +118,7 @@ def cargar_datos_jugador(email):
         return None
     except: return None
 
-# --- 📢 ANUNCIOS ---
+# --- 📢 ANUNCIOS (MEJORADO) ---
 @st.cache_data(ttl=600)
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
@@ -131,34 +127,33 @@ def cargar_anuncios():
         "filter": {"property": "Activo", "checkbox": {"equals": True}},
         "sorts": [{"timestamp": "created_time", "direction": "descending"}]
     }
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        anuncios = []
-        if res.status_code == 200:
-            for r in res.json().get("results", []):
-                props = r["properties"]
-                try:
-                    titulo_list = props.get("Titulo", {}).get("title", [])
-                    titulo = titulo_list[0]["text"]["content"] if titulo_list else "Anuncio"
-                    cont_list = props.get("Contenido", {}).get("rich_text", [])
-                    contenido = cont_list[0]["text"]["content"] if cont_list else ""
-                    
-                    uni_target = [u["name"] for u in props.get("Universidad", {}).get("multi_select", [])]
-                    ano_target = [a["name"] for a in props.get("Año", {}).get("multi_select", [])]
-                    
-                    fecha = r["created_time"]
-                    if "Fecha" in props and props["Fecha"]["date"]:
-                        fecha = props["Fecha"]["date"]["start"]
+    # Usamos fetch_all para traer todos los anuncios históricos si es necesario
+    raw_results = notion_fetch_all(url, payload)
+    
+    anuncios = []
+    for r in raw_results:
+        props = r["properties"]
+        try:
+            titulo_list = props.get("Titulo", {}).get("title", [])
+            titulo = titulo_list[0]["text"]["content"] if titulo_list else "Anuncio"
+            cont_list = props.get("Contenido", {}).get("rich_text", [])
+            contenido = cont_list[0]["text"]["content"] if cont_list else ""
+            
+            uni_target = [u["name"] for u in props.get("Universidad", {}).get("multi_select", [])]
+            ano_target = [a["name"] for a in props.get("Año", {}).get("multi_select", [])]
+            
+            fecha = r["created_time"]
+            if "Fecha" in props and props["Fecha"]["date"]:
+                fecha = props["Fecha"]["date"]["start"]
 
-                    anuncios.append({
-                        "titulo": titulo, "contenido": contenido,
-                        "universidad": uni_target, "año": ano_target, "fecha": fecha
-                    })
-                except: pass
-        return anuncios
-    except: return []
+            anuncios.append({
+                "titulo": titulo, "contenido": contenido,
+                "universidad": uni_target, "año": ano_target, "fecha": fecha
+            })
+        except: pass
+    return anuncios
 
-# --- 🚀 MISIONES ---
+# --- 🚀 MISIONES (MEJORADO) ---
 @st.cache_data(ttl=600)
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
@@ -167,121 +162,122 @@ def cargar_misiones_activas():
         "filter": {"property": "Estado", "status": {"equals": "Activa"}},
         "sorts": [{"property": "Fecha Lanzamiento", "direction": "ascending"}]
     }
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        misiones = []
-        if response.status_code == 200:
-            for p in response.json().get("results", []):
-                props = p["properties"]
-                def get_text(prop_name):
-                    l = props.get(prop_name, {}).get("rich_text", [])
-                    return l[0]["text"]["content"] if l else ""
-                
-                def get_title(prop_name):
-                    l = props.get(prop_name, {}).get("title", [])
-                    return l[0]["text"]["content"] if l else "Sin Título"
+    # Usamos fetch_all para traer todas las misiones
+    raw_results = notion_fetch_all(url, payload)
+    
+    misiones = []
+    for p in raw_results:
+        props = p["properties"]
+        def get_text(prop_name):
+            l = props.get(prop_name, {}).get("rich_text", [])
+            return l[0]["text"]["content"] if l else ""
+        
+        def get_title(prop_name):
+            l = props.get(prop_name, {}).get("title", [])
+            return l[0]["text"]["content"] if l else "Sin Título"
 
-                misiones.append({
-                    "id": p["id"],
-                    "nombre": get_title("Misión"),
-                    "descripcion": get_text("Descripción"),
-                    "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
-                    "f_apertura": props.get("Fecha Apertura", {}).get("date", {}).get("start"),
-                    "f_cierre": props.get("Fecha Cierre", {}).get("date", {}).get("start"),
-                    "inscritos": get_text("Inscritos"),
-                    "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])],
-                    "password": get_text("Password"),
-                    "link": props.get("Link", {}).get("url", "#")
-                })
-        return misiones
-    except: return []
+        misiones.append({
+            "id": p["id"],
+            "nombre": get_title("Misión"),
+            "descripcion": get_text("Descripción"),
+            "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
+            "f_apertura": props.get("Fecha Apertura", {}).get("date", {}).get("start"),
+            "f_cierre": props.get("Fecha Cierre", {}).get("date", {}).get("start"),
+            "f_lanzamiento": props.get("Fecha Lanzamiento", {}).get("date", {}).get("start"), # Agregado que faltaba
+            "inscritos": get_text("Inscritos"),
+            "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])],
+            "password": get_text("Password"),
+            "link": props.get("Link", {}).get("url", "#")
+        })
+    return misiones
 
-def inscribir_jugador_mision(page_id, inscritos_actuales, nombre_jugador):
-    nuevos_inscritos = f"{inscritos_actuales}, {nombre_jugador}" if inscritos_actuales else nombre_jugador
-    url = f"https://api.notion.com/v1/pages/{page_id}"
-    payload = {"properties": {"Inscritos": {"rich_text": [{"text": {"content": nuevos_inscritos}}]}}}
+def inscribir_jugador_mision(page_id, inscritos_frontend, nombre_jugador):
+    """
+    Versión segura ante condiciones de carrera (Race Condition).
+    1. Lee la base de datos EN VIVO (ignora lo que viene del frontend).
+    2. Agrega el nombre.
+    3. Guarda.
+    """
+    url_get = f"https://api.notion.com/v1/pages/{page_id}"
+    
     try:
-        if requests.patch(url, headers=headers, json=payload).status_code == 200:
+        # Paso 1: Leer estado actual real
+        res_get = requests.get(url_get, headers=headers)
+        if res_get.status_code != 200: return False
+        
+        props_live = res_get.json()["properties"]
+        l_inscritos = props_live.get("Inscritos", {}).get("rich_text", [])
+        texto_inscritos_real = l_inscritos[0]["text"]["content"] if l_inscritos else ""
+        
+        # Validación: ¿Ya está inscrito?
+        lista_actual = [x.strip() for x in texto_inscritos_real.split(",")]
+        if nombre_jugador in lista_actual:
+            return True # Ya estaba listo, no hacemos nada y decimos que OK
+            
+        # Paso 2: Agregar nombre
+        nuevo_texto = f"{texto_inscritos_real}, {nombre_jugador}" if texto_inscritos_real else nombre_jugador
+        
+        # Paso 3: Guardar
+        url_patch = f"https://api.notion.com/v1/pages/{page_id}"
+        payload = {"properties": {"Inscritos": {"rich_text": [{"text": {"content": nuevo_texto}}]}}}
+        
+        if requests.patch(url_patch, headers=headers, json=payload).status_code == 200:
             registrar_evento_sistema(nombre_jugador, "Inscripción Misión", f"ID: {page_id}", "Misión")
-            st.cache_data.clear()
+            st.cache_data.clear() # Limpiamos caché para que se vea reflejado
             return True
         return False
-    except: return False
+    except Exception as e:
+        print(f"Error inscripción: {e}")
+        return False
 
-# --- 📩 SOLICITUDES (CORREGIDO Y ENRIQUECIDO) ---
+# --- 📩 SOLICITUDES ---
 def enviar_solicitud(tipo, mensaje, detalles, usuario):
     if not DB_SOLICITUDES_ID: return False
     url = "https://api.notion.com/v1/pages"
-    
-    # Obtenemos metadata fresca
     uni, ano = get_player_metadata()
     
     properties = {
-        "Usuario": {"title": [{"text": {"content": str(usuario)}}]},
+        "Usuario": {"title": [{"text": {"content": str(usuario)}}]}, # Ojo: En tu DB se llama "Remitente" o "Usuario"? Revisa esto si falla.
+        "Remitente": {"title": [{"text": {"content": str(usuario)}}]}, # Pongo ambos por seguridad, Notion ignorará el que no exista
         "Tipo": {"select": {"name": tipo}},
         "Mensaje": {"rich_text": [{"text": {"content": f"{mensaje}\n\nDetalles: {detalles}"}}]}, 
         "Status": {"select": {"name": "Pendiente"}}, 
         "Fecha de creación": {"date": {"start": get_chile_time_iso()}} 
     }
-
-    # Agregamos Universidad y Año si existen en tu DB de Solicitudes
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
-    payload = {
-        "parent": {"database_id": DB_SOLICITUDES_ID},
-        "properties": properties
-    }
+    payload = {"parent": {"database_id": DB_SOLICITUDES_ID}, "properties": properties}
     try:
         res = requests.post(url, headers=headers, json=payload)
-        if res.status_code != 200:
-            print(f"❌ ERROR SOLICITUD: {res.text}")
         return res.status_code == 200
     except: return False
 
-# --- 🛍️ MERCADO DE HABILIDADES (NUEVO FLUJO: SOLICITUD) ---
+# --- 🛍️ MERCADO ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
-    """
-    Nuevo Flujo:
-    1. Verifica si tiene saldo (localmente).
-    2. Envia SOLICITUD de compra (no descuenta AP todavía).
-    """
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
     current_mp = st.session_state.jugador.get("MP", {}).get("number", 0)
     
-    # 1. Verificación Local (UX)
     if current_ap < cost_ap or current_mp < cost_mp:
         return False, "Saldo insuficiente para solicitar."
 
-    # 2. Enviar Solicitud
     msg_solicitud = f"Solicitud de activación: {skill_name}"
     detalles_solicitud = f"Costo: {cost_ap} AP | {cost_mp} MP. (Esperando aprobación manual)."
     
     exito = enviar_solicitud("Compra Habilidad", msg_solicitud, detalles_solicitud, st.session_state.nombre)
     
     if exito:
-        # Registramos Log como 'Pendiente'
-        registrar_evento_sistema(
-            st.session_state.nombre, 
-            "Solicitud Habilidad", 
-            f"{skill_name} (-{cost_ap} AP) -> Pendiente de Aprobación", 
-            "Mercado"
-        )
+        registrar_evento_sistema(st.session_state.nombre, "Solicitud Habilidad", f"{skill_name}", "Mercado")
         return True, "Solicitud enviada al Comando."
     else:
         return False, "Error al enviar solicitud."
 
-# --- 📦 SUMINISTROS (CORREGIDO LOGS) ---
+# --- 📦 SUMINISTROS ---
 def cargar_estado_suministros():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
-        payload = {
-            "filter": {
-                "property": "Clave", 
-                "title": {"equals": "DROP_SUMINISTROS"}
-            }
-        }
+        payload = {"filter": {"property": "Clave", "title": {"equals": "DROP_SUMINISTROS"}}}
         res = requests.post(url, headers=headers, json=payload)
         if res.status_code == 200:
             results = res.json().get("results", [])
@@ -291,10 +287,6 @@ def cargar_estado_suministros():
     except: return False
 
 def procesar_suministro(rarity_name, rewards):
-    """
-    rarity_name: "Común", "Raro", "Épico", "Legendario"
-    rewards: Diccionario {"AP": 10, "MP": 5...}
-    """
     try:
         player = st.session_state.jugador
         new_ap = player.get("AP", {}).get("number", 0) + rewards["AP"]
@@ -313,20 +305,13 @@ def procesar_suministro(rarity_name, rewards):
         res = requests.patch(url, headers=headers, json=payload)
         
         if res.status_code == 200:
-            # LOG DETALLADO
-            # Nota: Usamos 'rarity_name' para el TIPO y el detalle para los valores
             detalle_txt = f"AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
-            registrar_evento_sistema(
-                st.session_state.nombre, 
-                "Suministro Reclamado", 
-                detalle_txt, 
-                rarity_name # Aquí va "Legendario", "Raro", etc.
-            )
+            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle_txt, rarity_name)
             return True
         return False
     except: return False
 
-# --- 🔐 CÓDIGOS DE CANJE (CORREGIDO LOGS) ---
+# --- 🔐 CÓDIGOS DE CANJE ---
 def procesar_codigo_canje(codigo_input):
     if not DB_CODIGOS_ID: return False, "Sistema offline."
     
@@ -384,7 +369,6 @@ def procesar_codigo_canje(codigo_input):
                 }
             })
             
-            # LOG CORRECTO
             detalle_log = f"Código: {codigo_input} | +{rew_ap} AP, +{rew_mp} MP, +{rew_vp} VP"
             registrar_evento_sistema(st.session_state.nombre, "Canje Código", detalle_log, "Código")
             
