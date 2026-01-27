@@ -22,22 +22,35 @@ def get_chile_time_iso():
     return datetime.now(pytz.timezone('America/Santiago')).isoformat()
 
 def get_player_metadata():
-    """Extrae Universidad y Año de la sesión actual de forma segura."""
+    """
+    Recupera Universidad y Año de forma robusta desde la sesión.
+    Prioriza las variables procesadas 'uni_actual' y 'ano_actual' definidas en el Login.
+    """
     try:
+        # 1. Intentamos leer las variables limpias que app.py genera al loguear
+        uni = st.session_state.get("uni_actual")
+        ano = st.session_state.get("ano_actual")
+        
+        # Si las tenemos, retornamos de inmediato (Ruta rápida y segura)
+        if uni and ano:
+            return uni, ano
+
+        # 2. Fallback: Si por alguna razón no están, intentamos leer del objeto JSON crudo
         if "jugador" in st.session_state and st.session_state.jugador:
             props = st.session_state.jugador.get("properties", {})
-            uni = None
-            if "Universidad" in props:
+            
+            if not uni and "Universidad" in props:
                 sel = props["Universidad"].get("select")
                 if sel: uni = sel.get("name")
-            ano = None
-            if "Año" in props:
+            
+            if not ano and "Año" in props:
                 sel = props["Año"].get("select")
                 if sel: ano = sel.get("name")
-            return uni, ano
+                
+        return uni, ano
     except Exception as e: 
         print(f"❌ ERROR METADATA: {e}")
-    return None, None
+        return None, None
 
 def notion_fetch_all(url, payload):
     """
