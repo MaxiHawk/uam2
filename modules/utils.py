@@ -35,6 +35,7 @@ def cargar_imagen_circular(ruta_local, size=(150, 150)):
 def generar_loot():
     roll = random.random()
     if roll < 0.05: # 5% Legendario
+        # AHORA RETORNA 3 COSAS: Nombre, Stats, Icono
         return "Legendario", {"AP": 150, "MP": 50, "VP": 5}, "👑"
     elif roll < 0.20: # 15% Épico
         return "Épico", {"AP": 80, "MP": 20, "VP": 2}, "💠"
