@@ -318,8 +318,11 @@ def procesar_suministro(rarity_name, rewards):
         res = requests.patch(url, headers=headers, json=payload)
         
         if res.status_code == 200:
-            detalle_txt = f"AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
-            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle_txt, rarity_name)
+            # CAMBIO: Agregamos "Farmeo [Rareza]:" al inicio del detalle
+            detalle_txt = f"Farmeo {rarity_name}: AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
+            
+            # CAMBIO: Forzamos el tipo "Suministro" en lugar de enviar la rareza como tipo
+            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle_txt, "Suministro")
             return True
         return False
     except: return False
