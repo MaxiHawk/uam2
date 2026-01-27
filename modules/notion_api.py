@@ -22,19 +22,36 @@ def get_chile_time_iso():
     return datetime.now(pytz.timezone('America/Santiago')).isoformat()
 
 def get_player_metadata():
-    """Extrae Universidad y Año de la sesión actual de forma segura."""
+    """
+    Extrae Universidad y Año de la sesión actual de forma segura y CON DEBUG.
+    """
     try:
         if "jugador" in st.session_state and st.session_state.jugador:
             props = st.session_state.jugador.get("properties", {})
             
-            uni_obj = props.get("Universidad", {}).get("select")
-            uni = uni_obj["name"] if uni_obj else None
+            # Debug: Ver qué llaves hay disponibles
+            # print(f"🔍 DEBUG PROPS KEYS: {list(props.keys())}")
             
-            ano_obj = props.get("Año", {}).get("select")
-            ano = ano_obj["name"] if ano_obj else None
+            # INTENTO 1: Extracción Directa
+            uni = None
+            if "Universidad" in props:
+                sel = props["Universidad"].get("select")
+                if sel: uni = sel.get("name")
             
+            ano = None
+            if "Año" in props:
+                sel = props["Año"].get("select")
+                if sel: ano = sel.get("name")
+
+            # Reporte en consola
+            if not uni or not ano:
+                print(f"⚠️ METADATA INCOMPLETA: Uni={uni}, Año={ano}")
+            else:
+                print(f"✅ METADATA OK: Uni={uni}, Año={ano}")
+                
             return uni, ano
-    except: pass
+    except Exception as e: 
+        print(f"❌ ERROR METADATA: {e}")
     return None, None
 
 # --- 🛡️ SISTEMA (CONFIG & LOGS) ---
@@ -80,8 +97,12 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
         "parent": {"database_id": DB_LOGS_ID},
         "properties": properties
     }
-    try: requests.post(url, headers=headers, json=payload, timeout=2)
-    except: pass
+    try: 
+        res = requests.post(url, headers=headers, json=payload, timeout=2)
+        if res.status_code != 200:
+            print(f"❌ ERROR LOG NOTION: {res.text}")
+    except Exception as e:
+        print(f"❌ EXCEPCION LOG: {e}")
 
 # --- 👤 JUGADORES ---
 @st.cache_data(ttl=300, show_spinner="Sincronizando perfil...")
@@ -213,6 +234,8 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     }
     try:
         res = requests.post(url, headers=headers, json=payload)
+        if res.status_code != 200:
+            print(f"❌ ERROR SOLICITUD: {res.text}")
         return res.status_code == 200
     except: return False
 
