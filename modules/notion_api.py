@@ -6,7 +6,6 @@ import pytz
 import random
 import json
 
-# Importamos la configuración centralizada
 from config import (
     HEADERS, 
     DB_CONFIG_ID, DB_LOGS_ID, DB_JUGADORES_ID, DB_MISIONES_ID, 
@@ -14,7 +13,6 @@ from config import (
     DB_ANUNCIOS_ID
 )
 
-# --- ALIAS DE COMPATIBILIDAD ---
 headers = HEADERS 
 
 # --- 🛠️ UTILIDADES INTERNAS ---
@@ -22,19 +20,27 @@ def get_chile_time_iso():
     return datetime.now(pytz.timezone('America/Santiago')).isoformat()
 
 def get_player_metadata():
-    """Extrae Universidad y Año de la sesión actual."""
+    """
+    Extrae Universidad y Año de la sesión actual.
+    CORREGIDO: Detecta automáticamente si 'jugador' son las propiedades directas o el objeto completo.
+    """
     try:
         if "jugador" in st.session_state and st.session_state.jugador:
-            props = st.session_state.jugador.get("properties", {})
+            data = st.session_state.jugador
+            # Si tiene llave 'properties', es el objeto completo. Si no, asumimos que ya son las propiedades.
+            props = data.get("properties", data) 
+            
             uni_obj = props.get("Universidad", {}).get("select")
             uni = uni_obj["name"] if uni_obj else None
+            
             ano_obj = props.get("Año", {}).get("select")
             ano = ano_obj["name"] if ano_obj else None
+            
             return uni, ano
     except: pass
     return None, None
 
-# --- 🛡️ SISTEMA (CONFIG & LOGS) ---
+# --- 🛡️ SISTEMA ---
 @st.cache_data(ttl=60, show_spinner=False)
 def verificar_modo_mantenimiento():
     if not DB_CONFIG_ID: return False
@@ -51,7 +57,10 @@ def verificar_modo_mantenimiento():
 def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
+    
+    # Obtenemos metadata corregida
     uni, ano = get_player_metadata()
+    
     properties = {
         "Evento": {"title": [{"text": {"content": str(accion)}}]}, 
         "Jugador": {"rich_text": [{"text": {"content": str(usuario)}}]},
@@ -59,6 +68,7 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
         "Tipo": {"select": {"name": tipo}},
         "Fecha": {"date": {"start": get_chile_time_iso()}}
     }
+    # Inyectamos Universidad y Año si existen
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
@@ -78,7 +88,7 @@ def cargar_datos_jugador(email):
         return None
     except: return None
 
-# --- 📢 ANUNCIOS (CORREGIDO) ---
+# --- 📢 ANUNCIOS ---
 @st.cache_data(ttl=600)
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
@@ -93,21 +103,14 @@ def cargar_anuncios():
                 try:
                     titulo = props.get("Titulo", {}).get("title", [{}])[0].get("text", {}).get("content", "Anuncio")
                     contenido = props.get("Contenido", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
-                    
-                    # --- RESTAURADO: Datos vitales para popup y filtros ---
                     uni_target = [u["name"] for u in props.get("Universidad", {}).get("multi_select", [])]
                     ano_target = [a["name"] for a in props.get("Año", {}).get("multi_select", [])]
-                    
                     fecha = r["created_time"]
-                    if "Fecha" in props and props["Fecha"]["date"]:
-                        fecha = props["Fecha"]["date"]["start"]
+                    if "Fecha" in props and props["Fecha"]["date"]: fecha = props["Fecha"]["date"]["start"]
 
                     anuncios.append({
-                        "titulo": titulo, 
-                        "contenido": contenido,
-                        "universidad": uni_target, 
-                        "año": ano_target, 
-                        "fecha": fecha
+                        "titulo": titulo, "contenido": contenido,
+                        "universidad": uni_target, "año": ano_target, "fecha": fecha
                     })
                 except: pass
         return anuncios
@@ -132,7 +135,7 @@ def cargar_misiones_activas():
                     "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
                     "f_apertura": props.get("Fecha Apertura", {}).get("date", {}).get("start"),
                     "f_cierre": props.get("Fecha Cierre", {}).get("date", {}).get("start"),
-                    "f_lanzamiento": props.get("Fecha Lanzamiento", {}).get("date", {}).get("start"), # Agregado por seguridad
+                    "f_lanzamiento": props.get("Fecha Lanzamiento", {}).get("date", {}).get("start"),
                     "inscritos": get_text("Inscritos"), "password": get_text("Password"), "link": props.get("Link", {}).get("url", "#"),
                     "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])]
                 })
@@ -165,36 +168,33 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     try: return requests.post(url, headers=headers, json={"parent": {"database_id": DB_SOLICITUDES_ID}, "properties": properties}).status_code == 200
     except: return False
 
-# --- 🛍️ MERCADO DE HABILIDADES ---
+# --- 🛍️ MERCADO DE HABILIDADES (CORREGIDO) ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
     if current_ap < cost_ap: return False, "Saldo AP insuficiente."
     
+    # 1. Enviamos solicitud con todos los datos
     exito = enviar_solicitud("Compra Habilidad", f"Solicitud: {skill_name}", f"Costo: {cost_ap} AP", st.session_state.nombre)
+    
     if exito:
-        registrar_evento_sistema(st.session_state.nombre, "Solicitud Habilidad", f"{skill_name} (-{cost_ap} AP)", "Mercado")
+        # 2. Registro corregido: Tipo 'Habilidad' y Nombre en el detalle
+        registrar_evento_sistema(
+            st.session_state.nombre, 
+            "Solicitud Habilidad", 
+            f"Habilidad: {skill_name} | Costo: -{cost_ap} AP", # Detalle claro
+            "Habilidad" # Tipo corregido (antes Mercado)
+        )
         return True, "Solicitud enviada al Comando."
     return False, "Error al enviar solicitud."
 
-# --- CARGAR HABILIDADES (VERSIÓN BLINDADA & FILTRADA) ---
 @st.cache_data(ttl=300)
 def cargar_habilidades(rol_filtro=None):
     if not DB_HABILIDADES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
-    
     filtros = []
-    if rol_filtro:
-        filtros.append({"property": "Rol", "select": {"equals": rol_filtro}})
-    
-    payload = {
-        "sorts": [
-            {"property": "Nivel Requerido", "direction": "ascending"},
-            {"property": "Costo AP", "direction": "ascending"}
-        ]
-    }
-    
-    if filtros:
-        payload["filter"] = {"and": filtros} if len(filtros) > 1 else filtros[0]
+    if rol_filtro: filtros.append({"property": "Rol", "select": {"equals": rol_filtro}})
+    payload = {"sorts": [{"property": "Nivel Requerido", "direction": "ascending"}, {"property": "Costo AP", "direction": "ascending"}]}
+    if filtros: payload["filter"] = {"and": filtros} if len(filtros) > 1 else filtros[0]
 
     try:
         res = requests.post(url, headers=headers, json=payload)
@@ -203,35 +203,22 @@ def cargar_habilidades(rol_filtro=None):
             for r in res.json().get("results", []):
                 props = r["properties"]
                 try:
-                    # --- CORRECCIÓN: Extracción de Título más robusta ---
-                    title_prop = props.get("Habilidad", {}).get("title", [])
-                    if title_prop:
-                        # Probamos plain_text primero, que es más seguro
-                        nombre = title_prop[0].get("plain_text") or title_prop[0].get("text", {}).get("content", "Sin Nombre")
-                    else:
-                        nombre = "Habilidad Desconocida"
+                    # Extracción BLINDADA del Nombre
+                    title_obj = props.get("Habilidad", {}).get("title", [])
+                    nombre = "Sin Nombre"
+                    if title_obj:
+                        nombre = title_obj[0].get("plain_text") or title_obj[0].get("text", {}).get("content", "Sin Nombre")
                     
-                    # Descripción
                     desc_list = props.get("Descripcion", {}).get("rich_text", [])
                     desc = desc_list[0].get("plain_text", "") if desc_list else "Sin descripción."
-                    
                     costo = props.get("Costo AP", {}).get("number", 0)
                     nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
                     
-                    # Imagen
                     icon_url = None
-                    files_prop = props.get("Icono", {}).get("files", [])
-                    if files_prop:
-                        icon_url = files_prop[0].get("file", {}).get("url") or files_prop[0].get("external", {}).get("url")
+                    files = props.get("Icono", {}).get("files", [])
+                    if files: icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
 
-                    skills.append({
-                        "id": r["id"],
-                        "nombre": nombre,
-                        "desc": desc,
-                        "costo": costo,
-                        "nivel_req": nivel_req,
-                        "icon_url": icon_url
-                    })
+                    skills.append({"id": r["id"], "nombre": nombre, "desc": desc, "costo": costo, "nivel_req": nivel_req, "icon_url": icon_url})
                 except: pass
         return skills
     except: return []
