@@ -1276,7 +1276,7 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-   with tab_habilidades:
+    with tab_habilidades:
         st.markdown("### ⚡ MERCADO DE HABILIDADES")
         
         # Panel de Energía
