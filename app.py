@@ -27,7 +27,7 @@ from modules.notion_api import (
     cargar_misiones_activas, inscribir_jugador_mision, enviar_solicitud,
     procesar_codigo_canje, cargar_pregunta_aleatoria, procesar_recalibracion,
     cargar_estado_suministros, procesar_suministro,
-    cargar_anuncios, procesar_compra_habilidad
+    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades
 )
 
 from modules.utils import cargar_lottie_seguro, cargar_imagen_circular, generar_loot
