@@ -1276,17 +1276,18 @@ else:
                 st.session_state.ranking_data = cargar_ranking_filtrado(st.session_state.uni_actual, st.session_state.ano_actual)
                 st.rerun()
 
-    with tab_habilidades:
+   with tab_habilidades:
         st.markdown("### ⚡ MERCADO DE HABILIDADES")
         
         # Panel de Energía
+        # Usamos colores fijos (#00e5ff) para evitar errores de theme
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
 
         if is_alumni:
              st.info("⛔ El mercado de habilidades está cerrado para agentes retirados.")
         else:
-            # 1. Cargamos habilidades reales usando la nueva función
+            # 1. Cargamos habilidades reales usando la función del motor
             skills_reales = cargar_habilidades()
             
             if not skills_reales:
@@ -1301,21 +1302,23 @@ else:
                     # Estilos visuales según estado
                     opacity = "0.5" if bloqueada_por_nivel else "1.0"
                     icon_status = "🔒" if bloqueada_por_nivel else "🔓"
-                    border_color = "#555" if bloqueada_por_nivel else THEME['primary']
+                    # Usamos THEME['primary'] solo si existe, si no, verde por defecto
+                    primary_col = THEME.get('primary', '#00ff9d')
+                    border_color = "#555" if bloqueada_por_nivel else primary_col
                     grayscale = "filter: grayscale(1);" if bloqueada_por_nivel else ""
                     
-                    # Tarjeta HTML
+                    # Tarjeta HTML (CON COLORES FIJOS PARA EVITAR ERROR)
                     st.markdown(f"""
                     <div class="glass-card" style="padding: 15px; opacity: {opacity}; {grayscale} border-left: 4px solid {border_color}; margin-bottom: 10px; background: rgba(10, 20, 30, 0.6);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <div style="font-weight: bold; font-family: 'Orbitron'; color: #fff; font-size: 1.1em;">{icon_status} {item['nombre']}</div>
-                                <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">{item['desc']}</div>
-                                <div style="font-size: 0.7em; color: {THEME['secondary']}; margin-top:8px; font-weight: bold; letter-spacing: 1px;">REQ: NIVEL {item['nivel_req']}</div>
+                                <div style="font-weight: bold; font-family: 'Orbitron'; color: #ffffff; font-size: 1.1em;">{icon_status} {item['nombre']}</div>
+                                <div style="font-size: 0.9em; color: #aaaaaa; margin-top: 5px;">{item['desc']}</div>
+                                <div style="font-size: 0.7em; color: #888888; margin-top:8px; font-weight: bold; letter-spacing: 1px;">REQ: NIVEL {item['nivel_req']}</div>
                             </div>
                             <div style="text-align: right; min-width: 80px;">
-                                <div style="font-weight: bold; font-family: 'Orbitron'; font-size: 1.5em; color: {THEME['warning']}">{item['costo']}</div>
-                                <div style="font-size: 0.7em; color: {THEME['warning']};">AP</div>
+                                <div style="font-weight: bold; font-family: 'Orbitron'; font-size: 1.5em; color: #FFD700;">{item['costo']}</div>
+                                <div style="font-size: 0.7em; color: #FFD700;">AP</div>
                             </div>
                         </div>
                     </div>
