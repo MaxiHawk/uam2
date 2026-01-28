@@ -1277,53 +1277,77 @@ else:
                 st.rerun()
 
     with tab_habilidades:
-        st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
-        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val">{ap}</div></div>"""
+        st.markdown("### ⚡ MERCADO DE HABILIDADES")
+        
+        # Panel de Energía
+        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
-        habilidades = st.session_state.habilidades_data
-        if not habilidades: st.info("Sin datos en el Grimorio.")
+
+        if is_alumni:
+             st.info("⛔ El mercado de habilidades está cerrado para agentes retirados.")
         else:
-            for hab in habilidades:
-                nombre, costo = hab["nombre"], hab["costo"]
-                desbloqueada, puede_pagar = nivel_num >= hab["nivel_req"], ap >= costo
-                with st.container():
-                    border_color = THEME['primary'] if desbloqueada else "#1c2630"
-                    opacity, grayscale = ("1", "") if desbloqueada else ("0.5", "filter: grayscale(100%);")
-                    banner_html = f'<img src="{hab.get("icon_url")}" class="skill-banner-img">' if hab.get("icon_url") else '<div class="skill-banner-placeholder">💠</div>'
-                    ap_icon_html = f'<img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">'
-                    card_html = f"""<div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}"><div class="skill-banner-col">{banner_html}</div><div class="skill-content-col"><div class="skill-title">{nombre}</div><p class="skill-desc">{hab["descripcion"]}</p></div><div class="skill-cost-col">{ap_icon_html}<div class="skill-cost-val">{costo}</div><div class="skill-cost-label">AP</div></div></div>"""
-                    st.markdown(card_html, unsafe_allow_html=True)
-                    c_btn, _ = st.columns([1, 2])
-                    with c_btn:
-                        if is_alumni:
-                            st.button(f"⛔ CICLO CERRADO", disabled=True, key=f"alumni_hab_{hab['id']}")
-                        elif desbloqueada:
-                            with st.popover("💠 PREPARAR", use_container_width=True):
-                                st.markdown(f"### ⚠️ Confirmación de Conjuro\nEstás a punto de activar **{nombre}**.\n\n⚡ Costo: **{costo} AP**")
-                                
-                                # --- AQUÍ ESTÁ EL CAMBIO ---
-                                if st.button("🔥 CONFIRMAR", key=f"confirm_{hab['id']}"):
-                                    if puede_pagar:
-                                        with st.spinner("Canalizando..."):
-                                            time.sleep(1)
-                                            # Llamamos a la NUEVA función del motor
-                                            exito, msg = procesar_compra_habilidad(
-                                                skill_name=nombre,
-                                                cost_ap=costo,
-                                                cost_mp=0, # Asumimos coste MP 0 por ahora
-                                                skill_id_notion=hab['id']
-                                            )
+            # 1. Cargamos habilidades reales usando la nueva función
+            skills_reales = cargar_habilidades()
+            
+            if not skills_reales:
+                st.info("No hay habilidades disponibles en el mercado por ahora.")
+            else:
+                # 2. Renderizamos cada habilidad
+                for i, item in enumerate(skills_reales):
+                    # Lógica de Bloqueo
+                    bloqueada_por_nivel = nivel_num < item['nivel_req']
+                    sin_saldo = ap < item['costo']
+                    
+                    # Estilos visuales según estado
+                    opacity = "0.5" if bloqueada_por_nivel else "1.0"
+                    icon_status = "🔒" if bloqueada_por_nivel else "🔓"
+                    border_color = "#555" if bloqueada_por_nivel else THEME['primary']
+                    grayscale = "filter: grayscale(1);" if bloqueada_por_nivel else ""
+                    
+                    # Tarjeta HTML
+                    st.markdown(f"""
+                    <div class="glass-card" style="padding: 15px; opacity: {opacity}; {grayscale} border-left: 4px solid {border_color}; margin-bottom: 10px; background: rgba(10, 20, 30, 0.6);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-family: 'Orbitron'; color: #fff; font-size: 1.1em;">{icon_status} {item['nombre']}</div>
+                                <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">{item['desc']}</div>
+                                <div style="font-size: 0.7em; color: {THEME['secondary']}; margin-top:8px; font-weight: bold; letter-spacing: 1px;">REQ: NIVEL {item['nivel_req']}</div>
+                            </div>
+                            <div style="text-align: right; min-width: 80px;">
+                                <div style="font-weight: bold; font-family: 'Orbitron'; font-size: 1.5em; color: {THEME['warning']}">{item['costo']}</div>
+                                <div style="font-size: 0.7em; color: {THEME['warning']};">AP</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Botones de Acción
+                    col_btn, _ = st.columns([1, 2])
+                    with col_btn:
+                        if bloqueada_por_nivel:
+                            st.button(f"🔒 NIVEL {item['nivel_req']} REQUERIDO", disabled=True, key=f"lk_skill_{item['id']}", use_container_width=True)
+                        elif sin_saldo:
+                            st.button(f"💸 SALDO INSUFICIENTE", disabled=True, key=f"noap_skill_{item['id']}", use_container_width=True)
+                        else:
+                            # Si tiene nivel y tiene saldo -> PUEDE SOLICITAR
+                            with st.popover("⚡ SOLICITAR ACTIVACIÓN", use_container_width=True):
+                                st.write(f"¿Confirmar solicitud de **{item['nombre']}**?")
+                                st.info(f"Se enviará una petición al Comando.\nCosto: {item['costo']} AP")
+                                if st.button("CONFIRMAR ENVÍO", key=f"btn_skill_{item['id']}", type="primary"):
+                                    with st.spinner("Transmitiendo..."):
+                                        exito, msg = procesar_compra_habilidad(
+                                            item['nombre'], 
+                                            item['costo'], 
+                                            0, 
+                                            item['id']
+                                        )
+                                        if exito:
+                                            st.success(msg)
+                                            time.sleep(2)
+                                            st.rerun()
+                                        else:
+                                            st.error(msg)
                                             
-                                            if exito:
-                                                st.toast(f"✅ {msg}")
-                                                time.sleep(1)
-                                                actualizar_datos_sesion()
-                                            else:
-                                                st.error(f"Error: {msg}")
-                                    else: 
-                                        st.toast("❌ Energía Insuficiente", icon="⚠️")
-                                # ---------------------------
-                        else: st.button(f"🔒 Nivel {hab['nivel_req']}", disabled=True, key=f"lk_{hab['id']}")
     with tab_misiones:
         st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
         
