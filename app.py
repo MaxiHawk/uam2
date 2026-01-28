@@ -1277,67 +1277,72 @@ else:
                 st.rerun()
 
     with tab_habilidades:
-        st.markdown("### ⚡ MERCADO DE HABILIDADES")
+        # Recuperamos el Rol real del jugador
+        rol_jugador_actual = props.get("Rol", {}).get("select", {}).get("name")
         
-        # Panel de Energía
-        # Usamos colores fijos (#00e5ff) para evitar errores de theme
+        st.markdown(f"### ⚡ ARSENAL DE CLASE: {rol_jugador_actual.upper() if rol_jugador_actual else 'RECLUTA'}")
+        
+        # Panel de Energía (Diseño bonito)
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
 
         if is_alumni:
              st.info("⛔ El mercado de habilidades está cerrado para agentes retirados.")
+        elif not rol_jugador_actual:
+             st.warning("⚠️ Tu perfil no tiene un ROL asignado. Contacta al comando.")
         else:
-            # 1. Cargamos habilidades reales usando la función del motor
-            skills_reales = cargar_habilidades()
+            # 1. Cargamos habilidades FILTRADAS POR ROL
+            skills_reales = cargar_habilidades(rol_jugador_actual)
             
             if not skills_reales:
-                st.info("No hay habilidades disponibles en el mercado por ahora.")
+                st.info(f"No se encontraron habilidades para la clase **{rol_jugador_actual}**.")
             else:
-                # 2. Renderizamos cada habilidad
+                # 2. Renderizamos
                 for i, item in enumerate(skills_reales):
-                    # Lógica de Bloqueo
+                    # Lógica
                     bloqueada_por_nivel = nivel_num < item['nivel_req']
                     sin_saldo = ap < item['costo']
                     
-                    # Estilos visuales según estado
-                    opacity = "0.5" if bloqueada_por_nivel else "1.0"
-                    icon_status = "🔒" if bloqueada_por_nivel else "🔓"
-                    # Usamos THEME['primary'] solo si existe, si no, verde por defecto
-                    primary_col = THEME.get('primary', '#00ff9d')
-                    border_color = "#555" if bloqueada_por_nivel else primary_col
-                    grayscale = "filter: grayscale(1);" if bloqueada_por_nivel else ""
+                    # Estilos
+                    border_color = THEME.get('primary', '#00ff9d') if not bloqueada_por_nivel else "#333"
+                    opacity = "1.0" if not bloqueada_por_nivel else "0.6"
+                    grayscale = "" if not bloqueada_por_nivel else "filter: grayscale(100%);"
                     
-                    # Tarjeta HTML (CON COLORES FIJOS PARA EVITAR ERROR)
-                    st.markdown(f"""
-                    <div class="glass-card" style="padding: 15px; opacity: {opacity}; {grayscale} border-left: 4px solid {border_color}; margin-bottom: 10px; background: rgba(10, 20, 30, 0.6);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-weight: bold; font-family: 'Orbitron'; color: #ffffff; font-size: 1.1em;">{icon_status} {item['nombre']}</div>
-                                <div style="font-size: 0.9em; color: #aaaaaa; margin-top: 5px;">{item['desc']}</div>
-                                <div style="font-size: 0.7em; color: #888888; margin-top:8px; font-weight: bold; letter-spacing: 1px;">REQ: NIVEL {item['nivel_req']}</div>
-                            </div>
-                            <div style="text-align: right; min-width: 80px;">
-                                <div style="font-weight: bold; font-family: 'Orbitron'; font-size: 1.5em; color: #FFD700;">{item['costo']}</div>
-                                <div style="font-size: 0.7em; color: #FFD700;">AP</div>
-                            </div>
+                    # Imagen de la habilidad (o placeholder si no tiene en Notion)
+                    img_src = item['icon_url'] if item['icon_url'] else "https://img.icons8.com/nolan/64/code-file.png"
+                    
+                    # HTML COMPLEJO (EL BONITO)
+                    card_html = f"""
+                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
+                        <div class="skill-banner-col">
+                            <img src="{img_src}" class="skill-banner-img" style="width: 60px; height: 60px; object-fit: contain;">
+                        </div>
+                        <div class="skill-content-col">
+                            <div class="skill-title" style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.1em;">{item['nombre']}</div>
+                            <div class="skill-desc" style="font-size: 0.85em; color: #aaa; margin-top: 4px;">{item['desc']}</div>
+                            <div style="font-size: 0.7em; color: {THEME.get('text_highlight', '#ccc')}; margin-top: 5px; font-weight: bold;">REQ: NIVEL {item['nivel_req']}</div>
+                        </div>
+                        <div class="skill-cost-col">
+                            <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon" style="width: 30px;">
+                            <div class="skill-cost-val" style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.4em; color: #fff;">{item['costo']}</div>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # Botones de Acción
-                    col_btn, _ = st.columns([1, 2])
-                    with col_btn:
+                    # Botones de Acción (Debajo de la tarjeta bonita)
+                    c_fill, c_btn = st.columns([2, 1.5])
+                    with c_btn:
                         if bloqueada_por_nivel:
-                            st.button(f"🔒 NIVEL {item['nivel_req']} REQUERIDO", disabled=True, key=f"lk_skill_{item['id']}", use_container_width=True)
+                            st.button(f"🔒 NVL {item['nivel_req']}", disabled=True, key=f"lk_{item['id']}", use_container_width=True)
                         elif sin_saldo:
-                            st.button(f"💸 SALDO INSUFICIENTE", disabled=True, key=f"noap_skill_{item['id']}", use_container_width=True)
+                            st.button(f"💸 FALTA AP", disabled=True, key=f"noap_{item['id']}", use_container_width=True)
                         else:
-                            # Si tiene nivel y tiene saldo -> PUEDE SOLICITAR
-                            with st.popover("⚡ SOLICITAR ACTIVACIÓN", use_container_width=True):
-                                st.write(f"¿Confirmar solicitud de **{item['nombre']}**?")
-                                st.info(f"Se enviará una petición al Comando.\nCosto: {item['costo']} AP")
-                                if st.button("CONFIRMAR ENVÍO", key=f"btn_skill_{item['id']}", type="primary"):
-                                    with st.spinner("Transmitiendo..."):
+                            with st.popover("⚡ ACTIVAR", use_container_width=True):
+                                st.markdown(f"**{item['nombre']}**")
+                                st.caption("Se enviará la solicitud al Comando.")
+                                if st.button("CONFIRMAR GASTO", key=f"btn_{item['id']}", type="primary"):
+                                    with st.spinner("Procesando..."):
                                         exito, msg = procesar_compra_habilidad(
                                             item['nombre'], 
                                             item['costo'], 
@@ -1345,8 +1350,8 @@ else:
                                             item['id']
                                         )
                                         if exito:
-                                            st.success(msg)
-                                            time.sleep(2)
+                                            st.success("✅ Solicitud enviada")
+                                            time.sleep(1.5)
                                             st.rerun()
                                         else:
                                             st.error(msg)
