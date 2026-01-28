@@ -78,7 +78,7 @@ def cargar_datos_jugador(email):
         return None
     except: return None
 
-# --- 📢 ANUNCIOS ---
+# --- 📢 ANUNCIOS (CORREGIDO) ---
 @st.cache_data(ttl=600)
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
@@ -93,7 +93,22 @@ def cargar_anuncios():
                 try:
                     titulo = props.get("Titulo", {}).get("title", [{}])[0].get("text", {}).get("content", "Anuncio")
                     contenido = props.get("Contenido", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
-                    anuncios.append({"titulo": titulo, "contenido": contenido})
+                    
+                    # --- RESTAURADO: Datos vitales para popup y filtros ---
+                    uni_target = [u["name"] for u in props.get("Universidad", {}).get("multi_select", [])]
+                    ano_target = [a["name"] for a in props.get("Año", {}).get("multi_select", [])]
+                    
+                    fecha = r["created_time"]
+                    if "Fecha" in props and props["Fecha"]["date"]:
+                        fecha = props["Fecha"]["date"]["start"]
+
+                    anuncios.append({
+                        "titulo": titulo, 
+                        "contenido": contenido,
+                        "universidad": uni_target, 
+                        "año": ano_target, 
+                        "fecha": fecha
+                    })
                 except: pass
         return anuncios
     except: return []
@@ -115,8 +130,11 @@ def cargar_misiones_activas():
                 misiones.append({
                     "id": p["id"], "nombre": get_title("Misión"), "descripcion": get_text("Descripción"),
                     "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
+                    "f_apertura": props.get("Fecha Apertura", {}).get("date", {}).get("start"),
                     "f_cierre": props.get("Fecha Cierre", {}).get("date", {}).get("start"),
-                    "inscritos": get_text("Inscritos"), "password": get_text("Password"), "link": props.get("Link", {}).get("url", "#")
+                    "f_lanzamiento": props.get("Fecha Lanzamiento", {}).get("date", {}).get("start"), # Agregado por seguridad
+                    "inscritos": get_text("Inscritos"), "password": get_text("Password"), "link": props.get("Link", {}).get("url", "#"),
+                    "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])]
                 })
         return misiones
     except: return []
@@ -150,7 +168,6 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
 # --- 🛍️ MERCADO DE HABILIDADES ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
     current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
-    current_mp = st.session_state.jugador.get("MP", {}).get("number", 0)
     if current_ap < cost_ap: return False, "Saldo AP insuficiente."
     
     exito = enviar_solicitud("Compra Habilidad", f"Solicitud: {skill_name}", f"Costo: {cost_ap} AP", st.session_state.nombre)
@@ -159,12 +176,10 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
         return True, "Solicitud enviada al Comando."
     return False, "Error al enviar solicitud."
 
-# --- NUEVO: CARGAR HABILIDADES REALES ---
 @st.cache_data(ttl=3600)
 def cargar_habilidades():
     if not DB_HABILIDADES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
-    # Ordenamos por Nivel (Ascendente) y luego por Costo
     payload = {
         "sorts": [
             {"property": "Nivel Requerido", "direction": "ascending"},
@@ -177,7 +192,6 @@ def cargar_habilidades():
         if res.status_code == 200:
             for r in res.json().get("results", []):
                 props = r["properties"]
-                # Extracción segura basada en tu diagnóstico
                 try:
                     nombre = props.get("Habilidad", {}).get("title", [{}])[0].get("text", {}).get("content", "Skill")
                     desc = props.get("Descripcion", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
@@ -222,7 +236,7 @@ def procesar_suministro(rarity_name, rewards):
         return False
     except: return False
 
-# --- 🔐 CÓDIGOS Y TRIVIA (Sin Cambios) ---
+# --- 🔐 CÓDIGOS Y TRIVIA ---
 def procesar_codigo_canje(codigo_input):
     if not DB_CODIGOS_ID: return False, "Sistema offline."
     url = f"https://api.notion.com/v1/databases/{DB_CODIGOS_ID}/query"
