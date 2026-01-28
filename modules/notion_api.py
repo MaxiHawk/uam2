@@ -176,16 +176,29 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
         return True, "Solicitud enviada al Comando."
     return False, "Error al enviar solicitud."
 
-@st.cache_data(ttl=3600)
-def cargar_habilidades():
+# --- NUEVO: CARGAR HABILIDADES POR ROL Y CON IMAGEN ---
+@st.cache_data(ttl=300)
+def cargar_habilidades(rol_filtro=None):
     if not DB_HABILIDADES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
+    
+    # 1. Filtro dinámico: Si hay rol, filtramos por él.
+    filtros = []
+    if rol_filtro:
+        filtros.append({"property": "Rol", "select": {"equals": rol_filtro}})
+    
+    # Construimos el payload
     payload = {
         "sorts": [
             {"property": "Nivel Requerido", "direction": "ascending"},
             {"property": "Costo AP", "direction": "ascending"}
         ]
     }
+    
+    # Si hay filtros, los agregamos
+    if filtros:
+        payload["filter"] = {"and": filtros} if len(filtros) > 1 else filtros[0]
+
     try:
         res = requests.post(url, headers=headers, json=payload)
         skills = []
@@ -193,17 +206,31 @@ def cargar_habilidades():
             for r in res.json().get("results", []):
                 props = r["properties"]
                 try:
-                    nombre = props.get("Habilidad", {}).get("title", [{}])[0].get("text", {}).get("content", "Skill")
-                    desc = props.get("Descripcion", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
+                    # Extracción Robusta
+                    nombre = props.get("Habilidad", {}).get("title", [{}])[0].get("text", {}).get("content", "Habilidad Desconocida")
+                    
+                    # Descripción
+                    desc_list = props.get("Descripcion", {}).get("rich_text", [])
+                    desc = desc_list[0]["text"]["content"] if desc_list else "Sin descripción disponible."
+                    
+                    # Costos y Nivel
                     costo = props.get("Costo AP", {}).get("number", 0)
                     nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
                     
+                    # IMAGEN / ICONO (Files & Media)
+                    icon_url = None
+                    files_prop = props.get("Icono", {}).get("files", [])
+                    if files_prop:
+                        # Notion puede dar 'file' (temporal) o 'external' (permanente)
+                        icon_url = files_prop[0].get("file", {}).get("url") or files_prop[0].get("external", {}).get("url")
+
                     skills.append({
                         "id": r["id"],
                         "nombre": nombre,
                         "desc": desc,
                         "costo": costo,
-                        "nivel_req": nivel_req
+                        "nivel_req": nivel_req,
+                        "icon_url": icon_url  # <--- Nuevo campo imagen
                     })
                 except: pass
         return skills
