@@ -1277,19 +1277,21 @@ else:
                 st.rerun()
 
     with tab_habilidades:
-        # Recuperamos el Rol real del jugador
-        rol_jugador_actual = props.get("Rol", {}).get("select", {}).get("name")
+        # --- CORRECCIÓN: Usamos 'p' en lugar de 'props' ---
+        rol_data = p.get("Rol", {}).get("select")
+        rol_jugador_actual = rol_data.get("name") if rol_data else None
         
-        st.markdown(f"### ⚡ ARSENAL DE CLASE: {rol_jugador_actual.upper() if rol_jugador_actual else 'RECLUTA'}")
+        titulo_rol = rol_jugador_actual.upper() if rol_jugador_actual else "RECLUTA (SIN ROL)"
+        st.markdown(f"### ⚡ ARSENAL DE CLASE: {titulo_rol}")
         
-        # Panel de Energía (Diseño bonito)
+        # Panel de Energía
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
 
         if is_alumni:
              st.info("⛔ El mercado de habilidades está cerrado para agentes retirados.")
         elif not rol_jugador_actual:
-             st.warning("⚠️ Tu perfil no tiene un ROL asignado. Contacta al comando.")
+             st.warning("⚠️ Tu perfil no tiene un ROL asignado en la base de datos. Contacta al comando para que te asignen una clase.")
         else:
             # 1. Cargamos habilidades FILTRADAS POR ROL
             skills_reales = cargar_habilidades(rol_jugador_actual)
@@ -1304,11 +1306,13 @@ else:
                     sin_saldo = ap < item['costo']
                     
                     # Estilos
-                    border_color = THEME.get('primary', '#00ff9d') if not bloqueada_por_nivel else "#333"
+                    # Usamos colores fijos por si THEME no tiene 'primary'
+                    primary_col = THEME.get('primary', '#00ff9d')
+                    border_color = primary_col if not bloqueada_por_nivel else "#333"
                     opacity = "1.0" if not bloqueada_por_nivel else "0.6"
                     grayscale = "" if not bloqueada_por_nivel else "filter: grayscale(100%);"
                     
-                    # Imagen de la habilidad (o placeholder si no tiene en Notion)
+                    # Imagen de la habilidad (o placeholder)
                     img_src = item['icon_url'] if item['icon_url'] else "https://img.icons8.com/nolan/64/code-file.png"
                     
                     # HTML COMPLEJO (EL BONITO)
@@ -1320,7 +1324,7 @@ else:
                         <div class="skill-content-col">
                             <div class="skill-title" style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.1em;">{item['nombre']}</div>
                             <div class="skill-desc" style="font-size: 0.85em; color: #aaa; margin-top: 4px;">{item['desc']}</div>
-                            <div style="font-size: 0.7em; color: {THEME.get('text_highlight', '#ccc')}; margin-top: 5px; font-weight: bold;">REQ: NIVEL {item['nivel_req']}</div>
+                            <div style="font-size: 0.7em; color: #ccc; margin-top: 5px; font-weight: bold;">REQ: NIVEL {item['nivel_req']}</div>
                         </div>
                         <div class="skill-cost-col">
                             <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon" style="width: 30px;">
@@ -1330,7 +1334,7 @@ else:
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # Botones de Acción (Debajo de la tarjeta bonita)
+                    # Botones de Acción
                     c_fill, c_btn = st.columns([2, 1.5])
                     with c_btn:
                         if bloqueada_por_nivel:
