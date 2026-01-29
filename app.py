@@ -435,7 +435,20 @@ st.markdown(f"""
             .skill-banner-col {{ width: 60px; }}
             .skill-content-col {{ padding: 10px; }}
             .skill-cost-col {{ width: 70px; padding: 5px; }}
-            .skill-cost-icon {{ width: 25px; height: 25px; }}
+            .skill-cost-icon {{ 
+            width: 35px; 
+            height: 35px; 
+            margin-bottom: 5px; 
+            /* EFECTO NEÓN AZUL */
+            filter: drop-shadow(0 0 5px #00e5ff) drop-shadow(0 0 10px #00e5ff);
+            transition: 0.3s;
+        }}
+
+        /* EFECTO AL PASAR EL MOUSE (OPCIONAL PERO RECOMENDADO) */
+        .skill-card-container:hover .skill-cost-icon {{
+            filter: drop-shadow(0 0 8px #00e5ff) drop-shadow(0 0 20px #00e5ff);
+            transform: scale(1.1);
+        }}
             .skill-cost-val {{ font-size: 1.4em; }}
             .rank-cell {{ padding: 8px 5px; font-size: 0.9em; }}
             .rank-cell-rank {{ width: 30px; font-size: 1em; }}
