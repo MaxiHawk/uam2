@@ -5,9 +5,8 @@ from datetime import datetime
 import pytz
 import random
 import json
-import re  # NUEVO: Para validación de expresiones regulares
 
-# Importamos la configuración centralizada
+# Importamos Configuración
 from config import (
     HEADERS, 
     DB_CONFIG_ID, DB_LOGS_ID, DB_JUGADORES_ID, DB_MISIONES_ID, 
@@ -15,49 +14,37 @@ from config import (
     DB_ANUNCIOS_ID, DB_MERCADO_ID
 )
 
-# --- ALIAS DE COMPATIBILIDAD ---
+# Importamos las NUEVAS Herramientas Maestras
+from modules.utils import (
+    get_notion_text, get_notion_number, get_notion_select, 
+    get_notion_multi_select, get_notion_date, get_notion_url, 
+    get_notion_checkbox, get_notion_file_url, validar_codigo_seguro
+)
+
+# Alias y Constantes
 headers = HEADERS 
-TIMEOUT_SEC = 10  # NUEVO: Límite de tiempo estándar para peticiones (segundos)
+TIMEOUT_SEC = 10 
 
 # --- 🛠️ UTILIDADES INTERNAS ---
 def get_chile_time_iso():
     return datetime.now(pytz.timezone('America/Santiago')).isoformat()
 
 def get_player_metadata():
-    """
-    Recupera Universidad y Año de forma robusta desde la sesión.
-    Prioriza las variables procesadas 'uni_actual' y 'ano_actual'.
-    """
+    """Recupera Universidad y Año priorizando sesión."""
     try:
         uni = st.session_state.get("uni_actual")
         ano = st.session_state.get("ano_actual")
         if uni and ano: return uni, ano
 
-        # Fallback
+        # Fallback manual usando helpers
         if "jugador" in st.session_state and st.session_state.jugador:
             props = st.session_state.jugador.get("properties", {})
-            if not uni and "Universidad" in props:
-                sel = props["Universidad"].get("select")
-                if sel: uni = sel.get("name")
-            if not ano and "Año" in props:
-                sel = props["Año"].get("select")
-                if sel: ano = sel.get("name")
+            if not uni: uni = get_notion_select(props, "Universidad")
+            if not ano: ano = get_notion_select(props, "Año")
         return uni, ano
     except Exception as e: 
         print(f"❌ ERROR METADATA: {e}")
         return None, None
-
-def validar_codigo_seguro(codigo):
-    """
-    NUEVO: Valida que el código tenga un formato seguro antes de enviarlo a la API.
-    Permite solo letras mayúsculas, números y guiones.
-    """
-    if not codigo: return False
-    codigo = codigo.strip().upper()
-    # Regex: Solo A-Z, 0-9 y guiones (-). Evita inyecciones raras.
-    if re.match(r'^[A-Z0-9-]+$', codigo):
-        return True
-    return False
 
 def notion_fetch_all(url, payload):
     """Función maestra con Paginación + TIMEOUTS."""
@@ -69,7 +56,6 @@ def notion_fetch_all(url, payload):
     while has_more:
         if next_cursor: payload["start_cursor"] = next_cursor
         try:
-            # NUEVO: Agregado timeout=TIMEOUT_SEC
             response = requests.post(url, headers=headers, json=payload, timeout=TIMEOUT_SEC)
             if response.status_code == 200:
                 data = response.json()
@@ -77,25 +63,23 @@ def notion_fetch_all(url, payload):
                 has_more = data.get("has_more", False)
                 next_cursor = data.get("next_cursor", None)
             else:
-                print(f"❌ Error Notion {response.status_code}: {response.text}")
                 has_more = False
-        except Exception as e:
-            print(f"❌ Error Conexión: {e}")
-            has_more = False
+        except: has_more = False
     return results
 
-# --- 🛡️ SISTEMA (CONFIG & LOGS) ---
+# --- 🛡️ SISTEMA ---
 @st.cache_data(ttl=60, show_spinner=False)
 def verificar_modo_mantenimiento():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
         payload = {"filter": {"property": "Clave", "title": {"equals": "MODO_MANTENIMIENTO"}}}
-        res = requests.post(url, headers=headers, json=payload, timeout=5) # Timeout corto
+        res = requests.post(url, headers=headers, json=payload, timeout=5)
         if res.status_code == 200:
             results = res.json().get("results", [])
             if results:
-                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
+                # Usamos el helper checkbox
+                return get_notion_checkbox(results[0]["properties"], "Activo")
         return False
     except: return False
 
@@ -114,8 +98,7 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO"):
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
-    payload = {"parent": {"database_id": DB_LOGS_ID}, "properties": properties}
-    try: requests.post(url, headers=headers, json=payload, timeout=5)
+    try: requests.post(url, headers=headers, json={"parent": {"database_id": DB_LOGS_ID}, "properties": properties}, timeout=5)
     except: pass
 
 # --- 👤 JUGADORES ---
@@ -131,7 +114,7 @@ def cargar_datos_jugador(email):
         return None
     except: return None
 
-# --- 📢 ANUNCIOS ---
+# --- 📢 ANUNCIOS (REFACTORIZADO) ---
 @st.cache_data(ttl=600)
 def cargar_anuncios():
     if not DB_ANUNCIOS_ID: return []
@@ -144,28 +127,18 @@ def cargar_anuncios():
     
     anuncios = []
     for r in raw_results:
-        props = r["properties"]
-        try:
-            titulo_list = props.get("Titulo", {}).get("title", [])
-            titulo = titulo_list[0]["text"]["content"] if titulo_list else "Anuncio"
-            cont_list = props.get("Contenido", {}).get("rich_text", [])
-            contenido = cont_list[0]["text"]["content"] if cont_list else ""
-            
-            uni_target = [u["name"] for u in props.get("Universidad", {}).get("multi_select", [])]
-            ano_target = [a["name"] for a in props.get("Año", {}).get("multi_select", [])]
-            
-            fecha = r["created_time"]
-            if "Fecha" in props and props["Fecha"]["date"]:
-                fecha = props["Fecha"]["date"]["start"]
-
-            anuncios.append({
-                "titulo": titulo, "contenido": contenido,
-                "universidad": uni_target, "año": ano_target, "fecha": fecha
-            })
-        except: pass
+        p = r["properties"]
+        # ¡Mira qué limpio queda esto con los helpers!
+        anuncios.append({
+            "titulo": get_notion_text(p, "Titulo", "Anuncio"),
+            "contenido": get_notion_text(p, "Contenido"),
+            "universidad": get_notion_multi_select(p, "Universidad"),
+            "año": get_notion_multi_select(p, "Año"),
+            "fecha": get_notion_date(p, "Fecha") or r["created_time"]
+        })
     return anuncios
 
-# --- 🚀 MISIONES ---
+# --- 🚀 MISIONES (REFACTORIZADO) ---
 @st.cache_data(ttl=600)
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
@@ -177,40 +150,32 @@ def cargar_misiones_activas():
     raw_results = notion_fetch_all(url, payload)
     
     misiones = []
-    for p in raw_results:
-        props = p["properties"]
-        def get_text(prop_name):
-            l = props.get(prop_name, {}).get("rich_text", [])
-            return l[0]["text"]["content"] if l else ""
-        def get_title(prop_name):
-            l = props.get(prop_name, {}).get("title", [])
-            return l[0]["text"]["content"] if l else "Sin Título"
-
+    for r in raw_results:
+        p = r["properties"]
         misiones.append({
-            "id": p["id"],
-            "nombre": get_title("Misión"),
-            "descripcion": get_text("Descripción"),
-            "tipo": props.get("Tipo", {}).get("select", {}).get("name", "Misión"),
-            "f_apertura": props.get("Fecha Apertura", {}).get("date", {}).get("start"),
-            "f_cierre": props.get("Fecha Cierre", {}).get("date", {}).get("start"),
-            "f_lanzamiento": props.get("Fecha Lanzamiento", {}).get("date", {}).get("start"),
-            "inscritos": get_text("Inscritos"),
-            "target_unis": [x["name"] for x in props.get("Universidad Objetivo", {}).get("multi_select", [])],
-            "password": get_text("Password"),
-            "link": props.get("Link", {}).get("url", "#")
+            "id": r["id"],
+            "nombre": get_notion_text(p, "Misión", "Sin Título"),
+            "descripcion": get_notion_text(p, "Descripción"),
+            "tipo": get_notion_select(p, "Tipo", "Misión"),
+            "f_apertura": get_notion_date(p, "Fecha Apertura"),
+            "f_cierre": get_notion_date(p, "Fecha Cierre"),
+            "f_lanzamiento": get_notion_date(p, "Fecha Lanzamiento"),
+            "inscritos": get_notion_text(p, "Inscritos"),
+            "target_unis": get_notion_multi_select(p, "Universidad Objetivo"),
+            "password": get_notion_text(p, "Password"),
+            "link": get_notion_url(p, "Link")
         })
     return misiones
 
 def inscribir_jugador_mision(page_id, inscritos_frontend, nombre_jugador):
     url_get = f"https://api.notion.com/v1/pages/{page_id}"
     try:
-        # Paso 1: Leer estado actual real con timeout
         res_get = requests.get(url_get, headers=headers, timeout=TIMEOUT_SEC)
         if res_get.status_code != 200: return False
         
+        # Usamos helper para leer inscritos actuales de la DB real
         props_live = res_get.json()["properties"]
-        l_inscritos = props_live.get("Inscritos", {}).get("rich_text", [])
-        texto_inscritos_real = l_inscritos[0]["text"]["content"] if l_inscritos else ""
+        texto_inscritos_real = get_notion_text(props_live, "Inscritos")
         
         lista_actual = [x.strip() for x in texto_inscritos_real.split(",")]
         if nombre_jugador in lista_actual: return True 
@@ -225,18 +190,12 @@ def inscribir_jugador_mision(page_id, inscritos_frontend, nombre_jugador):
             st.cache_data.clear() 
             return True
         return False
-    except Exception as e:
-        print(f"Error inscripción: {e}")
-        return False
+    except: return False
 
-# --- ⚡ HABILIDADES (MOVIDO A BACKEND PARA LIMPIEZA) ---
+# --- ⚡ HABILIDADES (REFACTORIZADO) ---
 @st.cache_data(ttl=3600)
 def cargar_habilidades(rol_jugador):
-    """
-    Carga habilidades desde el backend, con búsqueda inteligente de título.
-    """
-    if not rol_jugador: return []
-    if not DB_HABILIDADES_ID: return []
+    if not rol_jugador or not DB_HABILIDADES_ID: return []
     
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
     payload = {
@@ -249,44 +208,29 @@ def cargar_habilidades(rol_jugador):
         habilidades = []
         if res.status_code == 200:
             for item in res.json()["results"]:
-                props = item["properties"]
-                try:
-                    # BÚSQUEDA INTELIGENTE DEL TÍTULO
-                    nombre = "Habilidad Sin Nombre"
-                    for key, val in props.items():
-                        if val['type'] == 'title':
-                            content_list = val.get("title", [])
-                            if content_list:
-                                nombre = "".join([t.get("plain_text", "") for t in content_list])
-                            break 
-
-                    costo = 0
-                    if "Costo AP" in props: costo = props.get("Costo AP", {}).get("number", 0)
-                    elif "Costo" in props: costo = props.get("Costo", {}).get("number", 0)
-                    
-                    nivel_req = 1
-                    if "Nivel Requerido" in props: 
-                        nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
-
-                    desc_obj = props.get("Descripcion", {}).get("rich_text", [])
-                    descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
-                    
-                    icon_url = None
-                    if "Icono" in props:
-                        files = props["Icono"].get("files", [])
-                        if files: 
-                            icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
-                        
-                    habilidades.append({
-                        "id": item["id"], 
-                        "nombre": nombre, 
-                        "costo": costo, 
-                        "nivel_req": nivel_req, 
-                        "desc": descripcion, # Nota: en app usabas 'desc' o 'descripcion'? Estandarizamos a 'desc'
-                        "descripcion": descripcion, # Duplicamos para compatibilidad
-                        "icon_url": icon_url
-                    })
-                except Exception as e: pass
+                p = item["properties"]
+                
+                # Búsqueda inteligente de título integrada
+                nombre = "Habilidad Sin Nombre"
+                for key, val in p.items():
+                    if val['type'] == 'title':
+                        # Usamos la lógica del helper pero aplicada dinámicamente
+                        content_list = val.get("title", [])
+                        if content_list: nombre = "".join([t.get("plain_text", "") for t in content_list])
+                        break 
+                
+                # Usamos helpers para el resto
+                # Soporta "Costo AP" o "Costo"
+                costo = get_notion_number(p, "Costo AP") or get_notion_number(p, "Costo")
+                
+                habilidades.append({
+                    "id": item["id"], 
+                    "nombre": nombre, 
+                    "costo": costo, 
+                    "nivel_req": get_notion_number(p, "Nivel Requerido", 1),
+                    "desc": get_notion_text(p, "Descripcion", "Sin descripción"),
+                    "icon_url": get_notion_file_url(p, "Icono")
+                })
         return habilidades
     except: return []
 
@@ -307,32 +251,27 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
-    payload = {"parent": {"database_id": DB_SOLICITUDES_ID}, "properties": properties}
-    try:
-        res = requests.post(url, headers=headers, json=payload, timeout=TIMEOUT_SEC)
-        return res.status_code == 200
+    try: return requests.post(url, headers=headers, json={"parent": {"database_id": DB_SOLICITUDES_ID}, "properties": properties}, timeout=TIMEOUT_SEC).status_code == 200
     except: return False
 
 # --- 🛍️ MERCADO ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
-    current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
-    current_mp = st.session_state.jugador.get("MP", {}).get("number", 0)
+    player = st.session_state.jugador
+    current_ap = get_notion_number(player.get("properties", {}), "AP")
+    current_mp = get_notion_number(player.get("properties", {}), "MP")
     
     if current_ap < cost_ap or current_mp < cost_mp:
-        return False, "Saldo insuficiente para solicitar."
+        return False, "Saldo insuficiente."
 
-    msg_solicitud = f"Solicitud de activación: {skill_name}"
-    detalles_solicitud = f"Costo: {cost_ap} AP | {cost_mp} MP. (Esperando aprobación manual)."
+    msg = f"Solicitud de activación: {skill_name}"
+    detalles = f"Costo: {cost_ap} AP | {cost_mp} MP."
     
-    exito = enviar_solicitud("Compra Habilidad", msg_solicitud, detalles_solicitud, st.session_state.nombre)
-    
-    if exito:
+    if enviar_solicitud("Compra Habilidad", msg, detalles, st.session_state.nombre):
         registrar_evento_sistema(st.session_state.nombre, "Solicitud Habilidad", f"{skill_name}", "Mercado")
-        return True, "Solicitud enviada al Comando."
-    else:
-        return False, "Error al enviar solicitud."
+        return True, "Solicitud enviada."
+    return False, "Error al enviar solicitud."
 
-# --- 📦 SUMINISTROS ---
+# --- 📦 SUMINISTROS (REFACTORIZADO) ---
 def cargar_estado_suministros():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
@@ -341,17 +280,21 @@ def cargar_estado_suministros():
         res = requests.post(url, headers=headers, json=payload, timeout=5)
         if res.status_code == 200:
             results = res.json().get("results", [])
-            if results:
-                return results[0]["properties"].get("Activo", {}).get("checkbox", False)
+            if results: return get_notion_checkbox(results[0]["properties"], "Activo")
         return False
     except: return False
 
 def procesar_suministro(rarity_name, rewards):
     try:
-        player = st.session_state.jugador
-        new_ap = player.get("AP", {}).get("number", 0) + rewards["AP"]
-        new_mp = player.get("MP", {}).get("number", 0) + rewards["MP"]
-        new_vp = min(100, player.get("VP", {}).get("number", 0) + rewards["VP"])
+        # Leemos con helpers desde el estado actual
+        props_jugador = st.session_state.jugador.get("properties", {})
+        current_ap = get_notion_number(props_jugador, "AP")
+        current_mp = get_notion_number(props_jugador, "MP")
+        current_vp = get_notion_number(props_jugador, "VP")
+
+        new_ap = current_ap + rewards["AP"]
+        new_mp = current_mp + rewards["MP"]
+        new_vp = min(100, current_vp + rewards["VP"])
         
         url = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
         payload = {
@@ -365,19 +308,19 @@ def procesar_suministro(rarity_name, rewards):
         res = requests.patch(url, headers=headers, json=payload, timeout=TIMEOUT_SEC)
         
         if res.status_code == 200:
-            detalle_txt = f"Farmeo {rarity_name}: AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
-            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle_txt, "Suministro")
+            detalle = f"Farmeo {rarity_name}: AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
+            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle, "Suministro")
             return True
         return False
     except: return False
 
-# --- 🔐 CÓDIGOS DE CANJE (AHORA CON VALIDACIÓN) ---
+# --- 🔐 CÓDIGOS (REFACTORIZADO) ---
 def procesar_codigo_canje(codigo_input):
     if not DB_CODIGOS_ID: return False, "Sistema offline."
     
-    # NUEVO: VALIDACIÓN PREVIA (Evita inyección y formatos raros)
+    # Validación segura (Ahora importada de utils)
     if not validar_codigo_seguro(codigo_input):
-        return False, "❌ Formato de código inválido (use A-Z, 0-9)."
+        return False, "❌ Formato inválido (use A-Z, 0-9)."
 
     url = f"https://api.notion.com/v1/databases/{DB_CODIGOS_ID}/query"
     payload = {
@@ -395,29 +338,27 @@ def procesar_codigo_canje(codigo_input):
         if not results: return False, "❌ Código inválido o expirado."
         
         code_page = results[0]
-        props = code_page["properties"]
-        page_id = code_page["id"]
+        p_code = code_page["properties"]
         
-        redeemed_text = ""
-        if props.get("Redimido Por", {}).get("rich_text"):
-            redeemed_text = props["Redimido Por"]["rich_text"][0]["text"]["content"]
-            
+        redeemed_text = get_notion_text(p_code, "Redimido Por")
         if st.session_state.nombre in [x.strip() for x in redeemed_text.split(",")]:
             return False, "⚠️ Ya canjeaste este código."
 
-        limit = props.get("Limite Usos", {}).get("number")
-        current_uses = props.get("Usos Actuales", {}).get("number", 0)
+        limit = get_notion_number(p_code, "Limite Usos", None) # None si no hay límite
+        current_uses = get_notion_number(p_code, "Usos Actuales")
+        
         if limit is not None and current_uses >= limit:
             return False, "⚠️ Código agotado."
             
-        rew_ap = props.get("Valor AP", {}).get("number", 0)
-        rew_mp = props.get("Valor MP", {}).get("number", 0)
-        rew_vp = props.get("Valor VP", {}).get("number", 0)
+        rew_ap = get_notion_number(p_code, "Valor AP")
+        rew_mp = get_notion_number(p_code, "Valor MP")
+        rew_vp = get_notion_number(p_code, "Valor VP")
         
-        player = st.session_state.jugador
-        new_ap = player.get("AP", {}).get("number", 0) + rew_ap
-        new_mp = player.get("MP", {}).get("number", 0) + rew_mp
-        new_vp = min(100, player.get("VP", {}).get("number", 0) + rew_vp)
+        # Actualizamos jugador
+        p_player = st.session_state.jugador.get("properties", {})
+        new_ap = get_notion_number(p_player, "AP") + rew_ap
+        new_mp = get_notion_number(p_player, "MP") + rew_mp
+        new_vp = min(100, get_notion_number(p_player, "VP") + rew_vp)
         
         url_p = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
         req_p = requests.patch(url_p, headers=headers, json={
@@ -425,22 +366,22 @@ def procesar_codigo_canje(codigo_input):
         }, timeout=TIMEOUT_SEC)
         
         if req_p.status_code == 200:
+            # Actualizamos código
             new_list = f"{redeemed_text}, {st.session_state.nombre}" if redeemed_text else st.session_state.nombre
-            requests.patch(f"https://api.notion.com/v1/pages/{page_id}", headers=headers, json={
+            requests.patch(f"https://api.notion.com/v1/pages/{code_page['id']}", headers=headers, json={
                 "properties": {
                     "Usos Actuales": {"number": current_uses + 1},
                     "Redimido Por": {"rich_text": [{"text": {"content": new_list}}]}
                 }
             }, timeout=TIMEOUT_SEC)
             
-            detalle_log = f"Código: {codigo_input} | +{rew_ap} AP, +{rew_mp} MP, +{rew_vp} VP"
-            registrar_evento_sistema(st.session_state.nombre, "Canje Código", detalle_log, "Código")
-            
+            detalle = f"Código: {codigo_input} | +{rew_ap} AP, +{rew_mp} MP, +{rew_vp} VP"
+            registrar_evento_sistema(st.session_state.nombre, "Canje Código", detalle, "Código")
             return True, f"¡Canjeado! +{rew_ap} AP"
         return False, "Error al actualizar perfil."
     except Exception as e: return False, str(e)
 
-# --- 🔮 TRIVIA ---
+# --- 🔮 TRIVIA (REFACTORIZADO) ---
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
     url = f"https://api.notion.com/v1/databases/{DB_TRIVIA_ID}/query"
@@ -455,20 +396,20 @@ def cargar_pregunta_aleatoria():
         
         return {
             "ref_id": q["id"],
-            "pregunta": p["Pregunta"]["title"][0]["text"]["content"],
-            "opcion_a": p["Opción A"]["rich_text"][0]["text"]["content"],
-            "opcion_b": p["Opción B"]["rich_text"][0]["text"]["content"],
-            "opcion_c": p["Opción C"]["rich_text"][0]["text"]["content"],
-            "correcta": p["Correcta"]["select"]["name"],
-            "recompensa": p["Recompensa AP"]["number"],
-            "exp_correcta": p.get("Explicación Correcta", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "Correcto"),
-            "exp_incorrecta": p.get("Explicación Incorrecta", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "Incorrecto")
+            "pregunta": get_notion_text(p, "Pregunta"),
+            "opcion_a": get_notion_text(p, "Opción A"),
+            "opcion_b": get_notion_text(p, "Opción B"),
+            "opcion_c": get_notion_text(p, "Opción C"),
+            "correcta": get_notion_select(p, "Correcta"),
+            "recompensa": get_notion_number(p, "Recompensa AP"),
+            "exp_correcta": get_notion_text(p, "Explicación Correcta", "Correcto"),
+            "exp_incorrecta": get_notion_text(p, "Explicación Incorrecta", "Incorrecto")
         }
     except: return None
 
 def procesar_recalibracion(reward_ap, is_correct, question_id):
     if is_correct and reward_ap > 0:
-        current_ap = st.session_state.jugador.get("AP", {}).get("number", 0)
+        current_ap = get_notion_number(st.session_state.jugador.get("properties", {}), "AP")
         url = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
         requests.patch(url, headers=headers, json={"properties": {"AP": {"number": current_ap + reward_ap}}}, timeout=TIMEOUT_SEC)
     
