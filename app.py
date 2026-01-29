@@ -1416,7 +1416,7 @@ else:
                                     <div style="font-family: 'Orbitron'; font-size: 1.6em; font-weight: bold; color: #00e5ff; margin: 10px 0; text-shadow: 0 0 15px #00e5ff;">{item['nombre']}</div>
                                     <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;">
                                         <span style="color: #fff;">COSTO:</span>
-                                        <span style="color: #FFD700; font-weight: bold; font-size: 1.2em;">{item['costo']} AP</span>
+                                        <span style="color: #00e5ff; font-weight: bold; font-size: 1.2em; text-shadow: 0 0 5px #00e5ff;">{item['costo']} AP</span>
                                     </div>
                                     <div style="font-size: 0.8em; color: #ccc; font-style: italic;">"Se enviará una solicitud prioritaria al Comando."</div>
                                 </div>
