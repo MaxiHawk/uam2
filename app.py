@@ -1281,11 +1281,10 @@ else:
         rol_data = p.get("Rol", {}).get("select")
         rol_jugador_actual = rol_data.get("name") if rol_data else None
         
-        # TEXTO CORREGIDO 1
         titulo_rol = rol_jugador_actual.upper() if rol_jugador_actual else "RECLUTA"
         st.markdown(f"### ⚡ HABILIDADES DE: {titulo_rol}")
         
-        # TEXTO CORREGIDO 2 (ANGIOPOINTS)
+        # Panel de Energía
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ANGIOPOINTS<br>DISPONIBLES</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
 
@@ -1294,6 +1293,7 @@ else:
         elif not rol_jugador_actual:
              st.warning("⚠️ Tu perfil no tiene un ROL asignado. Contacta al comando.")
         else:
+            # Forzamos recarga si el nombre no se ve (limpia cache en la primera carga)
             skills_reales = cargar_habilidades(rol_jugador_actual)
             
             if not skills_reales:
@@ -1308,26 +1308,25 @@ else:
                     primary_col = THEME.get('primary', '#00ff9d')
                     border_color = primary_col if not bloqueada_por_nivel else "#444"
                     opacity = "1.0" if not bloqueada_por_nivel else "0.7"
-                    # Si está bloqueada, usamos escala de grises fuerte
                     grayscale = "" if not bloqueada_por_nivel else "filter: grayscale(100%);"
                     
-                    # Imagen: Si no hay, usamos un placeholder genérico
+                    # Imagen
                     img_src = item['icon_url'] if item['icon_url'] else "https://cdn-icons-png.flaticon.com/512/2646/2646067.png"
                     
-                    # HTML MEJORADO: IMAGEN FULL HEIGHT/WIDTH EN COLUMNA IZQUIERDA
+                    # --- DISEÑO MEJORADO: Texto más grande ---
                     card_html = f"""
-                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale} height: 140px;">
-                        <div class="skill-banner-col" style="width: 140px; padding: 0; overflow: hidden; background: #000;">
+                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale} height: 150px;">
+                        <div class="skill-banner-col" style="width: 150px; padding: 0; overflow: hidden; background: #000;">
                             <img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
                         </div>
-                        <div class="skill-content-col" style="padding-left: 20px;">
-                            <div class="skill-title" style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.3em; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,0,0,0.8);">{item['nombre']}</div>
-                            <div class="skill-desc" style="font-size: 0.85em; color: #bbb; margin-top: 5px; line-height: 1.2;">{item['desc']}</div>
-                            <div style="font-size: 0.75em; color: {border_color}; margin-top: 8px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">🔒 NIVEL REQUERIDO: {item['nivel_req']}</div>
+                        <div class="skill-content-col" style="padding-left: 25px;">
+                            <div class="skill-title" style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.4em; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,0,0,0.8); margin-bottom: 5px;">{item['nombre']}</div>
+                            <div class="skill-desc" style="font-size: 1em; color: #ddd; margin-top: 5px; line-height: 1.3;">{item['desc']}</div>
+                            <div style="font-size: 0.85em; color: {border_color}; margin-top: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">🔒 NIVEL REQUERIDO: {item['nivel_req']}</div>
                         </div>
-                        <div class="skill-cost-col" style="min-width: 90px; background: rgba(0,0,0,0.3);">
-                            <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon" style="width: 35px; margin-bottom: 5px;">
-                            <div class="skill-cost-val" style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.6em; color: #fff; text-shadow: 0 0 10px #00e5ff;">{item['costo']}</div>
+                        <div class="skill-cost-col" style="min-width: 100px; background: rgba(0,0,0,0.3);">
+                            <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon" style="width: 40px; margin-bottom: 5px;">
+                            <div class="skill-cost-val" style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.8em; color: #fff; text-shadow: 0 0 10px #00e5ff;">{item['costo']}</div>
                         </div>
                     </div>
                     """
@@ -1337,13 +1336,11 @@ else:
                     c_fill, c_btn = st.columns([1.5, 1.5])
                     with c_btn:
                         if bloqueada_por_nivel:
-                            st.button(f"🔒 NIVEL {item['nivel_req']}", disabled=True, key=f"lk_{item['id']}", use_container_width=True)
+                            st.button(f"🔒 NVL {item['nivel_req']}", disabled=True, key=f"lk_{item['id']}", use_container_width=True)
                         elif sin_saldo:
                             st.button(f"💸 FALTA AP", disabled=True, key=f"noap_{item['id']}", use_container_width=True)
                         else:
-                            # POPOVER ÉPICO
                             with st.popover("⚡ ACTIVAR", use_container_width=True):
-                                # Usamos HTML dentro del popover para darle estilo
                                 st.markdown(f"""
                                 <div style="text-align: center; border: 1px solid {primary_col}; padding: 15px; border-radius: 10px; background: rgba(0,0,0,0.5);">
                                     <div style="color: #aaa; font-size: 0.8em; letter-spacing: 2px;">CONFIRMAR DESPLIEGUE</div>
@@ -1367,7 +1364,7 @@ else:
                                             item['id']
                                         )
                                         if exito:
-                                            st.balloons() # ¡Un toque extra de celebración!
+                                            st.balloons()
                                             st.success("✅ Protocolo Iniciado con Éxito")
                                             time.sleep(2)
                                             st.rerun()
