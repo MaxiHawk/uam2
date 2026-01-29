@@ -336,6 +336,15 @@ st.markdown(f"""
         .hud-label {{ font-size: 0.6em; text-transform: uppercase; letter-spacing: 2px; color: #8899a6; font-weight: bold; }}
 
         .skill-card-container {{ display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; }}
+        .skill-title {{ 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.3em; 
+            font-weight: 900; 
+            color: #ffffff !important; /* Fuerza el color blanco */
+            margin-bottom: 5px; 
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }}
         .skill-banner-col {{ width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }}
         .skill-banner-img {{ width: 100%; height: 100%; object-fit: cover; }}
         .skill-content-col {{ flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }}
@@ -614,6 +623,7 @@ def calcular_progreso_nivel(mp):
 @st.cache_data(ttl=3600)
 def cargar_habilidades_rol(rol_jugador):
     if not rol_jugador: return []
+    # Importante: Aseguramos que DB_HABILIDADES_ID esté importado en app.py
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
     payload = {
         "filter": {"property": "Rol", "select": {"equals": rol_jugador}}, 
@@ -627,15 +637,16 @@ def cargar_habilidades_rol(rol_jugador):
             for item in res.json()["results"]:
                 props = item["properties"]
                 try:
-                    # --- EXTRACCIÓN ROBUSTA DEL TÍTULO ---
+                    # --- BÚSQUEDA INTELIGENTE DEL TÍTULO (FIX) ---
                     nombre = "Habilidad Sin Nombre"
+                    # Buscamos cualquier propiedad que sea de tipo 'title'
                     for key, val in props.items():
                         if val['type'] == 'title':
                             content_list = val.get("title", [])
                             if content_list:
                                 nombre = "".join([t.get("plain_text", "") for t in content_list])
                             break 
-                    # -------------------------------------
+                    # ---------------------------------------------
 
                     costo = 0
                     if "Costo AP" in props: costo = props.get("Costo AP", {}).get("number", 0)
