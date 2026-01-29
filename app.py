@@ -1433,9 +1433,16 @@ else:
                                             item['id']
                                         )
                                         if exito:
-                                            st.balloons()
-                                            st.success("✅ Protocolo Iniciado con Éxito")
-                                            time.sleep(2)
+                                            # --- NUEVO DISEÑO: AZUL AP Y SIN GLOBOS ---
+                                            st.markdown(f"""
+                                            <div style="margin-top: 15px; text-align: center; padding: 15px; border: 1px solid #00e5ff; background: rgba(0, 229, 255, 0.1); border-radius: 10px; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);">
+                                                <div style="font-family: 'Orbitron'; font-size: 1.2em; font-weight: bold; color: #00e5ff; text-shadow: 0 0 5px #00e5ff;">✅ SOLICITUD ENVIADA</div>
+                                                <div style="font-size: 0.9em; color: #fff; margin-top: 5px;">Se han descontado <strong style="color: #00e5ff;">{item['costo']} AP</strong> de tu saldo.</div>
+                                                <div style="font-size: 0.75em; color: #aaa; margin-top: 5px;">Esperando confirmación del Comando.</div>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                                            # ------------------------------------------
+                                            time.sleep(2.5) # Damos un poco más de tiempo para leer
                                             st.rerun()
                                         else:
                                             st.error(msg)
