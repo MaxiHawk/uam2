@@ -615,7 +615,6 @@ def calcular_progreso_nivel(mp):
 def cargar_habilidades_rol(rol_jugador):
     if not rol_jugador: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
-    # Filtramos por Rol y ordenamos por Nivel
     payload = {
         "filter": {"property": "Rol", "select": {"equals": rol_jugador}}, 
         "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
@@ -628,33 +627,41 @@ def cargar_habilidades_rol(rol_jugador):
             for item in res.json()["results"]:
                 props = item["properties"]
                 try:
-                    # --- FIX: BÚSQUEDA INTELIGENTE DEL TÍTULO ---
-                    # Iteramos sobre todas las propiedades para encontrar la que es type="title"
+                    # --- BÚSQUEDA INTELIGENTE + DIAGNÓSTICO ---
                     nombre = "Habilidad Sin Nombre"
+                    
+                    # 1. Buscamos el Título Real
                     for key, val in props.items():
                         if val['type'] == 'title':
-                            # ¡Eureka! Encontramos la columna principal (se llame "Habilidad", "Nombre" o "Name")
                             content_list = val.get("title", [])
                             if content_list:
                                 nombre = "".join([t.get("plain_text", "") for t in content_list])
-                            break # Ya tenemos el nombre, dejamos de buscar
-                    # --------------------------------------------
+                            break 
+                    
+                    # 2. SONDA DE DIAGNÓSTICO (Solo para el caso del misterio)
+                    if "🔮" in nombre: 
+                        print(f"\n🔍 --- DETECTIVE DE NOTION: {nombre} ---")
+                        # Imprimimos TODAS las columnas para ver dónde se esconde el texto "Visión Futura"
+                        for k, v in props.items():
+                            tipo = v['type']
+                            contenido = "..."
+                            if tipo == 'title': contenido = v.get('title', [])
+                            elif tipo == 'rich_text': contenido = v.get('rich_text', [])
+                            print(f"   👉 Columna: '{k}' ({tipo}) -> Contenido: {contenido}")
+                        print("-------------------------------------------\n")
 
-                    # Extracción de Costo (Soporta "Costo AP" o "Costo")
+                    # Extracción de otros datos (Igual que antes)
                     costo = 0
                     if "Costo AP" in props: costo = props.get("Costo AP", {}).get("number", 0)
                     elif "Costo" in props: costo = props.get("Costo", {}).get("number", 0)
                     
-                    # Extracción de Nivel
                     nivel_req = 1
                     if "Nivel Requerido" in props: 
                         nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
 
-                    # Descripción
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
                     
-                    # Icono
                     icon_url = None
                     if "Icono" in props:
                         files = props["Icono"].get("files", [])
