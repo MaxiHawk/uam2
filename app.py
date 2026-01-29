@@ -52,6 +52,15 @@ if verificar_modo_mantenimiento():
             }
             .blink { animation: blinker 1.5s linear infinite; font-size: 3em; margin-bottom: 20px; }
             @keyframes blinker { 50% { opacity: 0; } }
+            .skill-title {
+                font-family: 'Orbitron', sans-serif; 
+                font-size: 1.3em; 
+                font-weight: 900; 
+                color: #ffffff !important; 
+                margin-bottom: 5px; 
+                text-transform: uppercase;
+                text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            }
         </style>
         <div class="maintenance-container">
             <div class="blink">⛔</div>
