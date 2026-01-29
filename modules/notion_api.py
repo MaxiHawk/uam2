@@ -242,10 +242,24 @@ def procesar_suministro(rarity_name, rewards):
         new_ap = player.get("AP", {}).get("number", 0) + rewards["AP"]
         new_mp = player.get("MP", {}).get("number", 0) + rewards["MP"]
         new_vp = min(100, player.get("VP", {}).get("number", 0) + rewards["VP"])
+        
         url = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
-        payload = {"properties": {"AP": {"number": new_ap}, "MP": {"number": new_mp}, "VP": {"number": new_vp}, "Ultimo Suministro": {"date": {"start": get_chile_time_iso()}}}}
-        if requests.patch(url, headers=headers, json=payload).status_code == 200:
-            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", f"AP:+{rewards['AP']}|MP:+{rewards['MP']}", rarity_name)
+        payload = {
+            "properties": {
+                "AP": {"number": new_ap},
+                "MP": {"number": new_mp},
+                "VP": {"number": new_vp},
+                "Ultimo Suministro": {"date": {"start": get_chile_time_iso()}}
+            }
+        }
+        res = requests.patch(url, headers=headers, json=payload)
+        
+        if res.status_code == 200:
+            # CAMBIO: Agregamos "Farmeo [Rareza]:" al inicio del detalle
+            detalle_txt = f"Farmeo {rarity_name}: AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
+            
+            # CAMBIO: Forzamos el tipo "Suministro" en lugar de enviar la rareza como tipo
+            registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle_txt, "Suministro")
             return True
         return False
     except: return False
