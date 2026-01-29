@@ -615,7 +615,12 @@ def calcular_progreso_nivel(mp):
 def cargar_habilidades_rol(rol_jugador):
     if not rol_jugador: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
-    payload = {"filter": {"property": "Rol", "select": {"equals": rol_jugador}}, "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]}
+    # Filtramos por Rol y ordenamos por Nivel
+    payload = {
+        "filter": {"property": "Rol", "select": {"equals": rol_jugador}}, 
+        "sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]
+    }
+    
     try:
         res = requests.post(url, headers=headers, json=payload)
         habilidades = []
@@ -623,20 +628,47 @@ def cargar_habilidades_rol(rol_jugador):
             for item in res.json()["results"]:
                 props = item["properties"]
                 try:
-                    nombre_list = props.get("Habilidad", {}).get("title", [])
-                    nombre = "".join([t.get("plain_text", "") for t in nombre_list]) if nombre_list else "Habilidad Sin Nombre"
+                    # --- FIX: BÚSQUEDA INTELIGENTE DEL TÍTULO ---
+                    # Iteramos sobre todas las propiedades para encontrar la que es type="title"
+                    nombre = "Habilidad Sin Nombre"
+                    for key, val in props.items():
+                        if val['type'] == 'title':
+                            # ¡Eureka! Encontramos la columna principal (se llame "Habilidad", "Nombre" o "Name")
+                            content_list = val.get("title", [])
+                            if content_list:
+                                nombre = "".join([t.get("plain_text", "") for t in content_list])
+                            break # Ya tenemos el nombre, dejamos de buscar
+                    # --------------------------------------------
+
+                    # Extracción de Costo (Soporta "Costo AP" o "Costo")
                     costo = 0
-                    if "Costo AP" in props: costo = props["Costo AP"]["number"]
-                    elif "Costo" in props: costo = props["Costo"]["number"]
-                    elif "Coste" in props: costo = props["Coste"]["number"]
-                    nivel_req = props["Nivel Requerido"]["number"]
+                    if "Costo AP" in props: costo = props.get("Costo AP", {}).get("number", 0)
+                    elif "Costo" in props: costo = props.get("Costo", {}).get("number", 0)
+                    
+                    # Extracción de Nivel
+                    nivel_req = 1
+                    if "Nivel Requerido" in props: 
+                        nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
+
+                    # Descripción
                     desc_obj = props.get("Descripcion", {}).get("rich_text", [])
                     descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
+                    
+                    # Icono
                     icon_url = None
                     if "Icono" in props:
                         files = props["Icono"].get("files", [])
-                        if files: icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
-                    habilidades.append({"id": item["id"], "nombre": nombre, "costo": costo, "nivel_req": nivel_req, "descripcion": descripcion, "icon_url": icon_url})
+                        if files: 
+                            icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+                        
+                    habilidades.append({
+                        "id": item["id"], 
+                        "nombre": nombre, 
+                        "costo": costo, 
+                        "nivel_req": nivel_req, 
+                        "descripcion": descripcion, 
+                        "icon_url": icon_url
+                    })
                 except Exception as e: pass
         return habilidades
     except: return []
