@@ -611,15 +611,9 @@ def calcular_progreso_nivel(mp):
     faltantes = (techo + 1) - mp
     return progreso_actual, total_nivel, pct, faltantes, False
 
-# --- IMPORTANTE: He puesto un '#' al inicio para desactivar la memoria caché temporalmente
-# @st.cache_data(ttl=3600) 
+@st.cache_data(ttl=3600)
 def cargar_habilidades_rol(rol_jugador):
-    print(f"\n🔥 DEBUG INICIADO: Buscando habilidades para rol '{rol_jugador}'...") 
-    
-    if not rol_jugador: 
-        print("⚠️ DEBUG: No hay rol definido.")
-        return []
-
+    if not rol_jugador: return []
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
     payload = {
         "filter": {"property": "Rol", "select": {"equals": rol_jugador}}, 
@@ -629,65 +623,48 @@ def cargar_habilidades_rol(rol_jugador):
     try:
         res = requests.post(url, headers=headers, json=payload)
         habilidades = []
-        
         if res.status_code == 200:
-            data = res.json()["results"]
-            print(f"✅ DEBUG: Notion devolvió {len(data)} habilidades found.")
-            
-            for i, item in enumerate(data):
+            for item in res.json()["results"]:
                 props = item["properties"]
-                
-                # --- SONDA DE DIAGNÓSTICO V2 (Imprime TODO del primer elemento) ---
-                if i == 0: # Solo imprimimos el primero para no llenar tu pantalla de basura
-                    print(f"\n🔎 ANALIZANDO ESTRUCTURA DE LA HABILIDAD #1:")
-                    print(json.dumps(props, indent=2, ensure_ascii=False))
-                    print("--------------------------------------------------\n")
-                # -------------------------------------------------------------
+                try:
+                    # --- EXTRACCIÓN ROBUSTA DEL TÍTULO ---
+                    nombre = "Habilidad Sin Nombre"
+                    for key, val in props.items():
+                        if val['type'] == 'title':
+                            content_list = val.get("title", [])
+                            if content_list:
+                                nombre = "".join([t.get("plain_text", "") for t in content_list])
+                            break 
+                    # -------------------------------------
 
-                # Lógica de extracción (Intento de recuperación)
-                nombre = "Habilidad Sin Nombre"
-                
-                # Barrido general buscando el título
-                for key, val in props.items():
-                    if val['type'] == 'title':
-                        content_list = val.get("title", [])
-                        if content_list:
-                            nombre = "".join([t.get("plain_text", "") for t in content_list])
-                        break 
-                
-                # Extracción de otros datos
-                costo = 0
-                if "Costo AP" in props: costo = props.get("Costo AP", {}).get("number", 0)
-                elif "Costo" in props: costo = props.get("Costo", {}).get("number", 0)
-                
-                nivel_req = 1
-                if "Nivel Requerido" in props: 
-                    nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
-
-                desc_obj = props.get("Descripcion", {}).get("rich_text", [])
-                descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
-                
-                icon_url = None
-                if "Icono" in props:
-                    files = props["Icono"].get("files", [])
-                    if files: 
-                        icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+                    costo = 0
+                    if "Costo AP" in props: costo = props.get("Costo AP", {}).get("number", 0)
+                    elif "Costo" in props: costo = props.get("Costo", {}).get("number", 0)
                     
-                habilidades.append({
-                    "id": item["id"], 
-                    "nombre": nombre, 
-                    "costo": costo, 
-                    "nivel_req": nivel_req, 
-                    "descripcion": descripcion, 
-                    "icon_url": icon_url
-                })
-        else:
-            print(f"❌ DEBUG: Error Notion {res.status_code}")
-            
+                    nivel_req = 1
+                    if "Nivel Requerido" in props: 
+                        nivel_req = props.get("Nivel Requerido", {}).get("number", 1)
+
+                    desc_obj = props.get("Descripcion", {}).get("rich_text", [])
+                    descripcion = desc_obj[0]["text"]["content"] if desc_obj else "Sin descripción"
+                    
+                    icon_url = None
+                    if "Icono" in props:
+                        files = props["Icono"].get("files", [])
+                        if files: 
+                            icon_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+                        
+                    habilidades.append({
+                        "id": item["id"], 
+                        "nombre": nombre, 
+                        "costo": costo, 
+                        "nivel_req": nivel_req, 
+                        "descripcion": descripcion, 
+                        "icon_url": icon_url
+                    })
+                except Exception as e: pass
         return habilidades
-    except Exception as e: 
-        print(f"❌ DEBUG: Excepción {e}")
-        return []
+    except: return []
 
 @st.cache_data(ttl=3600)
 def cargar_codice():
@@ -1325,6 +1302,30 @@ else:
                 st.rerun()
 
     with tab_habilidades:
+        # --- PARCHE CSS: Estilo para el título de la habilidad ---
+        st.markdown("""
+        <style>
+            .skill-title {
+                font-family: 'Orbitron', sans-serif;
+                font-weight: 900;
+                font-size: 1.3em;
+                color: #ffffff !important;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+                text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            }
+            .skill-desc {
+                font-size: 0.85em;
+                color: #b0bec5;
+                line-height: 1.4;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        # ---------------------------------------------------------
+
+        st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
+        # ... (el resto del código sigue igual)
+        
         # Recuperamos datos del Rol
         rol_data = p.get("Rol", {}).get("select")
         rol_jugador_actual = rol_data.get("name") if rol_data else None
