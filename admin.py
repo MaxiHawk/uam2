@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import time
-import re # Necesario para regex
+import re
 from datetime import datetime
 import pytz 
 
@@ -22,33 +22,7 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- DATA LOCAL ---
-BADGE_OPTIONS = []
-for i in range(1, 10): BADGE_OPTIONS.append(f"Misión {i}")
-for i in range(1, 8): BADGE_OPTIONS.append(f"Hazaña {i}")
-for i in range(1, 4): BADGE_OPTIONS.append(f"Expedición {i}")
-
-# --- CSS ---
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
-        h1, h2, h3 { font-family: 'Orbitron', sans-serif; color: #00e5ff; }
-        .stApp { background-color: #050810; color: #e0f7fa; }
-        .req-card { background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid #FFD700; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        .req-card-msg { background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid #00e5ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        .req-player { font-family: 'Orbitron'; font-size: 1.1em; color: #FFD700; font-weight: bold; display: flex; align-items: center; gap: 10px; }
-        .req-gen-tag { font-family: 'Roboto'; font-size: 0.7em; color: #8899a6; border: 1px solid #333; padding: 2px 6px; border-radius: 4px; }
-        .req-detail { color: #b0bec5; font-size: 0.9em; margin-bottom: 10px; }
-        .stButton>button { border-radius: 4px; font-weight: bold; text-transform: uppercase; width: 100%; }
-        .kpi-box { background: rgba(0, 229, 255, 0.05); border: 1px solid #004d66; padding: 15px; text-align: center; border-radius: 10px; }
-        .kpi-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: white; }
-        .kpi-label { font-size: 0.8em; color: #4dd0e1; letter-spacing: 2px; text-transform: uppercase; }
-        .mass-ops-box { border: 2px dashed #ff9100; background: rgba(255, 145, 0, 0.05); padding: 20px; border-radius: 10px; margin-top: 20px; }
-        .badge-ops-box { border: 2px dashed #D4AF37; background: rgba(212, 175, 55, 0.05); padding: 20px; border-radius: 10px; margin-top: 20px; }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- LOGGING (ADMIN) ---
+# --- LOGGING ---
 def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
@@ -59,7 +33,7 @@ def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Adm
         "properties": {
             "Evento": {"title": [{"text": {"content": tipo_evento}}]},
             "Jugador": {"rich_text": [{"text": {"content": usuario_afectado}}]},
-            "Tipo": {"select": {"name": "Sistema"}}, # Ojo: aquí admin loguea como "Sistema"
+            "Tipo": {"select": {"name": "Sistema"}},
             "Detalle": {"rich_text": [{"text": {"content": detalle}}]},
             "Fecha": {"date": {"start": now_iso}},
             "Universidad": {"select": {"name": str(universidad)}},
@@ -162,7 +136,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES (CORREGIDO) ---
+# --- TAB 1: SOLICITUDES (MEJORADO) ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES")
@@ -185,19 +159,25 @@ with tab_req:
                 props = item["properties"]
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
-                fecha_start = props.get("Fecha de creación", {}).get("date", {}).get("start", "")
                 
-                # --- FIX FECHA ---
+                # --- FIX FECHA: Usamos 'created_time' nativo de Notion ---
+                raw_date = item["created_time"]
                 try:
-                    if "T" in fecha_start:
-                        utc_dt = datetime.fromisoformat(fecha_start.replace('Z', '+00:00'))
-                        chile_tz = pytz.timezone('America/Santiago')
-                        fecha_str = utc_dt.astimezone(chile_tz).strftime("%d/%m %H:%M")
-                    else:
-                        fecha_str = datetime.strptime(fecha_start, "%Y-%m-%d").strftime("%d/%m")
+                    utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+                    chile_tz = pytz.timezone('America/Santiago')
+                    fecha_str = utc_dt.astimezone(chile_tz).strftime("%d/%m %H:%M")
                 except: fecha_str = "Fecha desc."
                 
-                solicitudes.append({"id": item["id"], "remitente": remitente, "mensaje": mensaje, "fecha": fecha_str})
+                # Estado actual para mostrar en tarjeta
+                status_actual = props.get("Status", {}).get("select", {}).get("name", "Pendiente")
+
+                solicitudes.append({
+                    "id": item["id"], 
+                    "remitente": remitente, 
+                    "mensaje": mensaje, 
+                    "fecha": fecha_str,
+                    "status": status_actual
+                })
     except: pass
     
     if not solicitudes:
@@ -205,21 +185,25 @@ with tab_req:
     else:
         for r in solicitudes:
             is_skill = "Costo:" in r['mensaje']
+            msg_clean = re.sub(r'\|\s*0\s*MP', '', r['mensaje']) if is_skill else r['mensaje']
             
-            # --- LIMPIEZA VISUAL DEL MENSAJE (QUITAR MP) ---
-            msg_clean = r['mensaje']
-            if is_skill:
-                # Quitamos la parte de "| 0 MP" si existe
-                msg_clean = re.sub(r'\|\s*0\s*MP', '', msg_clean)
+            # --- COLORES Y TAGS DE ESTADO ---
+            s_color = "#ccc"
+            if r['status'] == "Aprobado": s_color = "#00e676"
+            elif r['status'] == "Rechazado": s_color = "#ff1744"
+            elif r['status'] == "Pendiente": s_color = "#ffea00"
             
-            card_style = "border-left: 4px solid #FFD700;" if is_skill else "border-left: 4px solid #00e5ff;"
+            status_badge = f"<span style='background:{s_color}; color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.7em;'>{r['status'].upper()}</span>"
             tag = "⚡ PODER" if is_skill else "💬 MENSAJE"
+            border_c = "#FFD700" if is_skill else "#00e5ff"
 
             with st.container():
                 st.markdown(f"""
-                <div style="background: #0f1520; border: 1px solid #1c2e3e; {card_style} padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <div style="background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid {border_c}; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <div style="font-family:'Orbitron'; color:#fff;">{r['remitente']}</div>
+                        <div style="font-family:'Orbitron'; color:#fff; display:flex; align-items:center; gap:10px;">
+                            {r['remitente']} {status_badge}
+                        </div>
                         <div style="text-align:right;">
                             <div style="font-weight:bold; font-size:0.8em; color:#ccc;">{tag}</div>
                             <div style="font-size:0.7em; color:#666;">{r['fecha']}</div>
@@ -229,18 +213,18 @@ with tab_req:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                c_obs, c_acts = st.columns([3, 2])
-                with c_obs: 
-                    if filtro_estado == "Pendiente":
+                # --- BOTONERA (Solo si Pendiente) ---
+                if filtro_estado == "Pendiente":
+                    c_obs, c_acts = st.columns([3, 2])
+                    with c_obs: 
                         obs_text = st.text_input("Respuesta / Motivo:", key=f"obs_{r['id']}")
-                with c_acts:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                    if filtro_estado == "Pendiente":
+                    with c_acts:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                         c_ok, c_no = st.columns(2)
                         with c_ok:
                             if st.button("✅ ACEPTAR", key=f"ok_{r['id']}", use_container_width=True):
                                 if is_skill:
-                                    with st.spinner("Cobrando..."):
+                                    with st.spinner("Procesando..."):
                                         exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                         if exito: st.success(msg); time.sleep(1); st.rerun()
                                         else: st.error(msg)
@@ -252,7 +236,7 @@ with tab_req:
                                 finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
                                 st.warning("Rechazado"); time.sleep(1); st.rerun()
 
-# --- TAB 2: OPERACIONES ---
+# --- TAB 2 Y 3: SIN CAMBIOS (YA FUNCIONAN BIEN) ---
 with tab_ops:
     if df_filtered.empty: st.warning("Sin datos visibles.")
     else:
@@ -282,7 +266,6 @@ with tab_ops:
         c1, c2, c3 = st.columns(3)
         m_mp = c1.number_input("MP", value=0); m_ap = c2.number_input("AP", value=0); m_vp = c3.number_input("VP", value=0)
         reason = st.text_input("Motivo:")
-        
         if st.button("🚀 EJECUTAR", use_container_width=True):
             if not reason: st.error("Falta motivo.")
             else:
@@ -299,7 +282,6 @@ with tab_ops:
                     bar.progress((i+1)/n)
                 st.success("Listo"); time.sleep(1); st.rerun()
 
-# --- TAB 3: NÓMINA ---
 with tab_list:
     st.markdown("### 👥 NÓMINA")
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
