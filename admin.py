@@ -22,7 +22,94 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- LOGGING ---
+# --- ESTILOS CSS ÉPICOS (V3) ---
+st.markdown("""
+    <style>
+        /* Importamos la fuente directamente aquí para asegurar que cargue */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        .stApp { background-color: #050810; color: #e0f7fa; }
+        
+        /* TARJETA DE SOLICITUD MEJORADA */
+        .req-card-epic {
+            background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
+            border: 1px solid #1c2e3e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .req-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+        
+        .req-player-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4em;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .req-badge {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7em;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .badge-pending { background: rgba(255, 234, 0, 0.15); color: #ffea00; border: 1px solid #ffea00; text-shadow: 0 0 5px #ffea00; }
+        .badge-approved { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; text-shadow: 0 0 5px #00e676; }
+        .badge-rejected { background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid #ff1744; text-shadow: 0 0 5px #ff1744; }
+        
+        .req-meta {
+            text-align: right;
+        }
+        
+        .req-type {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #ccc;
+            text-transform: uppercase;
+        }
+        
+        .req-date {
+            font-size: 0.75em;
+            color: #666;
+            font-family: monospace;
+        }
+        
+        .req-body {
+            font-size: 1em;
+            color: #b0bec5;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 3px solid #333;
+            font-family: sans-serif;
+        }
+        
+        .req-body strong { color: #fff; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- HELPERS ---
 def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
@@ -43,7 +130,6 @@ def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Adm
     try: requests.post(url, headers=headers, json=payload)
     except: pass
 
-# --- HELPERS ---
 @st.cache_data(ttl=60)
 def get_players():
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
@@ -97,7 +183,8 @@ def finalize_request(page_id, status_label, observation_text=""):
             "Procesado": {"checkbox": True},
             "Status": {"select": {"name": status_label}},
             "Fecha respuesta": {"date": {"start": now_iso}},
-            "Respuesta Comando": {"rich_text": [{"text": {"content": observation_text}}]}
+            # FIX: Nombre correcto de columna
+            "Observaciones": {"rich_text": [{"text": {"content": observation_text}}]}
         }
     }
     requests.patch(url, headers=headers, json=data)
@@ -136,7 +223,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES (MEJORADO) ---
+# --- TAB 1: SOLICITUDES (VISUAL ÉPICA) ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES")
@@ -160,7 +247,7 @@ with tab_req:
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 
-                # --- FIX FECHA: Usamos 'created_time' nativo de Notion ---
+                # Fecha robusta
                 raw_date = item["created_time"]
                 try:
                     utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
@@ -168,16 +255,8 @@ with tab_req:
                     fecha_str = utc_dt.astimezone(chile_tz).strftime("%d/%m %H:%M")
                 except: fecha_str = "Fecha desc."
                 
-                # Estado actual para mostrar en tarjeta
                 status_actual = props.get("Status", {}).get("select", {}).get("name", "Pendiente")
-
-                solicitudes.append({
-                    "id": item["id"], 
-                    "remitente": remitente, 
-                    "mensaje": mensaje, 
-                    "fecha": fecha_str,
-                    "status": status_actual
-                })
+                solicitudes.append({"id": item["id"], "remitente": remitente, "mensaje": mensaje, "fecha": fecha_str, "status": status_actual})
     except: pass
     
     if not solicitudes:
@@ -187,46 +266,56 @@ with tab_req:
             is_skill = "Costo:" in r['mensaje']
             msg_clean = re.sub(r'\|\s*0\s*MP', '', r['mensaje']) if is_skill else r['mensaje']
             
-            # --- COLORES Y TAGS DE ESTADO ---
-            s_color = "#ccc"
-            if r['status'] == "Aprobado": s_color = "#00e676"
-            elif r['status'] == "Rechazado": s_color = "#ff1744"
-            elif r['status'] == "Pendiente": s_color = "#ffea00"
+            # LOGICA DE ESTILO
+            status_class = "badge-pending"
+            status_label = r['status'].upper()
+            border_color = "#ffea00" # Amarillo por defecto
             
-            status_badge = f"<span style='background:{s_color}; color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.7em;'>{r['status'].upper()}</span>"
-            tag = "⚡ PODER" if is_skill else "💬 MENSAJE"
-            border_c = "#FFD700" if is_skill else "#00e5ff"
+            if status_label == "APROBADO": 
+                status_class = "badge-approved"
+                border_color = "#00e676"
+            elif status_label == "RECHAZADO": 
+                status_class = "badge-rejected"
+                border_color = "#ff1744"
+                
+            type_text = "⚡ PODER" if is_skill else "💬 MENSAJE"
+            type_color = "#FFD700" if is_skill else "#00e5ff" # Oro para poder, Azul para mensaje
+            
+            # Si es poder, sobreescribimos el borde
+            if is_skill: border_color = "#FFD700"
 
             with st.container():
                 st.markdown(f"""
-                <div style="background: #0f1520; border: 1px solid #1c2e3e; border-left: 4px solid {border_c}; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <div style="font-family:'Orbitron'; color:#fff; display:flex; align-items:center; gap:10px;">
-                            {r['remitente']} {status_badge}
+                <div class="req-card-epic" style="border-left: 4px solid {border_color};">
+                    <div class="req-header">
+                        <div class="req-player-name">
+                            {r['remitente']}
+                            <span class="req-badge {status_class}">{status_label}</span>
                         </div>
-                        <div style="text-align:right;">
-                            <div style="font-weight:bold; font-size:0.8em; color:#ccc;">{tag}</div>
-                            <div style="font-size:0.7em; color:#666;">{r['fecha']}</div>
+                        <div class="req-meta">
+                            <div class="req-type" style="color: {type_color};">{type_text}</div>
+                            <div class="req-date">{r['fecha']}</div>
                         </div>
                     </div>
-                    <div style="color:#b0bec5; font-size:0.95em;">{msg_clean}</div>
+                    <div class="req-body">
+                        {msg_clean}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # --- BOTONERA (Solo si Pendiente) ---
                 if filtro_estado == "Pendiente":
                     c_obs, c_acts = st.columns([3, 2])
                     with c_obs: 
-                        obs_text = st.text_input("Respuesta / Motivo:", key=f"obs_{r['id']}")
+                        obs_text = st.text_input("Observación:", key=f"obs_{r['id']}", placeholder="Opcional...")
                     with c_acts:
                         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                         c_ok, c_no = st.columns(2)
                         with c_ok:
-                            if st.button("✅ ACEPTAR", key=f"ok_{r['id']}", use_container_width=True):
+                            if st.button("✅ APROBAR", key=f"ok_{r['id']}", use_container_width=True):
                                 if is_skill:
-                                    with st.spinner("Procesando..."):
+                                    with st.spinner("Cobrando..."):
                                         exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
-                                        if exito: st.success(msg); time.sleep(1); st.rerun()
+                                        if exito: st.success(msg); time.sleep(1.5); st.rerun()
                                         else: st.error(msg)
                                 else:
                                     finalize_request(r['id'], "Respondido", obs_text or "Leído")
@@ -236,14 +325,13 @@ with tab_req:
                                 finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
                                 st.warning("Rechazado"); time.sleep(1); st.rerun()
 
-# --- TAB 2 Y 3: SIN CAMBIOS (YA FUNCIONAN BIEN) ---
+# --- TAB 2 Y 3: SIN CAMBIOS ---
 with tab_ops:
     if df_filtered.empty: st.warning("Sin datos visibles.")
     else:
         st.markdown("### ⚡ GESTIÓN INDIVIDUAL")
         selected_aspirante_name = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
         p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
-        
         c_mp, c_ap, c_vp = st.columns(3)
         with c_mp:
             st.metric("MasterPoints", p_data['MP'])
@@ -259,7 +347,11 @@ with tab_ops:
                 update_stat(p_data["id"], "AP", p_data['AP']+mod_ap)
                 registrar_log_admin(p_data['Aspirante'], "Ajuste AP", f"+{mod_ap} AP", p_data['Universidad'], p_data['Generación'])
                 st.toast("Hecho"); time.sleep(0.5); st.rerun()
-
+        # ... (Resto de operaciones igual) ...
+        # (He recortado el final del código de operaciones para que entre en la respuesta, 
+        #  si quieres el archivo COMPLETO con operaciones avísame, pero el foco era UI y Fix Solicitudes)
+        
+        # ... INCLUIR AQUÍ EL BLOQUE DE BOMBARDEO MASIVO SI LO USAS ...
         st.markdown("---")
         st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
         target_squad = st.selectbox("Escuadrón:", df_filtered["Escuadrón"].unique(), key="sq_mass")
