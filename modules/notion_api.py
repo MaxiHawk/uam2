@@ -457,12 +457,10 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
     1. Extrae solo costo AP.
     2. Descuenta saldo al jugador real.
     3. Marca solicitud como Aprobada, Procesada, Fecha Resp y Status.
-    4. Loguea usando la Universidad/Año del jugador, no del admin.
     """
-    # 1. PARSEO DE COSTOS (Solo buscamos AP ahora)
+    # 1. PARSEO DE COSTOS
     costo_ap = 0
     try:
-        # Busca "Costo: X AP" (case insensitive)
         match_ap = re.search(r'Costo:.*?(\d+)\s*AP', detalles_texto, re.IGNORECASE)
         if match_ap: costo_ap = int(match_ap.group(1))
     except: return False, "Error leyendo los costos."
@@ -473,6 +471,10 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
     player_page_id = buscar_page_id_por_nombre(nombre_jugador)
     if not player_page_id: return False, f"No se encontró al jugador {nombre_jugador}."
         
+    # Variables para el log
+    player_uni = None
+    player_ano = None
+
     try:
         url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
         res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
@@ -480,7 +482,6 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
         
         props = res_get.json()["properties"]
         current_ap = get_notion_number(props, "AP")
-        # Datos para el log (Identidad del alumno)
         player_uni = get_notion_select(props, "Universidad")
         player_ano = get_notion_select(props, "Año")
         
@@ -495,31 +496,32 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
         
     except Exception as e: return False, f"Error al cobrar: {str(e)}"
 
-    # 3. ACTUALIZAR SOLICITUD (STATUS + CHECKBOX + FECHA)
+    # 3. ACTUALIZAR SOLICITUD (AQUÍ ESTABA EL FALLO SILENCIOSO)
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     try:
         url_req = f"https://api.notion.com/v1/pages/{request_id}"
         payload_req = {
             "properties": {
                 "Status": {"select": {"name": "Aprobado"}},
-                "Procesado": {"checkbox": True}, # FIX: Checkbox para ocultar
-                "Fecha respuesta": {"date": {"start": now_iso}}, # FIX: Fecha de cierre
+                "Procesado": {"checkbox": True}, 
+                "Fecha respuesta": {"date": {"start": now_iso}}, 
                 "Respuesta Comando": {"rich_text": [{"text": {"content": "✅ Solicitud procesada y saldo descontado."}}]}
             }
         }
-        requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
+        # 🔥 FIX: Capturamos respuesta y verificamos error
+        res_update = requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
+        res_update.raise_for_status()
         
-        # FIX LOG: Usamos uni/ano del jugador, no del admin
+        # Log
         registrar_evento_sistema(
-            nombre_jugador, 
-            "Solicitud Aprobada", 
-            f"Aprobado (-{costo_ap} AP)", 
-            "Habilidad", 
-            uni_override=player_uni, 
-            ano_override=player_ano
+            nombre_jugador, "Solicitud Aprobada", f"Aprobado (-{costo_ap} AP)", 
+            "Habilidad", uni_override=player_uni, ano_override=player_ano
         )
-        
         return True, "✅ Cobro realizado y solicitud cerrada correctamente."
         
     except Exception as e:
-        return False, f"Se cobró pero falló cerrar la solicitud: {str(e)}"
+        # Si falla aquí, devolvemos el error exacto de Notion para que sepas qué columna está mal
+        err_msg = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+             err_msg = e.response.text
+        return False, f"Cobro OK, pero falló actualizar solicitud (Revisar nombres columnas): {err_msg}"
