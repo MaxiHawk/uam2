@@ -22,12 +22,11 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V3) ---
+# --- ESTILOS CSS ÉPICOS (V4 - FUENTES FORZADAS) ---
 st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
     <style>
-        /* Importamos la fuente directamente aquí para asegurar que cargue */
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-        
         .stApp { background-color: #050810; color: #e0f7fa; }
         
         /* TARJETA DE SOLICITUD MEJORADA */
@@ -51,35 +50,49 @@ st.markdown("""
         }
         
         .req-player-name {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.4em;
+            font-family: 'Orbitron', sans-serif !important; /* Importante forzar */
+            font-size: 1.5em;
             font-weight: 900;
             color: #fff;
-            letter-spacing: 1px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
             display: flex;
             align-items: center;
             gap: 15px;
         }
         
         .req-badge {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.7em;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 0.6em;
             font-weight: bold;
-            padding: 4px 10px;
+            padding: 5px 12px;
             border-radius: 4px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            vertical-align: middle;
         }
         
-        .badge-pending { background: rgba(255, 234, 0, 0.15); color: #ffea00; border: 1px solid #ffea00; text-shadow: 0 0 5px #ffea00; }
-        .badge-approved { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; text-shadow: 0 0 5px #00e676; }
-        .badge-rejected { background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid #ff1744; text-shadow: 0 0 5px #ff1744; }
-        
-        .req-meta {
-            text-align: right;
+        .badge-pending { 
+            background: rgba(255, 234, 0, 0.1); 
+            color: #ffea00; 
+            border: 1px solid #ffea00; 
+            text-shadow: 0 0 8px #ffea00; 
         }
+        .badge-approved { 
+            background: rgba(0, 230, 118, 0.1); 
+            color: #00e676; 
+            border: 1px solid #00e676; 
+            text-shadow: 0 0 8px #00e676; 
+        }
+        .badge-rejected { 
+            background: rgba(255, 23, 68, 0.1); 
+            color: #ff1744; 
+            border: 1px solid #ff1744; 
+            text-shadow: 0 0 8px #ff1744; 
+        }
+        
+        .req-meta { text-align: right; }
         
         .req-type {
             font-family: 'Orbitron', sans-serif;
@@ -87,25 +100,35 @@ st.markdown("""
             font-size: 0.9em;
             color: #ccc;
             text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .req-date {
-            font-size: 0.75em;
+            font-size: 0.8em;
             color: #666;
             font-family: monospace;
+            margin-top: 2px;
         }
         
         .req-body {
-            font-size: 1em;
+            font-size: 1.05em;
             color: #b0bec5;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
             border-radius: 6px;
             border-left: 3px solid #333;
             font-family: sans-serif;
+            line-height: 1.5;
         }
         
-        .req-body strong { color: #fff; }
+        /* Botones personalizados para Admin */
+        div[data-testid="column"] button {
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -183,7 +206,6 @@ def finalize_request(page_id, status_label, observation_text=""):
             "Procesado": {"checkbox": True},
             "Status": {"select": {"name": status_label}},
             "Fecha respuesta": {"date": {"start": now_iso}},
-            # FIX: Nombre correcto de columna
             "Observaciones": {"rich_text": [{"text": {"content": observation_text}}]}
         }
     }
@@ -247,7 +269,6 @@ with tab_req:
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 
-                # Fecha robusta
                 raw_date = item["created_time"]
                 try:
                     utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
@@ -266,10 +287,10 @@ with tab_req:
             is_skill = "Costo:" in r['mensaje']
             msg_clean = re.sub(r'\|\s*0\s*MP', '', r['mensaje']) if is_skill else r['mensaje']
             
-            # LOGICA DE ESTILO
+            # --- LÓGICA VISUAL (Badge + Borde) ---
             status_class = "badge-pending"
             status_label = r['status'].upper()
-            border_color = "#ffea00" # Amarillo por defecto
+            border_color = "#ffea00" 
             
             if status_label == "APROBADO": 
                 status_class = "badge-approved"
@@ -279,9 +300,7 @@ with tab_req:
                 border_color = "#ff1744"
                 
             type_text = "⚡ PODER" if is_skill else "💬 MENSAJE"
-            type_color = "#FFD700" if is_skill else "#00e5ff" # Oro para poder, Azul para mensaje
-            
-            # Si es poder, sobreescribimos el borde
+            type_color = "#FFD700" if is_skill else "#00e5ff"
             if is_skill: border_color = "#FFD700"
 
             with st.container():
@@ -347,11 +366,7 @@ with tab_ops:
                 update_stat(p_data["id"], "AP", p_data['AP']+mod_ap)
                 registrar_log_admin(p_data['Aspirante'], "Ajuste AP", f"+{mod_ap} AP", p_data['Universidad'], p_data['Generación'])
                 st.toast("Hecho"); time.sleep(0.5); st.rerun()
-        # ... (Resto de operaciones igual) ...
-        # (He recortado el final del código de operaciones para que entre en la respuesta, 
-        #  si quieres el archivo COMPLETO con operaciones avísame, pero el foco era UI y Fix Solicitudes)
         
-        # ... INCLUIR AQUÍ EL BLOQUE DE BOMBARDEO MASIVO SI LO USAS ...
         st.markdown("---")
         st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
         target_squad = st.selectbox("Escuadrón:", df_filtered["Escuadrón"].unique(), key="sq_mass")
