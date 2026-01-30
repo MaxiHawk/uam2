@@ -318,100 +318,114 @@ with st.sidebar:
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES DE CAMPO", "👥 NÓMINA"])
 
 # ================= TAB 1: SOLICITUDES =================
-with tab_req:
-    c_title, c_refresh = st.columns([4, 1])
-    with c_title: st.markdown("### 📡 TRANSMISIONES ENTRANTES")
-    with c_refresh: 
-        if st.button("🔄 ACTUALIZAR"): st.rerun()
-
-    reqs = get_pending_requests(debug_mode)
-    reqs_filtered = []
-    for r in reqs:
-        req_uni = r.get('universidad')
-        req_ano = r.get('año')
-        pass_uni = (sel_uni == "Todas") or (req_uni == sel_uni)
-        pass_gen = (sel_gen == "Todas") or (req_ano == sel_gen)
-        if req_uni is None or req_ano is None: pass_uni = True; pass_gen = True
-        if pass_uni and pass_gen: reqs_filtered.append(r)
+with tab_requests:
+    st.markdown("### 📨 SOLICITUDES PENDIENTES")
     
-    if not reqs_filtered:
-        st.success("✅ Bandeja de entrada vacía.")
-    else:
-        for r in reqs_filtered:
-            is_skill = (r['tipo'] == "Poder")
-            costo = 0
-            skill_name = "Acción"
-            if is_skill:
-                try:
-                    if "Costo:" in r['mensaje']: costo = int(r['mensaje'].split("Costo:")[1].strip())
-                    if "|" in r['mensaje']: skill_name = r['mensaje'].split("|")[0].strip()
-                    else: skill_name = "Habilidad"
-                except: pass
-            
-            player_name = r['remitente'].replace("SOLICITUD: ", "").strip()
-            req_gen_label = r.get('año') if r.get('año') else "??"
-            req_uni_label = r.get('universidad') if r.get('universidad') else "Admin"
-            
-            try:
-                utc_dt = datetime.fromisoformat(r['created'].replace('Z', '+00:00'))
-                chile_tz = pytz.timezone('America/Santiago')
-                chile_dt = utc_dt.astimezone(chile_tz)
-                req_date_str = chile_dt.strftime("%d/%m %H:%M")
-            except: req_date_str = "Hoy"
-
-            player_stats = df_players[df_players["Aspirante"] == player_name]
-            curr_mp, curr_ap, curr_vp = 0, 0, 0
-            if not player_stats.empty:
-                p_data = player_stats.iloc[0]
-                curr_mp, curr_ap, curr_vp = p_data["MP"], p_data["AP"], p_data["VP"]
-
-            with st.container():
-                card_class = "req-card" if is_skill else "req-card-msg"
-                tag_text = f"⚡ SOLICITUD DE PODER (-{costo} AP)" if is_skill else "💬 COMUNICACIÓN"
-                title_text = f"Solicita: <strong>{skill_name}</strong>" if is_skill else "📩 Nueva Comunicación"
+    # Filtros de estado
+    filtro_estado = st.radio("Estado:", ["Pendiente", "Respondido", "Rechazado", "Aprobado"], horizontal=True)
+    
+    # Cargar solicitudes (Lógica simplificada para admin)
+    # Nota: Aquí deberías tener una función 'cargar_todas_solicitudes' en notion_api.py
+    # Si no la tienes, usaremos una consulta directa rápida aquí:
+    url_req = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
+    payload_req = {
+        "filter": {"property": "Status", "select": {"equals": filtro_estado}},
+        "sorts": [{"property": "Fecha de creación", "direction": "descending"}]
+    }
+    
+    solicitudes = []
+    try:
+        res = requests.post(url_req, headers=headers, json=payload_req, timeout=10)
+        if res.status_code == 200:
+            for item in res.json()["results"]:
+                props = item["properties"]
+                # Extracción segura
+                remitente_list = props.get("Remitente", {}).get("title", [])
+                remitente = remitente_list[0]["text"]["content"] if remitente_list else "Anónimo"
                 
+                msg_list = props.get("Mensaje", {}).get("rich_text", [])
+                mensaje = msg_list[0]["text"]["content"] if msg_list else ""
+                
+                fecha = props.get("Fecha de creación", {}).get("date", {}).get("start", "")
+                
+                solicitudes.append({
+                    "id": item["id"],
+                    "remitente": remitente,
+                    "mensaje": mensaje,
+                    "fecha": fecha
+                })
+    except: st.error("Error conectando con Notion")
+
+    if not solicitudes:
+        st.info("📭 No hay solicitudes en este estado.")
+    else:
+        for req in solicitudes:
+            with st.container():
                 st.markdown(f"""
-                <div class="{card_class}">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <div class="req-player">{player_name} <span class="req-gen-tag">{req_gen_label}</span></div>
-                        <div style="text-align:right;"><div style="color:{'#FFD700' if is_skill else '#00e5ff'}; font-weight:bold; font-size:0.8em;">{tag_text}</div><div style="color:#666; font-size:0.7em;">{req_date_str}</div></div>
+                <div class="monitor-card">
+                    <div style="display:flex; justify-content:space-between; color: #00e5ff; margin-bottom:5px;">
+                        <strong>👤 {req['remitente']}</strong>
+                        <small>{req['fecha']}</small>
                     </div>
-                    <div class="req-detail">{title_text}</div>
-                    <div style="font-size:0.95em; color:#e0f7fa;">{r['mensaje']}</div>
+                    <div style="color: #ccc; font-family: monospace; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px;">
+                        {req['mensaje']}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                if not player_stats.empty:
-                    k1, k2, k3 = st.columns(3)
-                    k1.markdown(f"<div class='kpi-mini' style='border-color:#FFD700;'><div class='kpi-mini-val' style='color:#FFD700;'>{curr_mp}</div><div class='kpi-mini-lbl'>MP Actual</div></div>", unsafe_allow_html=True)
-                    k2.markdown(f"<div class='kpi-mini' style='border-color:#00e5ff;'><div class='kpi-mini-val' style='color:#00e5ff;'>{curr_ap}</div><div class='kpi-mini-lbl'>AP Actual</div></div>", unsafe_allow_html=True)
-                    k3.markdown(f"<div class='kpi-mini' style='border-color:#ff4b4b;'><div class='kpi-mini-val' style='color:#ff4b4b;'>{curr_vp}%</div><div class='kpi-mini-lbl'>VP Actual</div></div>", unsafe_allow_html=True)
+                # --- BOTONERA DE ACCIÓN ---
+                col_actions = st.columns([1, 1, 2])
+                
+                # 1. BOTÓN ACEPTAR (Cobrar y Aprobar)
+                with col_actions[0]:
+                    # Solo mostramos Aceptar si está Pendiente
+                    if filtro_estado == "Pendiente":
+                        if st.button("✅ ACEPTAR", key=f"btn_ok_{req['id']}", use_container_width=True):
+                            with st.spinner("Procesando cobro..."):
+                                exito, msg = aprobar_solicitud_habilidad(
+                                    req['id'], 
+                                    req['remitente'], 
+                                    req['mensaje']
+                                )
+                                if exito:
+                                    st.success(msg)
+                                    time.sleep(1.5)
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+                
+                # 2. BOTÓN RECHAZAR
+                with col_actions[1]:
+                    if filtro_estado == "Pendiente":
+                        if st.button("❌ RECHAZAR", key=f"btn_no_{req['id']}", use_container_width=True):
+                            url_update = f"https://api.notion.com/v1/pages/{req['id']}"
+                            payload_rej = {
+                                "properties": {
+                                    "Status": {"select": {"name": "Rechazado"}},
+                                    "Respuesta Comando": {"rich_text": [{"text": {"content": "Solicitud denegada por el Mando."}}]}
+                                }
+                            }
+                            requests.patch(url_update, headers=headers, json=payload_rej)
+                            st.rerun()
 
-                c_obs, c_acts = st.columns([3, 2])
-                with c_obs: obs_text = st.text_input("Observación:", key=f"obs_{r['id']}", placeholder="Respuesta o motivo...")
-                with c_acts:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                    c_yes, c_no = st.columns(2)
-                    if is_skill:
-                        if c_yes.button(f"✅ APROBAR", key=f"ap_{r['id']}"):
-                            ok_ap = update_player_ap_by_name(player_name, costo)
-                            if ok_ap:
-                                finalize_request(r['id'], "Aprobado", obs_text)
-                                registrar_log_admin(player_name, "Solicitud Aprobada", f"Se aprobó {skill_name} (-{costo} AP)", req_uni_label, req_gen_label)
-                                st.toast(f"Solicitud Aprobada"); time.sleep(1); st.rerun()
-                            else: st.error("Error al descontar AP")
-                        if c_no.button(f"❌ RECHAZAR", key=f"den_{r['id']}"):
-                            finalize_request(r['id'], "Rechazado", obs_text)
-                            registrar_log_admin(player_name, "Solicitud Rechazada", f"Motivo: {obs_text}", req_uni_label, req_gen_label)
-                            st.toast("Solicitud Denegada"); time.sleep(1); st.rerun()
-                    else:
-                        if c_yes.button(f"📤 CONTESTADO", key=f"reply_{r['id']}"):
-                            finalize_request(r['id'], "Respuesta", obs_text)
-                            registrar_log_admin(player_name, "Mensaje Respondido", f"Respuesta: {obs_text}", req_uni_label, req_gen_label)
-                            st.toast("Contestado"); time.sleep(1); st.rerun()
-                        if c_no.button(f"📥 ARCHIVAR", key=f"arch_{r['id']}"):
-                            finalize_request(r['id'], "Respuesta", obs_text)
-                            st.toast("Archivado"); time.sleep(1); st.rerun()
+                # 3. RESPONDER (Solo texto)
+                with col_actions[2]:
+                    with st.popover("💬 RESPONDER", use_container_width=True):
+                        txt_reply = st.text_area("Mensaje:", key=f"txt_{req['id']}")
+                        if st.button("ENVIAR", key=f"send_{req['id']}"):
+                            url_update = f"https://api.notion.com/v1/pages/{req['id']}"
+                            payload_rep = {
+                                "properties": {
+                                    "Status": {"select": {"name": "Respuesta"}}, # O "Respondido"
+                                    "Respuesta Comando": {"rich_text": [{"text": {"content": txt_reply}}]}
+                                }
+                            }
+                            requests.patch(url_update, headers=headers, json=payload_rep)
+                            st.success("Enviado")
+                            time.sleep(1)
+                            st.rerun()
+                
+                st.markdown("---")
 
 # ================= TAB 2: OPERACIONES =================
 with tab_ops:
