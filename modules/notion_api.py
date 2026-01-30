@@ -67,12 +67,11 @@ def notion_fetch_all(url, payload):
             has_more = False
     return results
 
-# --- 🛡️ SISTEMA (MODIFICADO PARA LOGS EXPLÍCITOS) ---
+# --- 🛡️ SISTEMA ---
 def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO", uni_override=None, ano_override=None):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
     
-    # Si nos pasan uni/ano (desde admin), usamos eso. Si no, buscamos en sesión.
     if uni_override and ano_override:
         uni, ano = uni_override, ano_override
     else:
@@ -263,7 +262,7 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
         st.error(f"⛔ Error de Notion: {err_msg}")
         return False
 
-# --- 🛍️ MERCADO (LOG MEJORADO) ---
+# --- 🛍️ MERCADO ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
     try:
         url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
@@ -281,10 +280,9 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
         return False, f"Saldo insuficiente. (Tienes: {current_ap} AP)"
 
     msg = f"Solicitud de activación: {skill_name}"
-    detalles = f"Costo: {cost_ap} AP" # Simplificado solo a AP
+    detalles = f"Costo: {cost_ap} AP"
     
     if enviar_solicitud("Poder", msg, detalles, st.session_state.nombre):
-        # FIX LOG: Tipo "Habilidad" y detalle con costo
         registrar_evento_sistema(st.session_state.nombre, "Solicitud Habilidad", f"{skill_name} (-{cost_ap} AP)", "Habilidad")
         return True, "Solicitud enviada."
     
@@ -439,7 +437,7 @@ def procesar_recalibracion(reward_ap, is_correct, question_id):
         registrar_evento_sistema(st.session_state.nombre, "Trivia Oráculo", f"{res_text} (+{reward_ap if is_correct else 0})", "Trivia")
     except: pass
 
-# --- 👮‍♂️ FUNCIONES DE ADMIN (APROBACIÓN INTELIGENTE) ---
+# --- 👮‍♂️ FUNCIONES DE ADMIN ---
 
 def buscar_page_id_por_nombre(nombre_jugador):
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
@@ -471,7 +469,6 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
     player_page_id = buscar_page_id_por_nombre(nombre_jugador)
     if not player_page_id: return False, f"No se encontró al jugador {nombre_jugador}."
         
-    # Variables para el log
     player_uni = None
     player_ano = None
 
@@ -496,7 +493,7 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
         
     except Exception as e: return False, f"Error al cobrar: {str(e)}"
 
-   # 3. ACTUALIZAR SOLICITUD
+    # 3. ACTUALIZAR SOLICITUD (FIX: Usar propiedad 'Observaciones')
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     try:
         url_req = f"https://api.notion.com/v1/pages/{request_id}"
@@ -505,14 +502,13 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
                 "Status": {"select": {"name": "Aprobado"}},
                 "Procesado": {"checkbox": True}, 
                 "Fecha respuesta": {"date": {"start": now_iso}}, 
-                # FIX: Cambiado de "Respuesta Comando" a "Observaciones"
+                # AQUÍ ESTÁ EL CAMBIO CRÍTICO:
                 "Observaciones": {"rich_text": [{"text": {"content": "✅ Solicitud procesada y saldo descontado."}}]}
             }
         }
         res_update = requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
         res_update.raise_for_status()
         
-        # Log
         registrar_evento_sistema(
             nombre_jugador, "Solicitud Aprobada", f"Aprobado (-{costo_ap} AP)", 
             "Habilidad", uni_override=player_uni, ano_override=player_ano
@@ -520,7 +516,6 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
         return True, "✅ Cobro realizado y solicitud cerrada correctamente."
         
     except Exception as e:
-        # Si falla aquí, devolvemos el error exacto de Notion para que sepas qué columna está mal
         err_msg = str(e)
         if hasattr(e, 'response') and e.response is not None:
              err_msg = e.response.text
