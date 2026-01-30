@@ -234,7 +234,6 @@ def cargar_habilidades(rol_jugador):
         return []
 
 # --- 📩 SOLICITUDES ---
-# --- 📩 SOLICITUDES (CORREGIDO: SOLO UN TÍTULO) ---
 def enviar_solicitud(tipo, mensaje, detalles, usuario):
     if not DB_SOLICITUDES_ID: return False
     url = "https://api.notion.com/v1/pages"
