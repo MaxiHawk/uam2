@@ -10,7 +10,7 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, NOTION_TOKEN # Importamos lo necesario
 )
-
+from modules.notion_api import aprobar_solicitud_habilidad
 # Recuperamos la contraseña de admin directo de los secrets (esa no está en config.py usualmente)
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
