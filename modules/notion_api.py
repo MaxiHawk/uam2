@@ -233,9 +233,12 @@ def cargar_habilidades(rol_jugador):
         print(f"Error cargando habilidades: {e}")
         return []
 
-# --- 📩 SOLICITUDES ---
+# --- 📩 SOLICITUDES (VERSIÓN DIAGNÓSTICO) ---
 def enviar_solicitud(tipo, mensaje, detalles, usuario):
-    if not DB_SOLICITUDES_ID: return False
+    if not DB_SOLICITUDES_ID: 
+        st.error("❌ Error: DB_SOLICITUDES_ID no configurada.")
+        return False
+        
     url = "https://api.notion.com/v1/pages"
     uni, ano = get_player_metadata()
     from datetime import datetime
@@ -244,10 +247,12 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     
     properties = {
-        # FIX: "Remitente" es el Título (Primary Key). 
-        # "Usuario" lo pasamos a texto normal para no causar conflicto.
-        "Remitente": {"title": [{"text": {"content": str(usuario)}}]},
-        "Usuario": {"rich_text": [{"text": {"content": str(usuario)}}]},
+        # --- INTENTO #2: CAMBIO DE ROLES ---
+        # Asumimos que "Usuario" es la columna principal (Title)
+        "Usuario": {"title": [{"text": {"content": str(usuario)}}]},
+        # Y que "Remitente" es una columna de texto normal (Rich Text)
+        "Remitente": {"rich_text": [{"text": {"content": str(usuario)}}]},
+        # -----------------------------------
         
         "Tipo": {"select": {"name": tipo}},
         "Mensaje": {"rich_text": [{"text": {"content": f"{mensaje}\n\nDetalles: {detalles}"}}]}, 
@@ -255,7 +260,6 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
         "Fecha de creación": {"date": {"start": now_iso}} 
     }
     
-    # Agregamos metadata extra si existe
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
@@ -269,11 +273,20 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
         res.raise_for_status()
         return True
     except Exception as e: 
-        # Imprimimos el error real en la consola para depurar si hace falta
+        # --- DIAGNÓSTICO EN PANTALLA ---
+        err_msg = "Error desconocido"
         if hasattr(e, 'response') and e.response is not None:
-            print(f"❌ Error Solicitud Notion: {e.response.text}")
+            try:
+                # Intentamos leer el mensaje de error de Notion
+                err_json = e.response.json()
+                err_msg = err_json.get('message', e.response.text)
+            except:
+                err_msg = e.response.text
         else:
-            print(f"❌ Error Solicitud: {e}")
+            err_msg = str(e)
+            
+        print(f"❌ Error Solicitud Notion: {err_msg}")
+        st.error(f"⛔ Error de Notion: {err_msg}") # ¡Esto te dirá qué pasa!
         return False
 
 # --- 🛍️ MERCADO (AHORA CON LECTURA EN VIVO) ---
