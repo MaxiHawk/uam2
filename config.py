@@ -31,7 +31,8 @@ HEADERS = {
 }
 
 # --- CONFIGURACIÓN DE JUEGO ---
-SESSION_TIMEOUT = 900  # 15 minutos
+SESSION_TIMEOUT = 900   # 15 minutos de inactividad
+API_TIMEOUT = 10        # 10 Segundos máx para esperar a Notion (NUEVO)
 
 NOMBRES_NIVELES = { 
     1: "🧪 Aprendiz", 
