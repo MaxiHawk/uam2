@@ -496,7 +496,7 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
         
     except Exception as e: return False, f"Error al cobrar: {str(e)}"
 
-    # 3. ACTUALIZAR SOLICITUD (AQUÍ ESTABA EL FALLO SILENCIOSO)
+   # 3. ACTUALIZAR SOLICITUD
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     try:
         url_req = f"https://api.notion.com/v1/pages/{request_id}"
@@ -505,10 +505,10 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
                 "Status": {"select": {"name": "Aprobado"}},
                 "Procesado": {"checkbox": True}, 
                 "Fecha respuesta": {"date": {"start": now_iso}}, 
-                "Respuesta Comando": {"rich_text": [{"text": {"content": "✅ Solicitud procesada y saldo descontado."}}]}
+                # FIX: Cambiado de "Respuesta Comando" a "Observaciones"
+                "Observaciones": {"rich_text": [{"text": {"content": "✅ Solicitud procesada y saldo descontado."}}]}
             }
         }
-        # 🔥 FIX: Capturamos respuesta y verificamos error
         res_update = requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
         res_update.raise_for_status()
         
