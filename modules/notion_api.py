@@ -477,3 +477,94 @@ def procesar_recalibracion(reward_ap, is_correct, question_id):
         res_text = "CORRECTO" if is_correct else "FALLO"
         registrar_evento_sistema(st.session_state.nombre, "Trivia Oráculo", f"{res_text} (+{reward_ap if is_correct else 0})", "Trivia")
     except: pass
+
+# --- 👮‍♂️ FUNCIONES DE ADMIN (APROBACIÓN DE SOLICITUDES) ---
+
+def buscar_page_id_por_nombre(nombre_jugador):
+    """Busca el ID de página de un jugador usando su Nombre (Título)."""
+    url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+    # Filtramos por la propiedad título "Aspirante" (o como se llame tu columna principal de jugadores)
+    # Asumiré que se llama "Aspirante" o "Nombre". Ajusta si es necesario.
+    payload = {"filter": {"property": "Aspirante", "title": {"equals": nombre_jugador}}}
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=API_TIMEOUT)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results: return results[0]["id"]
+    except: pass
+    return None
+
+def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
+    """
+    1. Extrae costos del texto (Regex).
+    2. Descuenta saldo al jugador.
+    3. Marca solicitud como Aprobada.
+    """
+    import re
+    
+    # 1. PARSEO DE COSTOS (Busca "Costo: X AP" y "X MP")
+    costo_ap = 0
+    costo_mp = 0
+    
+    try:
+        match_ap = re.search(r'Costo:.*?(\d+)\s*AP', detalles_texto)
+        if match_ap: costo_ap = int(match_ap.group(1))
+        
+        match_mp = re.search(r'\|\s*(\d+)\s*MP', detalles_texto)
+        if match_mp: costo_mp = int(match_mp.group(1))
+    except:
+        return False, "Error leyendo los costos del texto."
+
+    if costo_ap == 0 and costo_mp == 0:
+        return False, "No se encontraron costos en la solicitud."
+
+    # 2. COBRO AL JUGADOR
+    player_page_id = buscar_page_id_por_nombre(nombre_jugador)
+    if not player_page_id:
+        return False, f"No se encontró al jugador {nombre_jugador}."
+        
+    try:
+        # Leer saldo actual (Blindaje Race Condition)
+        url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
+        res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
+        res_get.raise_for_status()
+        
+        props = res_get.json()["properties"]
+        current_ap = get_notion_number(props, "AP")
+        current_mp = get_notion_number(props, "MP")
+        
+        if current_ap < costo_ap or current_mp < costo_mp:
+            return False, f"El jugador no tiene saldo suficiente (Tiene {current_ap} AP)."
+            
+        # Aplicar Descuento
+        new_ap = current_ap - costo_ap
+        new_mp = current_mp - costo_mp
+        
+        req_patch = requests.patch(url_player, headers=headers, json={
+            "properties": {"AP": {"number": new_ap}, "MP": {"number": new_mp}}
+        }, timeout=API_TIMEOUT)
+        req_patch.raise_for_status()
+        
+    except Exception as e:
+        return False, f"Error al cobrar: {str(e)}"
+
+    # 3. ACTUALIZAR SOLICITUD A "APROBADO"
+    try:
+        url_req = f"https://api.notion.com/v1/pages/{request_id}"
+        payload_req = {
+            "properties": {
+                "Status": {"select": {"name": "Aprobado"}},
+                # Opcional: Agregar comentario de admin
+                "Respuesta Comando": {"rich_text": [{"text": {"content": "✅ Solicitud procesada y saldo descontado."}}]}
+            }
+        }
+        requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
+        
+        # Log del sistema
+        registrar_evento_sistema("COMANDO", "Aprobación Habilidad", f"{nombre_jugador} (-{costo_ap} AP)", "Admin")
+        
+        return True, "✅ Cobro realizado y solicitud aprobada."
+        
+    except Exception as e:
+        return False, f"Se cobró pero falló actualizar la solicitud: {str(e)}"
