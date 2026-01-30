@@ -483,9 +483,10 @@ def procesar_recalibracion(reward_ap, is_correct, question_id):
 def buscar_page_id_por_nombre(nombre_jugador):
     """Busca el ID de página de un jugador usando su Nombre (Título)."""
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    # Filtramos por la propiedad título "Aspirante" (o como se llame tu columna principal de jugadores)
-    # Asumiré que se llama "Aspirante" o "Nombre". Ajusta si es necesario.
-    payload = {"filter": {"property": "Aspirante", "title": {"equals": nombre_jugador}}}
+    
+    # --- FIX: CAMBIADO DE "Aspirante" A "Jugador" ---
+    payload = {"filter": {"property": "Jugador", "title": {"equals": nombre_jugador}}}
+    # ------------------------------------------------
     
     try:
         res = requests.post(url, headers=headers, json=payload, timeout=API_TIMEOUT)
