@@ -4,13 +4,13 @@ import pandas as pd
 import time
 from datetime import datetime
 import pytz 
+from modules.notion_api import aprobar_solicitud_habilidad
 
 # --- REEMPLAZA DESDE "GESTIÓN DE SECRETOS" HASTA LA DEFINICIÓN DE "headers" CON ESTO ---
 from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, NOTION_TOKEN # Importamos lo necesario
 )
-from modules.notion_api import aprobar_solicitud_habilidad
 # Recuperamos la contraseña de admin directo de los secrets (esa no está en config.py usualmente)
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
