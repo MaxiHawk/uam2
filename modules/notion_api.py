@@ -257,25 +257,36 @@ def enviar_solicitud(tipo, mensaje, detalles, usuario):
         return True
     except: return False
 
-# --- 🛍️ MERCADO ---
+# --- 🛍️ MERCADO (AHORA CON LECTURA EN VIVO) ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
-    player = st.session_state.jugador
-    # Nota: Aquí solo leemos para verificar saldo PREVIO al envío.
-    # El descuento real lo hace un humano o admin, así que no es crítico leer "live" aquí, 
-    # pero para ser estrictos, si la compra fuera automática, deberíamos leer.
-    # Como es "Solicitud", está bien leer caché para validación rápida.
-    current_ap = get_notion_number(player.get("properties", {}), "AP")
-    current_mp = get_notion_number(player.get("properties", {}), "MP")
+    # 1. FIX: Consultar saldo REAL en Notion (Saltar caché)
+    try:
+        url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
+        res_player = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
+        res_player.raise_for_status()
+        
+        props_reales = res_player.json()["properties"]
+        
+        current_ap = get_notion_number(props_reales, "AP")
+        current_mp = get_notion_number(props_reales, "MP")
+    except Exception as e:
+        print(f"⚠️ Error leyendo saldo en vivo: {e}")
+        # Si falla la lectura en vivo, usamos caché como último recurso
+        current_ap = get_notion_number(st.session_state.jugador.get("properties", {}), "AP")
+        current_mp = get_notion_number(st.session_state.jugador.get("properties", {}), "MP")
     
+    # 2. Validación
     if current_ap < cost_ap or current_mp < cost_mp:
-        return False, "Saldo insuficiente."
+        return False, f"Saldo insuficiente. (Tienes: {current_ap} AP)"
 
     msg = f"Solicitud de activación: {skill_name}"
     detalles = f"Costo: {cost_ap} AP | {cost_mp} MP."
     
+    # 3. Enviar
     if enviar_solicitud("Compra Habilidad", msg, detalles, st.session_state.nombre):
         registrar_evento_sistema(st.session_state.nombre, "Solicitud Habilidad", f"{skill_name}", "Mercado")
         return True, "Solicitud enviada."
+    
     return False, "Error al enviar solicitud."
 
 # --- 📦 SUMINISTROS (FIX CRÍTICO) ---
