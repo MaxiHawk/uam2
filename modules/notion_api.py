@@ -234,28 +234,48 @@ def cargar_habilidades(rol_jugador):
         return []
 
 # --- 📩 SOLICITUDES ---
+# --- 📩 SOLICITUDES (CORREGIDO: SOLO UN TÍTULO) ---
 def enviar_solicitud(tipo, mensaje, detalles, usuario):
     if not DB_SOLICITUDES_ID: return False
     url = "https://api.notion.com/v1/pages"
     uni, ano = get_player_metadata()
+    from datetime import datetime
+    import pytz
+    
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     
     properties = {
-        "Usuario": {"title": [{"text": {"content": str(usuario)}}]},
+        # FIX: "Remitente" es el Título (Primary Key). 
+        # "Usuario" lo pasamos a texto normal para no causar conflicto.
         "Remitente": {"title": [{"text": {"content": str(usuario)}}]},
+        "Usuario": {"rich_text": [{"text": {"content": str(usuario)}}]},
+        
         "Tipo": {"select": {"name": tipo}},
         "Mensaje": {"rich_text": [{"text": {"content": f"{mensaje}\n\nDetalles: {detalles}"}}]}, 
         "Status": {"select": {"name": "Pendiente"}}, 
         "Fecha de creación": {"date": {"start": now_iso}} 
     }
+    
+    # Agregamos metadata extra si existe
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
 
     try: 
-        res = requests.post(url, headers=headers, json={"parent": {"database_id": DB_SOLICITUDES_ID}, "properties": properties}, timeout=API_TIMEOUT)
+        res = requests.post(
+            url, 
+            headers=headers, 
+            json={"parent": {"database_id": DB_SOLICITUDES_ID}, "properties": properties}, 
+            timeout=API_TIMEOUT
+        )
         res.raise_for_status()
         return True
-    except: return False
+    except Exception as e: 
+        # Imprimimos el error real en la consola para depurar si hace falta
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"❌ Error Solicitud Notion: {e.response.text}")
+        else:
+            print(f"❌ Error Solicitud: {e}")
+        return False
 
 # --- 🛍️ MERCADO (AHORA CON LECTURA EN VIVO) ---
 def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
