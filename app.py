@@ -987,16 +987,9 @@ else:
             
             if anuncio_para_mostrar:
                 st.session_state.popup_shown = True
-                raw_date_popup = anuncio_para_mostrar['fecha']
-                try:
-                    if "T" in raw_date_popup:
-                        utc_dt = datetime.fromisoformat(raw_date_popup.replace('Z', '+00:00'))
-                        chile_tz = pytz.timezone('America/Santiago')
-                        local_dt = utc_dt.astimezone(chile_tz)
-                        fecha_popup = local_dt.strftime("%d/%m/%Y %H:%M")
-                    else:
-                        fecha_popup = datetime.strptime(raw_date_popup, "%Y-%m-%d").strftime("%d/%m/%Y")
-                except: fecha_popup = raw_date_popup
+                # --- LIMPIEZA NEO: Usamos el helper ---
+                fecha_popup = parsear_fecha_chile(anuncio_para_mostrar['fecha'], "%d/%m/%Y")
+                # --------------------------------------
 
                 with st.expander("🚨 TRANSMISIÓN PRIORITARIA ENTRANTE", expanded=True):
                     st.markdown(f"""
@@ -1807,17 +1800,9 @@ else:
             st.info("Sin transmisiones en tu frecuencia.")
         else:
             for anuncio in anuncios_visibles:
-                raw_date = anuncio['fecha']
-                try:
-                    if "T" in raw_date:
-                        utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
-                        chile_tz = pytz.timezone('America/Santiago')
-                        local_dt = utc_dt.astimezone(chile_tz)
-                        fecha_display = local_dt.strftime("%d/%m/%Y %H:%M")
-                    else:
-                        dt_obj = datetime.strptime(raw_date, "%Y-%m-%d")
-                        fecha_display = dt_obj.strftime("%d/%m/%Y")
-                except: fecha_display = raw_date
+                # --- LIMPIEZA NEO ---
+                fecha_display = parsear_fecha_chile(anuncio['fecha'], "%d/%m/%Y")
+                # --------------------
 
                 with st.container():
                     st.markdown(f"""
@@ -1857,10 +1842,9 @@ else:
                 if item["status"] == "Aprobado": status_color, icon = "#00e676", "✅"
                 elif item["status"] == "Rechazado": status_color, icon = "#ff1744", "❌"
                 elif item["status"] == "Respuesta": status_color, icon = "#00e5ff", "📩"
-                try: 
-                    utc_dt = datetime.fromisoformat(item['fecha'].replace('Z', '+00:00'))
-                    fecha_str = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m/%Y %H:%M")
-                except: fecha_str = "Fecha desc."
+                # --- LIMPIEZA NEO ---
+                fecha_str = parsear_fecha_chile(item['fecha'])
+                # --------------------
                 log_html = f"""<div class="log-card" style="border-left-color: {status_color};"><div class="log-header"><span>{fecha_str}</span><span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span></div><div class="log-body">{item['mensaje']}</div>{f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}</div>"""
                 st.markdown(log_html, unsafe_allow_html=True)
 
