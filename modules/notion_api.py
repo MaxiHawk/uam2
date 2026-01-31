@@ -288,31 +288,38 @@ def procesar_compra_habilidad(skill_name, cost_ap, cost_mp, skill_id_notion):
     
     return False, "Error al enviar solicitud."
 # --- 🛒 MERCADO (NUEVO BLINDAJE) ---
-def procesar_compra_mercado(item_nombre, costo_ap):
+def procesar_compra_mercado(item_nombre, costo, is_real_money=False):
     try:
-        # 1. Leer saldo REAL (Blindaje contra caché vieja)
-        url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
-        res_player = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
-        res_player.raise_for_status()
+        # Solo verificamos saldo si NO es dinero real
+        current_ap = 0
+        if not is_real_money:
+            url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
+            res_player = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
+            res_player.raise_for_status()
+            props_reales = res_player.json()["properties"]
+            current_ap = get_notion_number(props_reales, "AP")
+            
+            if current_ap < costo:
+                return False, f"Saldo insuficiente. (Tienes: {current_ap} AP, Requiere: {costo})"
         
-        props_reales = res_player.json()["properties"]
-        current_ap = get_notion_number(props_reales, "AP")
     except Exception as e:
-        print(f"⚠️ Error leyendo saldo en vivo: {e}")
-        # Fallback a caché si falla la conexión
-        current_ap = get_notion_number(st.session_state.jugador.get("properties", {}), "AP")
-    
-    if current_ap < costo_ap:
-        return False, f"Saldo insuficiente. (Tienes: {current_ap} AP, Requiere: {costo_ap})"
+        if not is_real_money: # Solo importa si es AP
+            print(f"⚠️ Error leyendo saldo en vivo: {e}")
+            current_ap = get_notion_number(st.session_state.jugador.get("properties", {}), "AP")
+            if current_ap < costo: return False, "Saldo insuficiente (Cache)."
 
     msg = f"Solicitud de compra: {item_nombre}"
-    detalles = f"Costo: {costo_ap} AP"
     
-    # 2. Enviar Solicitud (Usamos 'COMPRA' como tipo para diferenciarlo en Admin)
+    # Diferenciamos el detalle según el tipo de moneda
+    if is_real_money:
+        detalles = f"Precio: ${costo:,} CLP (DINERO REAL) - No descontar AP"
+    else:
+        detalles = f"Costo: {costo} AP"
+    
     if enviar_solicitud("COMPRA", msg, detalles, st.session_state.nombre):
-        # 3. Registrar Log del Sistema
-        registrar_evento_sistema(st.session_state.nombre, "Solicitud Mercado", f"{item_nombre} (-{costo_ap} AP)", "Mercado")
-        return True, "Solicitud enviada."
+        log_detail = f"{item_nombre} (${costo})" if is_real_money else f"{item_nombre} (-{costo} AP)"
+        registrar_evento_sistema(st.session_state.nombre, "Solicitud Mercado", log_detail, "Mercado")
+        return True, "Solicitud enviada. Coordinar pago con Admin." if is_real_money else "Solicitud enviada."
     
     return False, "Error al enviar solicitud."
 # --- 📦 SUMINISTROS ---
