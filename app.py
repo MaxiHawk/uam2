@@ -701,7 +701,19 @@ def cargar_mercado():
                     desc = desc_list[0]["text"]["content"] if desc_list else ""
                     icon_list = props.get("Icono", {}).get("rich_text", [])
                     icon = icon_list[0]["text"]["content"] if icon_list else "📦"
-                    items.append({"id": r["id"], "nombre": nombre, "costo": costo, "desc": desc, "icon": icon})
+                    
+                    # --- NUEVO: Detectar si es dinero real ---
+                    es_dinero_real = props.get("Dinero Real", {}).get("checkbox", False)
+                    # ----------------------------------------
+
+                    items.append({
+                        "id": r["id"], 
+                        "nombre": nombre, 
+                        "costo": costo, 
+                        "desc": desc, 
+                        "icon": icon,
+                        "es_dinero_real": es_dinero_real # Guardamos el dato
+                    })
                 except: pass
         return items
     except: return []
@@ -1571,65 +1583,77 @@ else:
             if not DB_MERCADO_ID: st.warning("⚠️ Base de datos de Mercado no configurada.")
             else: st.info("El mercado está vacío.")
         else:
-            # --- FIX: Iniciamos el bucle correctamente ---
+            # Bucle Principal de Mercado
             for item in market_items:
                 
-                # 1. Lógica de Visibilidad (Alumni vs Activos)
+                # 1. Datos del Item
+                is_real_money = item.get("es_dinero_real", False)
+                
+                # 2. Lógica de Visibilidad (Alumni vs Activos)
                 is_exclusive = "[EX]" in item['nombre'] or "[ALUMNI]" in item['nombre']
                 puede_ver_boton = True
                 texto_boton_cerrado = ""
 
                 if is_alumni:
-                    # Alumni solo ve exclusivos
-                    if not is_exclusive:
+                    if not is_exclusive and not is_real_money: # Alumni ve exclusivos O dinero real
                         puede_ver_boton = False
                         texto_boton_cerrado = "⛔ CICLO CERRADO"
                 else:
-                    # Activos no ven exclusivos
+                    # Activos no ven exclusivos (pero sí pueden ver dinero real si quieres)
                     if is_exclusive:
                         puede_ver_boton = False
                         texto_boton_cerrado = "🔒 SOLO VETERANOS"
 
-                # 2. Renderizado de Tarjeta
+                # 3. Renderizado
                 with st.container():
-                    puede_comprar = ap >= item['costo']
-                    price_color = "#00e5ff" if puede_comprar else "#ff4444"
+                    # Lógica de Precio y Color
+                    if is_real_money:
+                        # Si es dinero real, siempre "puede comprar" (no depende de AP)
+                        puede_comprar = True
+                        price_color = "#00ff00" # Verde Dinero
+                        costo_display = f"${item['costo']:,}" # Formato dinero (ej: $15,000)
+                        moneda_label = "CLP" # O USD
+                    else:
+                        # Lógica AP normal
+                        puede_comprar = ap >= item['costo']
+                        price_color = "#00e5ff" if puede_comprar else "#ff4444"
+                        costo_display = str(item['costo'])
+                        moneda_label = "AP"
                     
                     # HTML de la Tarjeta
-                    market_html = f"""<div class="market-card"><div class="market-icon">{item['icon']}</div><div class="market-info"><div class="market-title">{item['nombre']}</div><div class="market-desc">{item['desc']}</div></div><div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">{item['costo']}<span>AP</span></div></div>"""
+                    market_html = f"""<div class="market-card"><div class="market-icon">{item['icon']}</div><div class="market-info"><div class="market-title">{item['nombre']}</div><div class="market-desc">{item['desc']}</div></div><div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">{costo_display}<span>{moneda_label}</span></div></div>"""
                     st.markdown(market_html, unsafe_allow_html=True)
                     
                     c1, c2 = st.columns([3, 1])
                     with c2:
                         if puede_ver_boton:
-                            # --- SISTEMA DE SEGURIDAD (POPOVER) ---
                             if puede_comprar:
-                                # Usamos un Popover para confirmar la compra
-                                with st.popover(f"COMPRAR", use_container_width=True):
+                                with st.popover(f"ADQUIRIR", use_container_width=True):
                                     st.markdown(f"""
                                     <div style="text-align: center;">
                                         <div style="font-size: 3em;">{item['icon']}</div>
                                         <h3 style="margin: 0; color: #00e5ff;">{item['nombre']}</h3>
-                                        <p style="color: #aaa; font-size: 0.9em;">¿Confirmar transacción?</p>
+                                        <p style="color: #aaa; font-size: 0.9em;">¿Iniciar proceso de compra?</p>
                                         <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin: 10px 0;">
-                                            Costo: <strong style="color: #FFD700;">{item['costo']} AP</strong>
+                                            Valor: <strong style="color: {price_color};">{costo_display} {moneda_label}</strong>
                                         </div>
                                     </div>
                                     """, unsafe_allow_html=True)
                                     
-                                    if st.button("🚀 CONFIRMAR COMPRA", key=f"confirm_{item['id']}", type="primary", use_container_width=True):
-                                        with st.spinner("Conectando con el Mercado Negro..."):
-                                            # Llamada a la función blindada
-                                            exito, msg = procesar_compra_mercado(item['nombre'], item['costo'])
+                                    if st.button("🚀 CONFIRMAR SOLICITUD", key=f"confirm_{item['id']}", type="primary", use_container_width=True):
+                                        with st.spinner("Contactando proveedor..."):
+                                            # Pasamos el flag de dinero real a la función
+                                            exito, msg = procesar_compra_mercado(item['nombre'], item['costo'], is_real_money)
                                             if exito:
-                                                st.success("✅ ¡Transacción Exitosa!")
+                                                st.success("✅ ¡Solicitud Enviada!")
                                                 time.sleep(2)
-                                                actualizar_datos_sesion() # Refresca el saldo visual
+                                                actualizar_datos_sesion()
                                             else:
                                                 st.error(msg)
                             else:
-                                # Botón deshabilitado si no hay dinero
                                 st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
+                        else:
+                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
                         else:
                             # Botón de bloqueo (Alumni/Veteranos)
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
