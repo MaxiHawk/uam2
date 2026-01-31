@@ -1301,10 +1301,7 @@ else:
             }
         </style>
         """, unsafe_allow_html=True)
-        # ---------------------------------------------------------
-
-        st.markdown(f"### 📜 HABILIDADES: {rol.upper()}")
-        # ... (el resto del código sigue igual)
+      
         
         # Recuperamos datos del Rol
         rol_data = p.get("Rol", {}).get("select")
