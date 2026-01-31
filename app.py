@@ -1560,18 +1560,42 @@ else:
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
         st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
+        
+        # Panel de Energía (AP)
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
+        
         market_items = st.session_state.market_data
+        
         if not market_items:
             if not DB_MERCADO_ID: st.warning("⚠️ Base de datos de Mercado no configurada.")
             else: st.info("El mercado está vacío.")
         else:
-            with st.container():
+            # --- FIX: Iniciamos el bucle correctamente ---
+            for item in market_items:
+                
+                # 1. Lógica de Visibilidad (Alumni vs Activos)
+                is_exclusive = "[EX]" in item['nombre'] or "[ALUMNI]" in item['nombre']
+                puede_ver_boton = True
+                texto_boton_cerrado = ""
+
+                if is_alumni:
+                    # Alumni solo ve exclusivos
+                    if not is_exclusive:
+                        puede_ver_boton = False
+                        texto_boton_cerrado = "⛔ CICLO CERRADO"
+                else:
+                    # Activos no ven exclusivos
+                    if is_exclusive:
+                        puede_ver_boton = False
+                        texto_boton_cerrado = "🔒 SOLO VETERANOS"
+
+                # 2. Renderizado de Tarjeta
+                with st.container():
                     puede_comprar = ap >= item['costo']
                     price_color = "#00e5ff" if puede_comprar else "#ff4444"
                     
-                    # Tarjeta Visual
+                    # HTML de la Tarjeta
                     market_html = f"""<div class="market-card"><div class="market-icon">{item['icon']}</div><div class="market-info"><div class="market-title">{item['nombre']}</div><div class="market-desc">{item['desc']}</div></div><div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">{item['costo']}<span>AP</span></div></div>"""
                     st.markdown(market_html, unsafe_allow_html=True)
                     
@@ -1580,7 +1604,7 @@ else:
                         if puede_ver_boton:
                             # --- SISTEMA DE SEGURIDAD (POPOVER) ---
                             if puede_comprar:
-                                # Usamos un Popover para la confirmación de seguridad
+                                # Usamos un Popover para confirmar la compra
                                 with st.popover(f"COMPRAR", use_container_width=True):
                                     st.markdown(f"""
                                     <div style="text-align: center;">
@@ -1595,6 +1619,7 @@ else:
                                     
                                     if st.button("🚀 CONFIRMAR COMPRA", key=f"confirm_{item['id']}", type="primary", use_container_width=True):
                                         with st.spinner("Conectando con el Mercado Negro..."):
+                                            # Llamada a la función blindada
                                             exito, msg = procesar_compra_mercado(item['nombre'], item['costo'])
                                             if exito:
                                                 st.success("✅ ¡Transacción Exitosa!")
@@ -1607,10 +1632,6 @@ else:
                                 st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
                         else:
                             # Botón de bloqueo (Alumni/Veteranos)
-                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
-            else:
-                st.error(msg) # Muestra "Saldo insuficiente" si Notion dice que no tiene fondos
-                        else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_trivia:
