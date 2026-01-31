@@ -1593,7 +1593,7 @@ else:
                 is_exclusive = "[EX]" in item['nombre'] or "[ALUMNI]" in item['nombre']
                 puede_ver_boton = True
                 texto_boton_cerrado = ""
-
+    
                 if is_alumni:
                     if not is_exclusive and not is_real_money: # Alumni ve exclusivos O dinero real
                         puede_ver_boton = False
@@ -1603,7 +1603,7 @@ else:
                     if is_exclusive:
                         puede_ver_boton = False
                         texto_boton_cerrado = "🔒 SOLO VETERANOS"
-
+    
                 # 3. Renderizado
                 with st.container():
                     # Lógica de Precio y Color
@@ -1650,13 +1650,13 @@ else:
                                                 actualizar_datos_sesion()
                                             else:
                                                 st.error(msg)
-                            else:
-                                st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
                         else:
-                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
+                            st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
                     else:
-                        # Botón de bloqueo (Alumni/Veteranos)
                         st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
+                else:
+                    # Botón de bloqueo (Alumni/Veteranos)
+                    st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
