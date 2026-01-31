@@ -1586,16 +1586,17 @@ else:
             # Bucle Principal de Mercado
             for item in market_items:
                 
-                # 1. Datos del Item
+                # 1. Datos del Item (Detectamos si es dinero real)
                 is_real_money = item.get("es_dinero_real", False)
                 
                 # 2. Lógica de Visibilidad (Alumni vs Activos)
                 is_exclusive = "[EX]" in item['nombre'] or "[ALUMNI]" in item['nombre']
                 puede_ver_boton = True
                 texto_boton_cerrado = ""
-    
+
                 if is_alumni:
-                    if not is_exclusive and not is_real_money: # Alumni ve exclusivos O dinero real
+                    # Alumni ve exclusivos O dinero real
+                    if not is_exclusive and not is_real_money:
                         puede_ver_boton = False
                         texto_boton_cerrado = "⛔ CICLO CERRADO"
                 else:
@@ -1603,16 +1604,16 @@ else:
                     if is_exclusive:
                         puede_ver_boton = False
                         texto_boton_cerrado = "🔒 SOLO VETERANOS"
-    
-                # 3. Renderizado
+
+                # 3. Renderizado de Tarjeta
                 with st.container():
                     # Lógica de Precio y Color
                     if is_real_money:
                         # Si es dinero real, siempre "puede comprar" (no depende de AP)
                         puede_comprar = True
-                        price_color = "#00ff00" # Verde Dinero
+                        price_color = "#00ff00" # Verde para Dinero
                         costo_display = f"${item['costo']:,}" # Formato dinero (ej: $15,000)
-                        moneda_label = "CLP" # O USD
+                        moneda_label = "CLP" # O la moneda que prefieras
                     else:
                         # Lógica AP normal
                         puede_comprar = ap >= item['costo']
@@ -1628,6 +1629,7 @@ else:
                     with c2:
                         if puede_ver_boton:
                             if puede_comprar:
+                                # Usamos un Popover para la confirmación de seguridad
                                 with st.popover(f"ADQUIRIR", use_container_width=True):
                                     st.markdown(f"""
                                     <div style="text-align: center;">
@@ -1650,13 +1652,12 @@ else:
                                                 actualizar_datos_sesion()
                                             else:
                                                 st.error(msg)
+                            else:
+                                # Botón deshabilitado si no hay dinero AP
+                                st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
                         else:
-                            st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
-                    else:
-                        st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
-                else:
-                    # Botón de bloqueo (Alumni/Veteranos)
-                    st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
+                            # Botón de bloqueo (Alumni/Veteranos)
+                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
