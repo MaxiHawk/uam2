@@ -1654,9 +1654,9 @@ else:
                                 st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
-                        else:
-                            # Botón de bloqueo (Alumni/Veteranos)
-                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
+                    else:
+                        # Botón de bloqueo (Alumni/Veteranos)
+                        st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
