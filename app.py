@@ -30,7 +30,7 @@ from modules.notion_api import (
     cargar_misiones_activas, inscribir_jugador_mision, enviar_solicitud,
     procesar_codigo_canje, cargar_pregunta_aleatoria, procesar_recalibracion,
     cargar_estado_suministros, procesar_suministro,
-    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades
+    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades, procesar_compra_mercado
 )
 
 from modules.utils import (
@@ -1591,11 +1591,16 @@ else:
                         if puede_ver_boton:
                             if st.button(f"COMPRAR", key=f"buy_{item['id']}", disabled=not puede_comprar, use_container_width=True):
                                 if puede_comprar:
-                                    with st.spinner("Procesando..."):
-                                        time.sleep(1)
-                                        if enviar_solicitud("COMPRA", item['nombre'], str(item['costo']), st.session_state.nombre): st.success("✅ Enviado.")
-                                        else: st.error("Error.")
-                                else: st.error("Fondos insuficientes.")
+                                    with st.spinner("Verificando créditos en la red oscura..."):
+                                        # Usamos la nueva función blindada
+                                        exito, msg = procesar_compra_mercado(item['nombre'], item['costo'])
+                                        
+                                        if exito:
+                                            st.success(f"✅ {msg}")
+                                            time.sleep(2)
+                                            st.rerun()
+            else:
+                st.error(msg) # Muestra "Saldo insuficiente" si Notion dice que no tiene fondos
                         else:
                             st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
 
