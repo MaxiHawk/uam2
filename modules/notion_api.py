@@ -299,7 +299,7 @@ def procesar_compra_mercado(item_nombre, costo_ap):
         current_ap = get_notion_number(props_reales, "AP")
     except Exception as e:
         print(f"⚠️ Error leyendo saldo en vivo: {e}")
-        # Fallback a caché si falla la conexión (opcional, o retornar False)
+        # Fallback a caché si falla la conexión
         current_ap = get_notion_number(st.session_state.jugador.get("properties", {}), "AP")
     
     if current_ap < costo_ap:
@@ -308,7 +308,7 @@ def procesar_compra_mercado(item_nombre, costo_ap):
     msg = f"Solicitud de compra: {item_nombre}"
     detalles = f"Costo: {costo_ap} AP"
     
-    # 2. Enviar Solicitud
+    # 2. Enviar Solicitud (Usamos 'COMPRA' como tipo para diferenciarlo en Admin)
     if enviar_solicitud("COMPRA", msg, detalles, st.session_state.nombre):
         # 3. Registrar Log del Sistema
         registrar_evento_sistema(st.session_state.nombre, "Solicitud Mercado", f"{item_nombre} (-{costo_ap} AP)", "Mercado")
