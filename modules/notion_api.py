@@ -378,11 +378,12 @@ def procesar_suministro(rarity_name, rewards):
         print(f"Error Suministro: {e}")
         return False
 
-# --- 🔐 CÓDIGOS ---
+# --- 🔐 CÓDIGOS (VERSIÓN 2.0: INSIGNIAS + SEGURIDAD) ---
 def procesar_codigo_canje(codigo_input):
-    if not DB_CODIGOS_ID: return False, "Sistema offline."
-    if not validar_codigo_seguro(codigo_input): return False, "❌ Formato inválido."
+    if not DB_CODIGOS_ID: return False, "Sistema offline.", None
+    if not validar_codigo_seguro(codigo_input): return False, "❌ Formato inválido.", None
 
+    # 1. Buscamos el código
     url_query = f"https://api.notion.com/v1/databases/{DB_CODIGOS_ID}/query"
     payload = {
         "filter": {
@@ -392,54 +393,91 @@ def procesar_codigo_canje(codigo_input):
             ]
         }
     }
+    
     try:
         res = requests.post(url_query, headers=headers, json=payload, timeout=API_TIMEOUT)
         res.raise_for_status()
         results = res.json().get("results", [])
-        if not results: return False, "❌ Código inválido o expirado."
+        if not results: return False, "❌ Código inválido o expirado.", None
         
         code_page = results[0]
         p_code = code_page["properties"]
         
+        # 2. Validación de Uso (Lista de Texto Exacta)
         redeemed_text = get_notion_text(p_code, "Redimido Por")
-        if st.session_state.nombre in [x.strip() for x in redeemed_text.split(",")]:
-            return False, "⚠️ Ya canjeaste este código."
+        # Convertimos la lista de texto en una lista real de Python, limpiando espacios
+        lista_usuarios = [x.strip() for x in redeemed_text.split(",") if x.strip()]
+        
+        if st.session_state.nombre in lista_usuarios:
+            return False, "⚠️ Ya canjeaste este código anteriormente.", None
 
         limit = get_notion_number(p_code, "Limite Usos", None) 
         current_uses = get_notion_number(p_code, "Usos Actuales")
-        if limit is not None and current_uses >= limit: return False, "⚠️ Código agotado."
+        if limit is not None and current_uses >= limit: 
+            return False, "⚠️ Código agotado (Límite alcanzado).", None
             
+        # 3. Lectura de Recompensas
         rew_ap = get_notion_number(p_code, "Valor AP")
         rew_mp = get_notion_number(p_code, "Valor MP")
         rew_vp = get_notion_number(p_code, "Valor VP")
+        rew_badge = get_notion_select(p_code, "Insignia") # <--- NUEVO: Lee la insignia
         
+        # 4. Actualización del Jugador (Lectura + Escritura)
         url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
         res_player = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
         res_player.raise_for_status()
         p_player_real = res_player.json()["properties"]
         
+        # Cálculos Puntos
         new_ap = get_notion_number(p_player_real, "AP") + rew_ap
         new_mp = get_notion_number(p_player_real, "MP") + rew_mp
         new_vp = min(100, get_notion_number(p_player_real, "VP") + rew_vp)
         
-        req_p = requests.patch(url_player, headers=headers, json={
-            "properties": {"AP": {"number": new_ap}, "MP": {"number": new_mp}, "VP": {"number": new_vp}}
-        }, timeout=API_TIMEOUT)
+        # Lógica de Insignias (Append)
+        player_updates = {
+            "AP": {"number": new_ap}, 
+            "MP": {"number": new_mp}, 
+            "VP": {"number": new_vp}
+        }
+        
+        badge_granted = False
+        if rew_badge:
+            # Obtenemos insignias actuales (Lista de objetos Multi-Select)
+            current_badges_objs = p_player_real.get("Insignias", {}).get("multi_select", [])
+            current_badges_names = [b["name"] for b in current_badges_objs]
+            
+            if rew_badge not in current_badges_names:
+                # Agregamos la nueva (Notion requiere enviar TODA la lista de nuevo)
+                new_badges_list = [{"name": n} for n in current_badges_names] + [{"name": rew_badge}]
+                player_updates["Insignias"] = {"multi_select": new_badges_list}
+                badge_granted = True
+        
+        # Patch Jugador
+        req_p = requests.patch(url_player, headers=headers, json={"properties": player_updates}, timeout=API_TIMEOUT)
         req_p.raise_for_status()
         
-        new_list = f"{redeemed_text}, {st.session_state.nombre}" if redeemed_text else st.session_state.nombre
+        # 5. Actualización del Código (Consumo)
+        # Agregamos el nombre con coma y espacio para mantener el formato limpio
+        new_list_text = f"{redeemed_text}, {st.session_state.nombre}" if redeemed_text else st.session_state.nombre
+        
         req_c = requests.patch(f"https://api.notion.com/v1/pages/{code_page['id']}", headers=headers, json={
             "properties": {
                 "Usos Actuales": {"number": current_uses + 1},
-                "Redimido Por": {"rich_text": [{"text": {"content": new_list}}]}
+                "Redimido Por": {"rich_text": [{"text": {"content": new_list_text}}]}
             }
         }, timeout=API_TIMEOUT)
         req_c.raise_for_status()
         
-        detalle = f"Código: {codigo_input} | +{rew_ap} AP, +{rew_mp} MP, +{rew_vp} VP"
+        # 6. Reporte Final
+        detalle = f"Código: {codigo_input} | +{rew_ap} AP"
+        if badge_granted: detalle += f" | Insignia: {rew_badge}"
+        
         registrar_evento_sistema(st.session_state.nombre, "Canje Código", detalle, "Código")
-        return True, f"¡Canjeado! +{rew_ap} AP"
-    except Exception as e: return False, f"Error: {str(e)}"
+        
+        # Retornamos datos estructurados para la UI
+        return True, "Código aceptado.", {"AP": rew_ap, "Insignia": rew_badge if badge_granted else None}
+        
+    except Exception as e: return False, f"Error técnico: {str(e)}", None
 
 # --- 🔮 TRIVIA (CALIBRADO CON SCHEMA REAL) ---
 def cargar_pregunta_aleatoria():
