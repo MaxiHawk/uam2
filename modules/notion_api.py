@@ -19,7 +19,7 @@ from config import (
 from modules.utils import (
     get_notion_text, get_notion_number, get_notion_select, 
     get_notion_multi_select, get_notion_date, get_notion_url, 
-    get_notion_checkbox, get_notion_file_url, validar_codigo_seguro
+    get_notion_checkbox, get_notion_file_url, validar_codigo_seguro, get_notion_unique_id
 )
 
 # Alias
@@ -451,10 +451,10 @@ def cargar_pregunta_aleatoria():
         q = random.choice(raw_results)
         p = q["properties"]
         
-        # 3. Mapeo Exacto según tu Schema JSON (Sin tildes, Recompensa simple)
+        # 3. Mapeo Exacto
         return {
             "ref_id": q["id"],
-            "public_id": get_notion_number(p, "ID_TRIVIA"), # Nuevo: Para logs precisos
+            "public_id": get_notion_unique_id(p, "ID_TRIVIA"), 
             "pregunta": get_notion_text(p, "Pregunta"),
             "opcion_a": get_notion_text(p, "Opcion A"), # Schema: Sin tilde
             "opcion_b": get_notion_text(p, "Opcion B"),
