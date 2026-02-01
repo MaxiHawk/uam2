@@ -1527,31 +1527,31 @@ else:
                     else:
                         badge_html = '<span style="font-size: 1.5em;">🏆</span>'
 
-                    # --- RENDERIZADO (FIX: USAMOS TEXTWRAP.DEDENT) ---
+                    # --- RENDERIZADO (FIX: HTML APLANADO) ---
+                    # Eliminamos sangrías internas y saltos de línea peligrosos para evitar que Markdown detecte "Bloques de Código"
                     with st.container():
-                        st.markdown(textwrap.dedent(f"""
-                        <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
-                            <div class="mission-header">
-                                <div class="mission-title">{icon_type} {m['nombre']}</div>
-                                <div class="mission-type-badge">{m['tipo'].upper()}</div>
-                            </div>
-                            <div class="mission-narrative">"{m['narrativa']}"</div>
-                            <div class="mission-body">{m['descripcion']}</div>
-                            
-                            <div class="rewards-box">
-                                {badge_html}
-                                <div>
-                                    <div style="font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px;">Recompensas</div>
-                                    <div class="reward-text">{m['recompensas_txt']}</div>
-                                </div>
-                            </div>
-                            
-                            <div class="mission-footer">
-                                <div class="mission-timer">⏳ INICIO: {dt_lanzamiento.strftime('%d/%m %H:%M') if dt_lanzamiento else 'TBA'}</div>
-                                <div class="mission-status" style="color: {status_color};">{status_text}</div>
-                            </div>
-                        </div>
-                        """), unsafe_allow_html=True)
+                        card_html = f"""
+<div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
+<div class="mission-header">
+<div class="mission-title">{icon_type} {m['nombre']}</div>
+<div class="mission-type-badge">{m['tipo'].upper()}</div>
+</div>
+<div class="mission-narrative">"{m['narrativa']}"</div>
+<div class="mission-body">{m['descripcion']}</div>
+<div class="rewards-box">
+{badge_html}
+<div>
+<div style="font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px;">Recompensas</div>
+<div class="reward-text">{m['recompensas_txt']}</div>
+</div>
+</div>
+<div class="mission-footer">
+<div class="mission-timer">⏳ INICIO: {dt_lanzamiento.strftime('%d/%m %H:%M') if dt_lanzamiento else 'TBA'}</div>
+<div class="mission-status" style="color: {status_color};">{status_text}</div>
+</div>
+</div>
+"""
+                        st.markdown(card_html, unsafe_allow_html=True)
                         
                         # --- BOTONERA ---
                         c1, c2 = st.columns([2, 1])
