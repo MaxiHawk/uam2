@@ -1766,6 +1766,7 @@ else:
                     def handle_choice(choice):
                         is_correct = (choice == q['correcta'])
                         reward = q['recompensa'] if is_correct else 0
+                        
                         st.session_state.trivia_feedback_mode = True
                         st.session_state.trivia_last_result = {
                             "correct": is_correct,
@@ -1774,7 +1775,9 @@ else:
                             "explanation_correct": q.get("exp_correcta", "Respuesta Correcta."),
                             "explanation_wrong": q.get("exp_incorrecta", "Respuesta Incorrecta.")
                         }
-                        procesar_recalibracion(reward, is_correct, q['ref_id'])
+                        
+                        # PASAMOS EL ID PÚBLICO AQUÍ vvv
+                        procesar_recalibracion(reward, is_correct, q['ref_id'], q.get('public_id'))
                         st.rerun()
 
                     with col_a:
