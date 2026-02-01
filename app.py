@@ -1418,7 +1418,9 @@ else:
                                             
        
     with tab_misiones:
-        # --- CSS TÁCTICO PARA MISIONES (V2) ---
+        import re # Herramienta para detectar y pintar texto
+        
+        # --- CSS TÁCTICO PARA MISIONES (V3: Clean & Neon) ---
         st.markdown("""
         <style>
             .mission-card {
@@ -1441,10 +1443,8 @@ else:
                 font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.2em;
                 color: #fff; text-transform: uppercase; display: flex; align-items: center; gap: 10px;
             }
-            .mission-type-badge {
-                font-size: 0.6em; padding: 3px 8px; border-radius: 4px;
-                background: rgba(255,255,255,0.1); color: #aaa; border: 1px solid #444;
-            }
+            /* Eliminamos .mission-type-badge para limpiar el diseño */
+            
             .mission-narrative {
                 background: rgba(0, 229, 255, 0.05); color: #00e5ff; 
                 font-style: italic; font-size: 0.85em; padding: 8px 20px;
@@ -1457,7 +1457,9 @@ else:
                 border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; gap: 15px;
             }
             .reward-badge-img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 5px #FFD700); }
-            .reward-text { font-size: 0.85em; color: #FFD700; font-family: monospace; }
+            
+            /* Ahora el texto base es gris claro para que los colores resalten */
+            .reward-text { font-size: 0.9em; color: #e0e0e0; font-family: monospace; letter-spacing: 0.5px; }
             
             .mission-footer {
                 background: rgba(0, 0, 0, 0.4); padding: 10px 20px;
@@ -1519,22 +1521,28 @@ else:
                     icon_type = "🌋" if es_expedicion else "⚔️"
                     glow = f"box-shadow: 0 0 15px {border_color}40;" if estado_fase == "OPEN" else ""
 
-                    # --- PREPARAR IMAGEN DE INSIGNIA ---
+                    # --- IMAGEN INSIGNIA ---
                     badge_html = ""
                     if m['insignia_file']:
-                        # Usamos ruta relativa a assets o la URL directa de la imagen
                         badge_html = f'<img src="app/static/{m["insignia_file"]}" class="reward-badge-img" onerror="this.src=\'https://cdn-icons-png.flaticon.com/512/5906/5906061.png\'">'
                     else:
                         badge_html = '<span style="font-size: 1.5em;">🏆</span>'
 
-                    # --- RENDERIZADO (FIX: HTML APLANADO) ---
-                    # Eliminamos sangrías internas y saltos de línea peligrosos para evitar que Markdown detecte "Bloques de Código"
+                    # --- LOGICA DE COLORIZACIÓN INTELIGENTE (REGEX) ---
+                    # Busca patrones como "100 AP" o "500 MP" y los envuelve en spans con color
+                    txt_recompensas = m['recompensas_txt']
+                    # Pintar AP de Azul Neón (#00e5ff)
+                    txt_recompensas = re.sub(r'(\d+\s*AP)', r'<span style="color:#00e5ff; font-weight:bold;">\1</span>', txt_recompensas)
+                    # Pintar MP de Dorado (#FFD700)
+                    txt_recompensas = re.sub(r'(\d+\s*MP)', r'<span style="color:#FFD700; font-weight:bold;">\1</span>', txt_recompensas)
+                    # --------------------------------------------------
+
+                    # --- RENDERIZADO (HTML APLANADO PARA EVITAR ERRORES) ---
                     with st.container():
                         card_html = f"""
 <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
 <div class="mission-header">
 <div class="mission-title">{icon_type} {m['nombre']}</div>
-<div class="mission-type-badge">{m['tipo'].upper()}</div>
 </div>
 <div class="mission-narrative">"{m['narrativa']}"</div>
 <div class="mission-body">{m['descripcion']}</div>
@@ -1542,7 +1550,7 @@ else:
 {badge_html}
 <div>
 <div style="font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px;">Recompensas</div>
-<div class="reward-text">{m['recompensas_txt']}</div>
+<div class="reward-text">{txt_recompensas}</div>
 </div>
 </div>
 <div class="mission-footer">
