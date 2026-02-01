@@ -67,8 +67,8 @@ def notion_fetch_all(url, payload):
             has_more = False
     return results
 
-# --- 🛡️ SISTEMA ---
-def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO", uni_override=None, ano_override=None):
+# --- 🛡️ SISTEMA (ACTUALIZADO: SOPORTE ID_REF) ---
+def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO", uni_override=None, ano_override=None, id_ref=None):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
     
@@ -86,8 +86,17 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO", uni_overrid
         "Tipo": {"select": {"name": tipo}},
         "Fecha": {"date": {"start": now_iso}}
     }
+    
+    # Metadata opcional
     if uni: properties["Universidad"] = {"select": {"name": uni}}
     if ano: properties["Año"] = {"select": {"name": ano}}
+    
+    # --- NUEVO: ID_Ref Numérico ---
+    if id_ref is not None:
+        try:
+            properties["ID_Ref"] = {"number": int(id_ref)}
+        except: pass # Si no es número, lo ignoramos para no romper el log
+    # ------------------------------
 
     try: requests.post(url, headers=headers, json={"parent": {"database_id": DB_LOGS_ID}, "properties": properties}, timeout=5)
     except: pass
@@ -470,18 +479,13 @@ def cargar_pregunta_aleatoria():
 
 def procesar_recalibracion(reward_ap, is_correct, question_id, public_id_trivia=None):
     """
-    Procesa el resultado de la trivia de forma segura.
-    Args:
-        reward_ap: Cantidad de AP a sumar.
-        is_correct: Booleano, si acertó o no.
-        question_id: ID interno de Notion de la pregunta (para stats si quisieras).
-        public_id_trivia: ID_TRIVIA visible (ej: 42) para el log.
+    Procesa el resultado de la trivia de forma segura y registra el ID público.
     """
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
     
     try:
-        # 1. Si ganó, sumamos AP (Leyendo saldo real primero por seguridad)
+        # 1. Si ganó, sumamos AP
         if is_correct and reward_ap > 0:
             res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
             res_get.raise_for_status()
@@ -491,17 +495,24 @@ def procesar_recalibracion(reward_ap, is_correct, question_id, public_id_trivia=
                 "properties": {"AP": {"number": current_ap + reward_ap}}
             }, timeout=API_TIMEOUT)
         
-        # 2. Registramos la fecha de recalibración (para el bloqueo de 24h/medianoche)
+        # 2. Registramos fecha
         requests.patch(url_player, headers=headers, json={
             "properties": {"Ultima Recalibracion": {"date": {"start": now_iso}}}
         }, timeout=API_TIMEOUT)
         
-        # 3. Log del Sistema con ID de Pregunta
+        # 3. Log del Sistema con ID_Ref
         res_text = "CORRECTO" if is_correct else "FALLO"
-        id_ref = f"#{public_id_trivia}" if public_id_trivia else ""
-        detalle_log = f"Trivia {id_ref}: {res_text} (+{reward_ap if is_correct else 0} AP)"
+        id_ref_str = f"#{public_id_trivia}" if public_id_trivia else ""
+        detalle_log = f"Trivia {id_ref_str}: {res_text} (+{reward_ap if is_correct else 0} AP)"
         
-        registrar_evento_sistema(st.session_state.nombre, "Trivia Oráculo", detalle_log, "Trivia")
+        # Enviamos public_id_trivia al nuevo parámetro id_ref
+        registrar_evento_sistema(
+            st.session_state.nombre, 
+            "Trivia Oráculo", 
+            detalle_log, 
+            "Trivia",
+            id_ref=public_id_trivia # <--- AQUÍ SE ENVÍA EL DATO
+        )
         return True
     except Exception as e: 
         print(f"Error procesando trivia: {e}")
