@@ -151,16 +151,14 @@ def cargar_anuncios():
         })
     return anuncios
 
-# --- 🚀 MISIONES (CALIBRADO CON SCHEMA REAL) ---
+# --- 🚀 MISIONES (CON NARRATIVA Y RECOMPENSAS) ---
 @st.cache_data(ttl=600)
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
     
-    # FIX 1: Filtro correcto (Checkbox "Activa" en lugar de Status "Estado")
     payload = {
         "filter": {"property": "Activa", "checkbox": {"equals": True}},
-        # FIX 2: Ordenamiento por "Lanzamiento" (no "Fecha Lanzamiento")
         "sorts": [{"property": "Lanzamiento", "direction": "ascending"}]
     }
     
@@ -171,9 +169,8 @@ def cargar_misiones_activas():
         p = r["properties"]
         misiones.append({
             "id": r["id"],
-            # FIX 3: Mapeo exacto de columnas según tu Schema
             "nombre": get_notion_text(p, "Nombre", "Operación Sin Título"), 
-            "descripcion": get_notion_text(p, "Descripcion", ""), # Nota: Sin tilde según tu schema
+            "descripcion": get_notion_text(p, "Descripcion", ""),
             "tipo": get_notion_select(p, "Tipo", "Hazaña"),
             "f_apertura": get_notion_date(p, "Apertura Inscripciones"),
             "f_cierre": get_notion_date(p, "Cierre Inscripciones"),
@@ -181,7 +178,12 @@ def cargar_misiones_activas():
             "inscritos": get_notion_text(p, "Inscritos"),
             "target_unis": get_notion_multi_select(p, "Universidad"),
             "password": get_notion_text(p, "Password"),
-            "link": get_notion_url(p, "Enlace") # Era "Link", ahora es "Enlace"
+            "link": get_notion_url(p, "Enlace"),
+            # --- NUEVOS CAMPOS ---
+            "narrativa": get_notion_text(p, "Narrativa", "Información Clasificada."),
+            "recompensas_txt": get_notion_text(p, "Recompensas Texto", "Recompensa Standard"),
+            "insignia_file": get_notion_text(p, "Insignia ID"), # Ej: hazana_1.png
+            "advertencia": get_notion_text(p, "Advertencia", "El incumplimiento será sancionado.")
         })
     return misiones
 
