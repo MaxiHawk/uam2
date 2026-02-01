@@ -432,51 +432,80 @@ def procesar_codigo_canje(codigo_input):
         return True, f"¡Canjeado! +{rew_ap} AP"
     except Exception as e: return False, f"Error: {str(e)}"
 
-# --- 🔮 TRIVIA (MEJORADO: POOL COMPLETO) ---
+# --- 🔮 TRIVIA (CALIBRADO CON SCHEMA REAL) ---
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
     url = f"https://api.notion.com/v1/databases/{DB_TRIVIA_ID}/query"
-    # Filtramos solo las activas
+    
+    # Filtro: Solo preguntas activas
     payload = {"filter": {"property": "Activa", "checkbox": {"equals": True}}}
     
     try:
-        # Usamos fetch_all para traer TODAS las preguntas posibles, no solo 30
+        # 1. Usamos fetch_all para obtener el POOL COMPLETO (no solo las primeras 30)
+        # Esto soluciona el "Límite Invisible"
         raw_results = notion_fetch_all(url, payload)
         
         if not raw_results: return None
         
-        # Elegimos una al azar del pool total
+        # 2. Selección Aleatoria Real
         q = random.choice(raw_results)
         p = q["properties"]
         
+        # 3. Mapeo Exacto según tu Schema JSON (Sin tildes, Recompensa simple)
         return {
             "ref_id": q["id"],
+            "public_id": get_notion_number(p, "ID_TRIVIA"), # Nuevo: Para logs precisos
             "pregunta": get_notion_text(p, "Pregunta"),
-            "opcion_a": get_notion_text(p, "Opción A"),
-            "opcion_b": get_notion_text(p, "Opción B"),
-            "opcion_c": get_notion_text(p, "Opción C"),
+            "opcion_a": get_notion_text(p, "Opcion A"), # Schema: Sin tilde
+            "opcion_b": get_notion_text(p, "Opcion B"),
+            "opcion_c": get_notion_text(p, "Opcion C"),
             "correcta": get_notion_select(p, "Correcta"),
-            "recompensa": get_notion_number(p, "Recompensa AP"),
-            "exp_correcta": get_notion_text(p, "Explicación Correcta", "Correcto"),
-            "exp_incorrecta": get_notion_text(p, "Explicación Incorrecta", "Incorrecto")
+            "recompensa": get_notion_number(p, "Recompensa"), # Schema: "Recompensa" (no AP)
+            "exp_correcta": get_notion_text(p, "Explicacion Correcta", "Correcto"), # Schema: Sin tilde
+            "exp_incorrecta": get_notion_text(p, "Explicacion Incorrecta", "Incorrecto") # Schema: Sin tilde
         }
     except Exception as e:
         print(f"Error Trivia: {e}")
         return None
 
-def procesar_recalibracion(reward_ap, is_correct, question_id):
+def procesar_recalibracion(reward_ap, is_correct, question_id, public_id_trivia=None):
+    """
+    Procesa el resultado de la trivia de forma segura.
+    Args:
+        reward_ap: Cantidad de AP a sumar.
+        is_correct: Booleano, si acertó o no.
+        question_id: ID interno de Notion de la pregunta (para stats si quisieras).
+        public_id_trivia: ID_TRIVIA visible (ej: 42) para el log.
+    """
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     url_player = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
+    
     try:
+        # 1. Si ganó, sumamos AP (Leyendo saldo real primero por seguridad)
         if is_correct and reward_ap > 0:
             res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
             res_get.raise_for_status()
             current_ap = get_notion_number(res_get.json()["properties"], "AP")
-            requests.patch(url_player, headers=headers, json={"properties": {"AP": {"number": current_ap + reward_ap}}}, timeout=API_TIMEOUT)
-        requests.patch(url_player, headers=headers, json={"properties": {"Ultima Recalibracion": {"date": {"start": now_iso}}}}, timeout=API_TIMEOUT)
+            
+            requests.patch(url_player, headers=headers, json={
+                "properties": {"AP": {"number": current_ap + reward_ap}}
+            }, timeout=API_TIMEOUT)
+        
+        # 2. Registramos la fecha de recalibración (para el bloqueo de 24h/medianoche)
+        requests.patch(url_player, headers=headers, json={
+            "properties": {"Ultima Recalibracion": {"date": {"start": now_iso}}}
+        }, timeout=API_TIMEOUT)
+        
+        # 3. Log del Sistema con ID de Pregunta
         res_text = "CORRECTO" if is_correct else "FALLO"
-        registrar_evento_sistema(st.session_state.nombre, "Trivia Oráculo", f"{res_text} (+{reward_ap if is_correct else 0})", "Trivia")
-    except: pass
+        id_ref = f"#{public_id_trivia}" if public_id_trivia else ""
+        detalle_log = f"Trivia {id_ref}: {res_text} (+{reward_ap if is_correct else 0} AP)"
+        
+        registrar_evento_sistema(st.session_state.nombre, "Trivia Oráculo", detalle_log, "Trivia")
+        return True
+    except Exception as e: 
+        print(f"Error procesando trivia: {e}")
+        return False
 
 # --- 👮‍♂️ FUNCIONES DE ADMIN ---
 
