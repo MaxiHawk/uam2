@@ -118,3 +118,15 @@ def parsear_fecha_chile(fecha_str, formato_salida="%d/%m/%Y %H:%M"):
             return dt_naive.strftime("%d/%m/%Y")
     except Exception:
         return fecha_str # Si falla, devuelve el string original
+
+def get_notion_unique_id(props, name, default=None):
+    """
+    Extrae el número de una propiedad 'unique_id' (ID autoincremental de Notion).
+    Retorna solo el número (int).
+    """
+    try:
+        # La estructura es: prop -> unique_id -> number
+        val = props.get(name, {}).get("unique_id", {}).get("number")
+        return val if val is not None else default
+    except:
+        return default
