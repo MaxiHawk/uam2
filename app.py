@@ -1676,7 +1676,7 @@ else:
             """, unsafe_allow_html=True)
         
         else:
-            st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento Diario)**")
+            st.caption("Valerius necesita recalibrar sus bancos de memoria. Confirma los datos perdidos para ganar AP. **(1 Intento por Día)**")
             
             can_play = True
             msg_wait = ""
@@ -1692,21 +1692,33 @@ else:
                 chile_tz = pytz.timezone('America/Santiago')
                 now_chile = datetime.now(chile_tz)
                 try:
+                    # Parseo robusto
                     if "T" in last_play_str:
                         last_play_dt = datetime.fromisoformat(last_play_str.replace('Z', '+00:00'))
+                        # Convertir a Chile si viene en UTC
+                        if last_play_dt.tzinfo is None:
+                            last_play_dt = pytz.utc.localize(last_play_dt)
                         last_play_dt = last_play_dt.astimezone(chile_tz)
                     else:
                         dt_naive = datetime.strptime(last_play_str, "%Y-%m-%d")
                         last_play_dt = chile_tz.localize(dt_naive)
                     
-                    diff = now_chile - last_play_dt
-                    if diff.total_seconds() < 86400:
+                    # --- LÓGICA DE RESET A MEDIANOCHE ---
+                    # Comparamos solo las FECHAS (Año, Mes, Día)
+                    if last_play_dt.date() == now_chile.date():
                         can_play = False
-                        remaining = timedelta(hours=24) - diff
+                        # Calculamos tiempo para las 00:00 de mañana
+                        manana = now_chile.date() + timedelta(days=1)
+                        midnight = chile_tz.localize(datetime.combine(manana, datetime.min.time()))
+                        remaining = midnight - now_chile
+                        
                         hours, remainder = divmod(remaining.seconds, 3600)
                         minutes, seconds = divmod(remainder, 60)
                         msg_wait = f"{hours}h {minutes}m"
-                except: can_play = True
+                    # ------------------------------------
+                except Exception as e:
+                    print(f"Error fecha trivia: {e}")
+                    can_play = True # Ante la duda, dejar jugar
 
             if st.session_state.trivia_feedback_mode:
                 res = st.session_state.trivia_last_result
