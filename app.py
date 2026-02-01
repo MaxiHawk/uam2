@@ -1416,220 +1416,220 @@ else:
                                         else:
                                             st.error(msg)
                                             
-   with tab_misiones:
-        # --- CSS TÁCTICO PARA MISIONES ---
-        st.markdown("""
-        <style>
-            .mission-card {
-                background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
-                border: 1px solid #333;
-                border-radius: 12px;
-                padding: 0;
-                margin-bottom: 20px;
-                overflow: hidden;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                transition: transform 0.2s;
-            }
-            .mission-card:hover { transform: translateY(-2px); }
-            
-            .mission-header {
-                padding: 12px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                background: rgba(0,0,0,0.2);
-            }
-            .mission-title {
-                font-family: 'Orbitron', sans-serif;
-                font-weight: 900;
-                font-size: 1.2em;
-                color: #fff;
-                letter-spacing: 1px;
-                text-transform: uppercase;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .mission-type-badge {
-                font-size: 0.6em;
-                padding: 3px 8px;
-                border-radius: 4px;
-                background: rgba(255,255,255,0.1);
-                color: #aaa;
-                border: 1px solid #444;
-            }
-            
-            .mission-body { padding: 20px; color: #b0bec5; font-size: 0.95em; line-height: 1.5; }
-            
-            .mission-footer {
-                background: rgba(0, 0, 0, 0.4);
-                padding: 10px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-top: 1px solid rgba(255,255,255,0.05);
-            }
-            .mission-timer { font-family: monospace; font-size: 0.85em; color: #FFD700; display: flex; align-items: center; gap: 5px; }
-            .mission-status { font-weight: bold; font-size: 0.8em; letter-spacing: 1px; text-transform: uppercase; }
-        </style>
-        """, unsafe_allow_html=True)
-
-        st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
-        
-        if is_alumni:
-            # PANTALLA DE BLOQUEO PARA VETERANOS
+       with tab_misiones:
+            # --- CSS TÁCTICO PARA MISIONES ---
             st.markdown("""
-            <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
-                <div style="font-size: 3em;">⛔</div>
-                <div style="font-family: 'Orbitron'; color: #ff4444; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">ACCESO DENEGADO</div>
-                <div style="color: #ccc; font-size: 0.9em;">
-                    El Centro de Operaciones Tácticas está reservado para el despliegue de agentes activos.<br>
-                    Tu credencial de veterano no tiene autorización para nuevas misiones.
-                </div>
-            </div>
+            <style>
+                .mission-card {
+                    background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
+                    border: 1px solid #333;
+                    border-radius: 12px;
+                    padding: 0;
+                    margin-bottom: 20px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    transition: transform 0.2s;
+                }
+                .mission-card:hover { transform: translateY(-2px); }
+                
+                .mission-header {
+                    padding: 12px 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    background: rgba(0,0,0,0.2);
+                }
+                .mission-title {
+                    font-family: 'Orbitron', sans-serif;
+                    font-weight: 900;
+                    font-size: 1.2em;
+                    color: #fff;
+                    letter-spacing: 1px;
+                    text-transform: uppercase;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .mission-type-badge {
+                    font-size: 0.6em;
+                    padding: 3px 8px;
+                    border-radius: 4px;
+                    background: rgba(255,255,255,0.1);
+                    color: #aaa;
+                    border: 1px solid #444;
+                }
+                
+                .mission-body { padding: 20px; color: #b0bec5; font-size: 0.95em; line-height: 1.5; }
+                
+                .mission-footer {
+                    background: rgba(0, 0, 0, 0.4);
+                    padding: 10px 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-top: 1px solid rgba(255,255,255,0.05);
+                }
+                .mission-timer { font-family: monospace; font-size: 0.85em; color: #FFD700; display: flex; align-items: center; gap: 5px; }
+                .mission-status { font-weight: bold; font-size: 0.8em; letter-spacing: 1px; text-transform: uppercase; }
+            </style>
             """, unsafe_allow_html=True)
+    
+            st.markdown("### 🚀 CENTRO DE OPERACIONES TÁCTICAS")
             
-        else:
-            st.caption("Calendario de despliegue de Hazañas y Expediciones.")
-            
-            # Cargamos misiones
-            misiones = cargar_misiones_activas()
-            
-            # --- LÓGICA DE TIEMPO ---
-            chile_tz = pytz.timezone('America/Santiago')
-            now_chile = datetime.now(chile_tz)
-
-            def parse_notion_date(date_str):
-                if not date_str: return None
-                try:
-                    if "T" in date_str:
-                        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                    else:
-                        dt = datetime.strptime(date_str, "%Y-%m-%d")
-                        dt = chile_tz.localize(dt)
-                    if dt.tzinfo is None: dt = pytz.utc.localize(dt).astimezone(chile_tz)
-                    else: dt = dt.astimezone(chile_tz)
-                    return dt
-                except: return None
-
-            if not misiones:
-                st.info("📡 No hay operaciones programadas en el radar.")
+            if is_alumni:
+                # PANTALLA DE BLOQUEO PARA VETERANOS
+                st.markdown("""
+                <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
+                    <div style="font-size: 3em;">⛔</div>
+                    <div style="font-family: 'Orbitron'; color: #ff4444; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">ACCESO DENEGADO</div>
+                    <div style="color: #ccc; font-size: 0.9em;">
+                        El Centro de Operaciones Tácticas está reservado para el despliegue de agentes activos.<br>
+                        Tu credencial de veterano no tiene autorización para nuevas misiones.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
             else:
-                for m in misiones:
-                    # Filtro por Universidad
-                    uni_usuario = st.session_state.uni_actual
-                    targets = m.get("target_unis", ["Todas"])
-                    if "Todas" not in targets and uni_usuario not in targets:
-                        continue
-                    
-                    # Fechas
-                    dt_apertura = parse_notion_date(m['f_apertura'])
-                    dt_cierre = parse_notion_date(m['f_cierre'])
-                    dt_lanzamiento = parse_notion_date(m['f_lanzamiento'])
-                    
-                    # Estado Usuario
-                    esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
-                    
-                    # Máquina de Estados de Tiempo
-                    if dt_apertura and now_chile < dt_apertura:
-                        estado_fase = "PRE_INSCRIPCION"
-                        status_text = "🔒 ENCRIPTADO"
-                        status_color = "#666"
-                    elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
-                        estado_fase = "INSCRIPCION_ABIERTA"
-                        status_text = "🔓 RECLUTAMIENTO ACTIVO"
-                        status_color = "#00e676"
-                    elif dt_cierre and now_chile > dt_cierre:
-                        estado_fase = "INSCRIPCION_CERRADA"
-                        status_text = "🔒 RECLUTAMIENTO CERRADO"
-                        status_color = "#ff1744"
-                    else:
-                        estado_fase = "INSCRIPCION_CERRADA"
-                        status_text = "🔒 CERRADO"
-                        status_color = "#666"
-
-                    mision_lanzada = now_chile >= dt_lanzamiento
-                    
-                    # Estilos según Tipo
-                    es_expedicion = m['tipo'] == "Expedición"
-                    border_color = "#bf360c" if es_expedicion else "#FFD700"
-                    icon_type = "🌋" if es_expedicion else "⚔️"
-                    glow_style = f"box-shadow: 0 0 10px {border_color}40;" if estado_fase == "INSCRIPCION_ABIERTA" else ""
-
-                    # --- RENDERIZADO DE LA TARJETA ÉPICA ---
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="mission-card" style="border-left: 5px solid {border_color}; {glow_style}">
-                            <div class="mission-header">
-                                <div class="mission-title">
-                                    {icon_type} {m['nombre']}
-                                </div>
-                                <div class="mission-type-badge">{m['tipo'].upper()}</div>
-                            </div>
-                            <div class="mission-body">
-                                {m['descripcion']}
-                            </div>
-                            <div class="mission-footer">
-                                <div class="mission-timer">
-                                    ⏳ LANZAMIENTO: {dt_lanzamiento.strftime('%d/%m %H:%M') if dt_lanzamiento else 'TBA'}
-                                </div>
-                                <div class="mission-status" style="color: {status_color};">
-                                    {status_text}
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                st.caption("Calendario de despliegue de Hazañas y Expediciones.")
+                
+                # Cargamos misiones
+                misiones = cargar_misiones_activas()
+                
+                # --- LÓGICA DE TIEMPO ---
+                chile_tz = pytz.timezone('America/Santiago')
+                now_chile = datetime.now(chile_tz)
+    
+                def parse_notion_date(date_str):
+                    if not date_str: return None
+                    try:
+                        if "T" in date_str:
+                            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                        else:
+                            dt = datetime.strptime(date_str, "%Y-%m-%d")
+                            dt = chile_tz.localize(dt)
+                        if dt.tzinfo is None: dt = pytz.utc.localize(dt).astimezone(chile_tz)
+                        else: dt = dt.astimezone(chile_tz)
+                        return dt
+                    except: return None
+    
+                if not misiones:
+                    st.info("📡 No hay operaciones programadas en el radar.")
+                else:
+                    for m in misiones:
+                        # Filtro por Universidad
+                        uni_usuario = st.session_state.uni_actual
+                        targets = m.get("target_unis", ["Todas"])
+                        if "Todas" not in targets and uni_usuario not in targets:
+                            continue
                         
-                        # --- BOTONERA INTELIGENTE ---
-                        c_status, c_action = st.columns([2, 1])
+                        # Fechas
+                        dt_apertura = parse_notion_date(m['f_apertura'])
+                        dt_cierre = parse_notion_date(m['f_cierre'])
+                        dt_lanzamiento = parse_notion_date(m['f_lanzamiento'])
                         
-                        with c_status:
-                            if esta_inscrito:
-                                if mision_lanzada:
-                                    st.success("🟢 **OPERACIÓN EN CURSO**")
-                                    with st.expander("📂 ACCEDER A DATOS DE MISIÓN", expanded=True):
-                                        st.markdown(f"**🔑 CLAVE DE ACCESO:** `{m['password']}`")
-                                        st.markdown(f"**🌐 ENLACE:** [INICIAR INMERSIÓN]({m['link']})")
-                                else:
-                                    delta = dt_lanzamiento - now_chile
-                                    if delta.total_seconds() > 0:
-                                        dias = delta.days
-                                        horas, resto = divmod(delta.seconds, 3600)
-                                        mins, _ = divmod(resto, 60)
-                                        time_str = f"{horas}h {mins}m"
-                                        if dias > 0: time_str = f"{dias}d {time_str}"
-                                        st.info(f"✅ **INSCRITO** | Despliegue en: **{time_str}**")
+                        # Estado Usuario
+                        esta_inscrito = st.session_state.nombre in m['inscritos'].split(",")
+                        
+                        # Máquina de Estados de Tiempo
+                        if dt_apertura and now_chile < dt_apertura:
+                            estado_fase = "PRE_INSCRIPCION"
+                            status_text = "🔒 ENCRIPTADO"
+                            status_color = "#666"
+                        elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
+                            estado_fase = "INSCRIPCION_ABIERTA"
+                            status_text = "🔓 RECLUTAMIENTO ACTIVO"
+                            status_color = "#00e676"
+                        elif dt_cierre and now_chile > dt_cierre:
+                            estado_fase = "INSCRIPCION_CERRADA"
+                            status_text = "🔒 RECLUTAMIENTO CERRADO"
+                            status_color = "#ff1744"
+                        else:
+                            estado_fase = "INSCRIPCION_CERRADA"
+                            status_text = "🔒 CERRADO"
+                            status_color = "#666"
+    
+                        mision_lanzada = now_chile >= dt_lanzamiento
+                        
+                        # Estilos según Tipo
+                        es_expedicion = m['tipo'] == "Expedición"
+                        border_color = "#bf360c" if es_expedicion else "#FFD700"
+                        icon_type = "🌋" if es_expedicion else "⚔️"
+                        glow_style = f"box-shadow: 0 0 10px {border_color}40;" if estado_fase == "INSCRIPCION_ABIERTA" else ""
+    
+                        # --- RENDERIZADO DE LA TARJETA ÉPICA ---
+                        with st.container():
+                            st.markdown(f"""
+                            <div class="mission-card" style="border-left: 5px solid {border_color}; {glow_style}">
+                                <div class="mission-header">
+                                    <div class="mission-title">
+                                        {icon_type} {m['nombre']}
+                                    </div>
+                                    <div class="mission-type-badge">{m['tipo'].upper()}</div>
+                                </div>
+                                <div class="mission-body">
+                                    {m['descripcion']}
+                                </div>
+                                <div class="mission-footer">
+                                    <div class="mission-timer">
+                                        ⏳ LANZAMIENTO: {dt_lanzamiento.strftime('%d/%m %H:%M') if dt_lanzamiento else 'TBA'}
+                                    </div>
+                                    <div class="mission-status" style="color: {status_color};">
+                                        {status_text}
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # --- BOTONERA INTELIGENTE ---
+                            c_status, c_action = st.columns([2, 1])
+                            
+                            with c_status:
+                                if esta_inscrito:
+                                    if mision_lanzada:
+                                        st.success("🟢 **OPERACIÓN EN CURSO**")
+                                        with st.expander("📂 ACCEDER A DATOS DE MISIÓN", expanded=True):
+                                            st.markdown(f"**🔑 CLAVE DE ACCESO:** `{m['password']}`")
+                                            st.markdown(f"**🌐 ENLACE:** [INICIAR INMERSIÓN]({m['link']})")
                                     else:
-                                        st.info("✅ **INSCRITO** | Esperando señal de lanzamiento...")
-                            else:
-                                if estado_fase == "PRE_INSCRIPCION":
-                                    delta = dt_apertura - now_chile
-                                    st.warning(f"⏳ Fase de inscripción inicia el: **{dt_apertura.strftime('%d/%m %H:%M')}**")
-                                elif estado_fase == "INSCRIPCION_CERRADA":
-                                    st.error("🚫 El periodo de inscripción ha finalizado.")
-
-                        with c_action:
-                            if estado_fase == "INSCRIPCION_ABIERTA" and not esta_inscrito:
-                                # POPOVER DE SEGURIDAD PARA INSCRIPCIÓN
-                                with st.popover("📝 INSCRIBIRME", use_container_width=True):
-                                    st.markdown(f"### 📋 Confirmar Registro")
-                                    st.markdown(f"Estás a punto de unirte a la operación **{m['nombre']}**.")
-                                    st.caption("Asegúrate de tener disponibilidad para la fecha de lanzamiento.")
-                                    
-                                    if st.button("🚀 CONFIRMAR INSCRIPCIÓN", key=f"btn_ins_{m['id']}", type="primary", use_container_width=True):
-                                        with st.spinner("Procesando credenciales..."):
-                                            if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
-                                                st.toast("✅ ¡Bienvenido al equipo!", icon="🎖️")
-                                                time.sleep(1)
-                                                st.rerun()
-                                            else:
-                                                st.error("Error de conexión.")
-                                                
-                            elif esta_inscrito:
-                                st.button("✅ LISTO", disabled=True, key=f"btn_rdy_{m['id']}", use_container_width=True)
-                            else:
-                                st.button("🔒", disabled=True, key=f"btn_lck_{m['id']}", use_container_width=True)
+                                        delta = dt_lanzamiento - now_chile
+                                        if delta.total_seconds() > 0:
+                                            dias = delta.days
+                                            horas, resto = divmod(delta.seconds, 3600)
+                                            mins, _ = divmod(resto, 60)
+                                            time_str = f"{horas}h {mins}m"
+                                            if dias > 0: time_str = f"{dias}d {time_str}"
+                                            st.info(f"✅ **INSCRITO** | Despliegue en: **{time_str}**")
+                                        else:
+                                            st.info("✅ **INSCRITO** | Esperando señal de lanzamiento...")
+                                else:
+                                    if estado_fase == "PRE_INSCRIPCION":
+                                        delta = dt_apertura - now_chile
+                                        st.warning(f"⏳ Fase de inscripción inicia el: **{dt_apertura.strftime('%d/%m %H:%M')}**")
+                                    elif estado_fase == "INSCRIPCION_CERRADA":
+                                        st.error("🚫 El periodo de inscripción ha finalizado.")
+    
+                            with c_action:
+                                if estado_fase == "INSCRIPCION_ABIERTA" and not esta_inscrito:
+                                    # POPOVER DE SEGURIDAD PARA INSCRIPCIÓN
+                                    with st.popover("📝 INSCRIBIRME", use_container_width=True):
+                                        st.markdown(f"### 📋 Confirmar Registro")
+                                        st.markdown(f"Estás a punto de unirte a la operación **{m['nombre']}**.")
+                                        st.caption("Asegúrate de tener disponibilidad para la fecha de lanzamiento.")
+                                        
+                                        if st.button("🚀 CONFIRMAR INSCRIPCIÓN", key=f"btn_ins_{m['id']}", type="primary", use_container_width=True):
+                                            with st.spinner("Procesando credenciales..."):
+                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                                    st.toast("✅ ¡Bienvenido al equipo!", icon="🎖️")
+                                                    time.sleep(1)
+                                                    st.rerun()
+                                                else:
+                                                    st.error("Error de conexión.")
+                                                    
+                                elif esta_inscrito:
+                                    st.button("✅ LISTO", disabled=True, key=f"btn_rdy_{m['id']}", use_container_width=True)
+                                else:
+                                    st.button("🔒", disabled=True, key=f"btn_lck_{m['id']}", use_container_width=True)
                             
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
