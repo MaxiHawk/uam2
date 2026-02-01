@@ -432,18 +432,23 @@ def procesar_codigo_canje(codigo_input):
         return True, f"¡Canjeado! +{rew_ap} AP"
     except Exception as e: return False, f"Error: {str(e)}"
 
-# --- 🔮 TRIVIA ---
+# --- 🔮 TRIVIA (MEJORADO: POOL COMPLETO) ---
 def cargar_pregunta_aleatoria():
     if not DB_TRIVIA_ID: return None
     url = f"https://api.notion.com/v1/databases/{DB_TRIVIA_ID}/query"
-    payload = {"filter": {"property": "Activa", "checkbox": {"equals": True}}, "page_size": 30}
+    # Filtramos solo las activas
+    payload = {"filter": {"property": "Activa", "checkbox": {"equals": True}}}
+    
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=API_TIMEOUT)
-        res.raise_for_status()
-        results = res.json().get("results", [])
-        if not results: return None
-        q = random.choice(results)
+        # Usamos fetch_all para traer TODAS las preguntas posibles, no solo 30
+        raw_results = notion_fetch_all(url, payload)
+        
+        if not raw_results: return None
+        
+        # Elegimos una al azar del pool total
+        q = random.choice(raw_results)
         p = q["properties"]
+        
         return {
             "ref_id": q["id"],
             "pregunta": get_notion_text(p, "Pregunta"),
@@ -455,7 +460,9 @@ def cargar_pregunta_aleatoria():
             "exp_correcta": get_notion_text(p, "Explicación Correcta", "Correcto"),
             "exp_incorrecta": get_notion_text(p, "Explicación Incorrecta", "Incorrecto")
         }
-    except: return None
+    except Exception as e:
+        print(f"Error Trivia: {e}")
+        return None
 
 def procesar_recalibracion(reward_ap, is_correct, question_id):
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
