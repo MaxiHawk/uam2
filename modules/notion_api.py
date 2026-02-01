@@ -151,31 +151,37 @@ def cargar_anuncios():
         })
     return anuncios
 
-# --- 🚀 MISIONES ---
+# --- 🚀 MISIONES (CALIBRADO CON SCHEMA REAL) ---
 @st.cache_data(ttl=600)
 def cargar_misiones_activas():
     if not DB_MISIONES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
+    
+    # FIX 1: Filtro correcto (Checkbox "Activa" en lugar de Status "Estado")
     payload = {
-        "filter": {"property": "Estado", "status": {"equals": "Activa"}},
-        "sorts": [{"property": "Fecha Lanzamiento", "direction": "ascending"}]
+        "filter": {"property": "Activa", "checkbox": {"equals": True}},
+        # FIX 2: Ordenamiento por "Lanzamiento" (no "Fecha Lanzamiento")
+        "sorts": [{"property": "Lanzamiento", "direction": "ascending"}]
     }
+    
     raw_results = notion_fetch_all(url, payload)
+    
     misiones = []
     for r in raw_results:
         p = r["properties"]
         misiones.append({
             "id": r["id"],
-            "nombre": get_notion_text(p, "Misión", "Sin Título"),
-            "descripcion": get_notion_text(p, "Descripción"),
-            "tipo": get_notion_select(p, "Tipo", "Misión"),
-            "f_apertura": get_notion_date(p, "Fecha Apertura"),
-            "f_cierre": get_notion_date(p, "Fecha Cierre"),
-            "f_lanzamiento": get_notion_date(p, "Fecha Lanzamiento"),
+            # FIX 3: Mapeo exacto de columnas según tu Schema
+            "nombre": get_notion_text(p, "Nombre", "Operación Sin Título"), 
+            "descripcion": get_notion_text(p, "Descripcion", ""), # Nota: Sin tilde según tu schema
+            "tipo": get_notion_select(p, "Tipo", "Hazaña"),
+            "f_apertura": get_notion_date(p, "Apertura Inscripciones"),
+            "f_cierre": get_notion_date(p, "Cierre Inscripciones"),
+            "f_lanzamiento": get_notion_date(p, "Lanzamiento"),
             "inscritos": get_notion_text(p, "Inscritos"),
-            "target_unis": get_notion_multi_select(p, "Universidad Objetivo"),
+            "target_unis": get_notion_multi_select(p, "Universidad"),
             "password": get_notion_text(p, "Password"),
-            "link": get_notion_url(p, "Link")
+            "link": get_notion_url(p, "Enlace") # Era "Link", ahora es "Enlace"
         })
     return misiones
 
