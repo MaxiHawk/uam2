@@ -1418,9 +1418,10 @@ else:
                                             
        
     with tab_misiones:
-        import re 
+        import re
+        import os
 
-        # --- CSS TÁCTICO PARA MISIONES (V4: Serious Business) ---
+        # --- CSS TÁCTICO PARA MISIONES (V5: Clean & Robust) ---
         st.markdown("""
         <style>
             .mission-card {
@@ -1519,18 +1520,31 @@ else:
                     icon_type = "🌋" if es_expedicion else "⚔️"
                     glow = f"box-shadow: 0 0 15px {border_color}40;" if estado_fase == "OPEN" else ""
 
-                    # --- CORRECCIÓN IMAGEN: CARGA VÍA BASE64 ---
+                    # --- CORRECCIÓN AVANZADA DE IMAGEN ---
                     badge_html = ""
-                    if m['insignia_file']:
-                        # Intentamos cargar desde assets/NOMBRE_ARCHIVO (ej: assets/nexus.png)
-                        possible_path = f"assets/{m['insignia_file']}"
+                    raw_filename = m.get('insignia_file', "")
+                    
+                    if raw_filename:
+                        clean_filename = raw_filename.strip() # Quitamos espacios fantasma
+                        # Buscamos en varias ubicaciones posibles
+                        possible_paths = [
+                            f"assets/{clean_filename}",
+                            f"assets/insignias/{clean_filename}",
+                            f"{clean_filename}"
+                        ]
                         
-                        if os.path.exists(possible_path):
-                            b64_insignia = get_img_as_base64(possible_path)
+                        found_path = None
+                        for p in possible_paths:
+                            if os.path.exists(p):
+                                found_path = p
+                                break
+                        
+                        if found_path:
+                            b64_insignia = get_img_as_base64(found_path)
                             badge_html = f'<img src="data:image/png;base64,{b64_insignia}" class="reward-badge-img">'
                         else:
-                            # Fallback si no encuentra la imagen
-                            badge_html = '<span style="font-size: 2em;">🏆</span>'
+                            # Fallback con Tooltip de depuración (Muestra qué archivo buscó)
+                            badge_html = f'<span style="font-size: 2em; cursor: help;" title="No se encontró: {clean_filename}">🏆</span>'
                     else:
                         badge_html = '<span style="font-size: 2em;">🏆</span>'
 
@@ -1539,7 +1553,7 @@ else:
                     txt_recompensas = re.sub(r'(\d+\s*AP)', r'<span style="color:#00e5ff; font-weight:bold;">\1</span>', txt_recompensas)
                     txt_recompensas = re.sub(r'(\d+\s*MP)', r'<span style="color:#FFD700; font-weight:bold;">\1</span>', txt_recompensas)
                     
-                    # --- RENDERIZADO ---
+                    # --- RENDERIZADO (LIMPIO SIN REDUNDANCIAS) ---
                     with st.container():
                         card_html = f"""
 <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
@@ -1585,7 +1599,7 @@ else:
                                     st.markdown(f"### ⚠️ Compromiso de Servicio")
                                     st.markdown(f"**{m['nombre']}**")
                                     
-                                    # CAMBIO: Usamos st.error para que salga ROJO (Restricción)
+                                    # Alerta ROJA para la advertencia
                                     st.error(f"**ADVERTENCIA:** {m['advertencia']}")
                                     
                                     st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
@@ -1593,7 +1607,7 @@ else:
                                     if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
                                         with st.spinner("Firmando contrato..."):
                                             if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
-                                                # CAMBIO: Toast serio en lugar de Globos
+                                                # Feedback serio (Toast) sin globos
                                                 st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
                                                 time.sleep(1.5)
                                                 st.rerun()
