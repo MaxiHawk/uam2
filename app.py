@@ -1418,9 +1418,9 @@ else:
                                             
        
     with tab_misiones:
-        import re # Herramienta para detectar y pintar texto
-        
-        # --- CSS TÁCTICO PARA MISIONES (V3: Clean & Neon) ---
+        import re 
+
+        # --- CSS TÁCTICO PARA MISIONES (V4: Serious Business) ---
         st.markdown("""
         <style>
             .mission-card {
@@ -1443,7 +1443,6 @@ else:
                 font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.2em;
                 color: #fff; text-transform: uppercase; display: flex; align-items: center; gap: 10px;
             }
-            /* Eliminamos .mission-type-badge para limpiar el diseño */
             
             .mission-narrative {
                 background: rgba(0, 229, 255, 0.05); color: #00e5ff; 
@@ -1456,9 +1455,8 @@ else:
                 background: rgba(0,0,0,0.3); margin: 0 20px 15px 20px; padding: 10px;
                 border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; gap: 15px;
             }
-            .reward-badge-img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 5px #FFD700); }
+            .reward-badge-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 5px #FFD700); }
             
-            /* Ahora el texto base es gris claro para que los colores resalten */
             .reward-text { font-size: 0.9em; color: #e0e0e0; font-family: monospace; letter-spacing: 0.5px; }
             
             .mission-footer {
@@ -1521,23 +1519,27 @@ else:
                     icon_type = "🌋" if es_expedicion else "⚔️"
                     glow = f"box-shadow: 0 0 15px {border_color}40;" if estado_fase == "OPEN" else ""
 
-                    # --- IMAGEN INSIGNIA ---
+                    # --- CORRECCIÓN IMAGEN: CARGA VÍA BASE64 ---
                     badge_html = ""
                     if m['insignia_file']:
-                        badge_html = f'<img src="app/static/{m["insignia_file"]}" class="reward-badge-img" onerror="this.src=\'https://cdn-icons-png.flaticon.com/512/5906/5906061.png\'">'
+                        # Intentamos cargar desde assets/NOMBRE_ARCHIVO (ej: assets/nexus.png)
+                        possible_path = f"assets/{m['insignia_file']}"
+                        
+                        if os.path.exists(possible_path):
+                            b64_insignia = get_img_as_base64(possible_path)
+                            badge_html = f'<img src="data:image/png;base64,{b64_insignia}" class="reward-badge-img">'
+                        else:
+                            # Fallback si no encuentra la imagen
+                            badge_html = '<span style="font-size: 2em;">🏆</span>'
                     else:
-                        badge_html = '<span style="font-size: 1.5em;">🏆</span>'
+                        badge_html = '<span style="font-size: 2em;">🏆</span>'
 
-                    # --- LOGICA DE COLORIZACIÓN INTELIGENTE (REGEX) ---
-                    # Busca patrones como "100 AP" o "500 MP" y los envuelve en spans con color
+                    # --- COLORIZACIÓN INTELIGENTE (REGEX) ---
                     txt_recompensas = m['recompensas_txt']
-                    # Pintar AP de Azul Neón (#00e5ff)
                     txt_recompensas = re.sub(r'(\d+\s*AP)', r'<span style="color:#00e5ff; font-weight:bold;">\1</span>', txt_recompensas)
-                    # Pintar MP de Dorado (#FFD700)
                     txt_recompensas = re.sub(r'(\d+\s*MP)', r'<span style="color:#FFD700; font-weight:bold;">\1</span>', txt_recompensas)
-                    # --------------------------------------------------
-
-                    # --- RENDERIZADO (HTML APLANADO PARA EVITAR ERRORES) ---
+                    
+                    # --- RENDERIZADO ---
                     with st.container():
                         card_html = f"""
 <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
@@ -1582,14 +1584,18 @@ else:
                                 with st.popover("📝 INSCRIBIRME", use_container_width=True):
                                     st.markdown(f"### ⚠️ Compromiso de Servicio")
                                     st.markdown(f"**{m['nombre']}**")
-                                    st.warning(f"**ADVERTENCIA:** {m['advertencia']}")
+                                    
+                                    # CAMBIO: Usamos st.error para que salga ROJO (Restricción)
+                                    st.error(f"**ADVERTENCIA:** {m['advertencia']}")
+                                    
                                     st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
                                     
                                     if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
                                         with st.spinner("Firmando contrato..."):
                                             if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
-                                                st.balloons()
-                                                time.sleep(1)
+                                                # CAMBIO: Toast serio en lugar de Globos
+                                                st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
+                                                time.sleep(1.5)
                                                 st.rerun()
                                             else: st.error("Error de conexión.")
                             elif esta_inscrito:
