@@ -1520,20 +1520,16 @@ else:
                     glow = f"box-shadow: 0 0 15px {border_color}40;" if estado_fase == "OPEN" else ""
 
                     # --- PREPARAR IMAGEN DE INSIGNIA ---
-                    # Asumimos que están en assets/insignias/nombre_archivo
                     badge_html = ""
                     if m['insignia_file']:
-                        # Construimos la ruta asumiendo que el archivo existe o usamos un placeholder
-                        # Nota: En Streamlit cloud, para mostrar imágenes locales en HTML puro a veces requerimos base64,
-                        # pero intentaremos ruta relativa primero. Si falla, el alt text salva.
-                        # Para asegurar que funcione, usaremos el icono de trofeo si no carga.
+                        # Usamos ruta relativa a assets o la URL directa de la imagen
                         badge_html = f'<img src="app/static/{m["insignia_file"]}" class="reward-badge-img" onerror="this.src=\'https://cdn-icons-png.flaticon.com/512/5906/5906061.png\'">'
                     else:
                         badge_html = '<span style="font-size: 1.5em;">🏆</span>'
 
-                    # --- RENDERIZADO ---
+                    # --- RENDERIZADO (FIX: USAMOS TEXTWRAP.DEDENT) ---
                     with st.container():
-                        st.markdown(f"""
+                        st.markdown(textwrap.dedent(f"""
                         <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
                             <div class="mission-header">
                                 <div class="mission-title">{icon_type} {m['nombre']}</div>
@@ -1555,7 +1551,7 @@ else:
                                 <div class="mission-status" style="color: {status_color};">{status_text}</div>
                             </div>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """), unsafe_allow_html=True)
                         
                         # --- BOTONERA ---
                         c1, c2 = st.columns([2, 1])
