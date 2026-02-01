@@ -1742,9 +1742,27 @@ else:
                     """, unsafe_allow_html=True)
                 
                 if st.button("ENTENDIDO, CERRAR CONEXIÓN", use_container_width=True):
+                    # 1. Limpieza de estado local
                     st.session_state.trivia_feedback_mode = False
                     st.session_state.trivia_question = None
-                    actualizar_datos_sesion() 
+                    
+                    # 2. HACK DE MEMORIA (Optimistic UI):
+                    # Inyectamos la fecha de HOY en la sesión local manualmente.
+                    # Esto hace que la barra de tiempo aparezca INMEDIATAMENTE al recargar,
+                    # sin esperar a que 'actualizar_datos_sesion' traiga el dato de Notion.
+                    from datetime import datetime
+                    import pytz
+                    chile_tz = pytz.timezone('America/Santiago')
+                    now_iso = datetime.now(chile_tz).isoformat()
+                    
+                    if "jugador" in st.session_state and st.session_state.jugador:
+                        # Simulamos que la propiedad ya se actualizó
+                        if "Ultima Recalibracion" not in st.session_state.jugador:
+                            st.session_state.jugador["Ultima Recalibracion"] = {}
+                        st.session_state.jugador["Ultima Recalibracion"]["date"] = {"start": now_iso}
+                    
+                    # 3. Recarga visual inmediata
+                    st.rerun() 
 
             elif not can_play:
                 st.info(f"❄️ SISTEMAS RECALIBRANDO. Vuelve en: **{msg_wait}**")
