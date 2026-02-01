@@ -1804,7 +1804,7 @@ else:
                         if st.button(f"B) {q['opcion_b']}", use_container_width=True): handle_choice("B")
                     with col_c:
                         if st.button(f"C) {q['opcion_c']}", use_container_width=True): handle_choice("C")
- # --- PESTAÑA CÓDIGOS (BLINDADA) ---
+ # --- PESTAÑA CÓDIGOS (VERSIÓN 2.0: SOPORTE INSIGNIAS) ---
     with tab_codes:
         st.markdown("### 🔐 PROTOCOLO DE DESENCRIPTACIÓN")
         
@@ -1822,10 +1822,10 @@ else:
             """, unsafe_allow_html=True)
         
         else:
-            # INTERFAZ NORMAL PARA ESTUDIANTES ACTIVOS
-            st.caption("Introduce las claves tácticas para desbloquear recursos.")
+            # INTERFAZ NORMAL
+            st.caption("Introduce las claves tácticas para desbloquear recursos e insignias secretas.")
             
-            # 1. ESPACIO RESERVADO PARA CINE
+            # Espacio reservado para animaciones
             animation_spot = st.empty() 
             
             c1, c2, c3 = st.columns([1, 2, 1])
@@ -1833,9 +1833,7 @@ else:
                 st.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80)
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # Input con key dinámica
                 current_key = f"redeem_input_{st.session_state.redeem_key_id}"
-                
                 code_input = st.text_input("CLAVE DE ACCESO:", key=current_key, placeholder="X-X-X-X")
                 st.markdown("<br>", unsafe_allow_html=True)
                 
@@ -1843,7 +1841,8 @@ else:
                     if code_input:
                         with st.spinner("Verificando firma digital..."):
                             time.sleep(0.5)
-                            success, msg = procesar_codigo_canje(code_input.strip())
+                            # Llamamos a la nueva función que retorna 3 valores
+                            success, msg, rewards = procesar_codigo_canje(code_input.strip())
                             
                             if success:
                                 # --- CASO ÉXITO ---
@@ -1852,27 +1851,36 @@ else:
                                     if ani_hack:
                                         st_lottie(ani_hack, height=300, key=f"anim_{time.time()}")
                                 
-                                time.sleep(2.5)
+                                time.sleep(2.0)
                                 animation_spot.empty()
                                 
-                                st.success(f"✅ ACCESO CONCEDIDO: {msg}")
-                                time.sleep(2)
+                                # Feedback detallado
+                                msg_final = f"✅ **ACCESO CONCEDIDO**\n\n"
+                                if rewards.get("AP", 0) > 0:
+                                    msg_final += f"➕ **{rewards['AP']} AngioPoints** agregados.\n"
                                 
-                                # Reset
+                                if rewards.get("Insignia"):
+                                    badge_name = rewards["Insignia"]
+                                    msg_final += f"🎖️ **¡NUEVA INSIGNIA DESBLOQUEADA!**: {badge_name}"
+                                    st.balloons() # ¡Fiesta por la insignia!
+
+                                st.success(msg_final)
+                                time.sleep(3)
+                                
+                                # Reset input y datos
                                 st.session_state.redeem_key_id += 1
                                 actualizar_datos_sesion()
                             
-                            else: # <--- LÍNEA 2101 (aprox)
-                                # --- CASO ERROR (Corregido) ---
-                                with animation_spot: # <--- LÍNEA 2103 (Debe tener sangría extra)
-                                    # Usamos .get por seguridad por si no definiste "error_hack" aún
+                            else:
+                                # --- CASO ERROR ---
+                                with animation_spot:
                                     ani_error = cargar_lottie_seguro(ASSETS_LOTTIE.get("error_hack", "")) 
                                     if ani_error:
                                         st_lottie(ani_error, height=200, key=f"fail_{time.time()}")
                                 
                                 time.sleep(1.5)
                                 animation_spot.empty()
-                                st.error(f"⛔ ACCESO DENEGADO: {msg}")
+                                st.error(f"{msg}")
                     else:
                         st.warning("⚠️ Ingrese una clave válida.")
 
