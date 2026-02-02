@@ -1421,9 +1421,8 @@ else:
         import re
         import os
 
-        # --- CSS TÁCTICO (V7: HIGH CONTRAST & ACCESSIBILITY) ---
-        # Cambio de color: De #d500f9 (oscuro) a #e040fb (más brillante) o #d05ce3 (Lavanda)
-        primary_sync_color = "#e040fb" 
+        # --- CSS TÁCTICO (V7.1: FINAL STABLE) ---
+        primary_sync_color = "#e040fb" # Lavanda Neón para Misiones Grupales
         
         st.markdown(f"""
         <style>
@@ -1470,7 +1469,7 @@ else:
             .mission-timer {{ font-family: monospace; font-size: 0.85em; color: #aaa; display: flex; align-items: center; gap: 5px; }}
             .mission-status {{ font-weight: bold; font-size: 0.8em; letter-spacing: 1px; text-transform: uppercase; }}
 
-            /* SYNC BAR MEJORADA */
+            /* SYNC BAR */
             .sync-bar-bg {{ width: 100%; height: 10px; background: #2a2a2a; border-radius: 5px; margin-top: 8px; overflow: hidden; border: 1px solid #444; }}
             .sync-bar-fill {{ height: 100%; background: {primary_sync_color}; box-shadow: 0 0 15px {primary_sync_color}; transition: width 0.5s ease; }}
             .sync-label {{ 
@@ -1489,16 +1488,14 @@ else:
             st.caption("Calendario de despliegue de Operaciones.")
             misiones = cargar_misiones_activas()
             
-            # --- FIX: Carga inteligente de miembros (Filtrado por Uni y Año) ---
+            # Carga inteligente de miembros
             mi_escuadron_lista = []
-            # Solo llamamos a la API si hay alguna misión grupal activa para ahorrar recursos
             if any(m['tipo'] == "Misión" for m in misiones):
                 mi_escuadron_lista = obtener_miembros_escuadron(
                     st.session_state.squad_name, 
                     st.session_state.uni_actual, 
                     st.session_state.ano_actual
                 )
-            # -------------------------------------------------------------------
 
             chile_tz = pytz.timezone('America/Santiago')
             now_chile = datetime.now(chile_tz)
@@ -1527,32 +1524,24 @@ else:
                     
                     lista_inscritos = [x.strip() for x in m['inscritos'].split(",") if x.strip()]
                     esta_inscrito = st.session_state.nombre in lista_inscritos
-                    
-                    # --- LÓGICA POR TIPO ---
                     es_mision_grupal = (m['tipo'] == "Misión")
                     
+                    # --- PREPARACIÓN DE DATOS VISUALES ---
                     if es_mision_grupal:
-                        # === MISIÓN GRUPAL (SYNC) ===
                         icon_type = "🧬"
-                        border_color = primary_sync_color # Lavanda Neón
+                        border_color = primary_sync_color
                         
-                        # Cálculo preciso con la lista filtrada
                         confirmados_escuadron = [p for p in lista_inscritos if p in mi_escuadron_lista]
                         total_squad = len(mi_escuadron_lista) if mi_escuadron_lista else 1
                         count_confirmados = len(confirmados_escuadron)
-                        
                         progress_pct = int((count_confirmados / total_squad) * 100) if total_squad > 0 else 0
                         squad_synced = (progress_pct >= 100)
                         
                         glow = f"box-shadow: 0 0 15px {border_color}40;"
                         status_text = "PROTOCOLO DE SINCRONIZACIÓN"
                         status_color = border_color
-                        
-                        # Usamos "Cierre Inscripciones" como fecha límite de sincronización
                         time_display = f"LÍMITE SYNC: {dt_cierre.strftime('%d/%m %H:%M')}" if dt_cierre else "SIN LÍMITE"
-
                     else:
-                        # === INDIVIDUAL (HAZAÑA/EXPEDICIÓN) ===
                         es_expedicion = m['tipo'] == "Expedición"
                         border_color = "#bf360c" if es_expedicion else "#FFD700"
                         icon_type = "🌋" if es_expedicion else "⚔️"
@@ -1589,7 +1578,7 @@ else:
                     txt_recompensas = re.sub(r'(\d+\s*AP)', r'<span style="color:#00e5ff; font-weight:bold;">\1</span>', txt_recompensas)
                     txt_recompensas = re.sub(r'(\d+\s*MP)', r'<span style="color:#FFD700; font-weight:bold;">\1</span>', txt_recompensas)
 
-                    # --- RENDERIZADO TARJETA ---
+                    # --- RENDERIZADO HTML ---
                     with st.container():
                         card_html = f"""
 <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
@@ -1615,6 +1604,7 @@ else:
                         
                         # --- BOTONERA ---
                         if es_mision_grupal:
+                            # LÓGICA GRUPAL
                             st.markdown(f"""
                             <div class="sync-bar-bg">
                                 <div class="sync-bar-fill" style="width: {progress_pct}%;"></div>
@@ -1636,7 +1626,6 @@ else:
                                 else:
                                     faltantes = [nm for nm in mi_escuadron_lista if nm not in confirmados_escuadron]
                                     if faltantes:
-                                        # Si la lista es muy larga, mostramos solo los primeros
                                         faltantes_str = ", ".join(faltantes[:3]) + ("..." if len(faltantes) > 3 else "")
                                         st.info(f"⏳ **FALTAN:** {faltantes_str}")
                                     else:
@@ -1644,9 +1633,7 @@ else:
 
                             with c2:
                                 if not esta_inscrito:
-                                    # Verificar si la fecha límite (cierre) ya pasó
                                     mision_vencida = dt_cierre and now_chile > dt_cierre
-                                    
                                     if mision_vencida:
                                         st.button("🔒 TIEMPO AGOTADO", disabled=True, use_container_width=True)
                                     else:
@@ -1661,7 +1648,7 @@ else:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_sync_{m['id']}", use_container_width=True)
 
                         else:
-                            # Lógica Individual (Mantiene lo anterior)
+                            # LÓGICA INDIVIDUAL
                             c1, c2 = st.columns([2, 1])
                             with c1:
                                 if esta_inscrito:
@@ -1692,44 +1679,6 @@ else:
                                                     time.sleep(1.5)
                                                     st.rerun()
                                                 else: st.error("Error.")
-                                elif esta_inscrito:
-                                    st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
-                                else:
-                                    st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
-
-                        else:
-                            # === ZONA INDIVIDUAL (HAZAÑA/EXPEDICIÓN) ===
-                            c1, c2 = st.columns([2, 1])
-                            with c1:
-                                if esta_inscrito:
-                                    mision_lanzada = now_chile >= dt_lanzamiento
-                                    if mision_lanzada:
-                                        st.success("🟢 **OPERACIÓN EN CURSO**")
-                                        with st.expander("📂 ACCEDER A DATOS DE ACTIVIDAD", expanded=True):
-                                            st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
-                                            st.markdown(f"**🌐 ENLACE:** [INICIAR]({m['link']})")
-                                    else:
-                                        st.info(f"✅ **INSCRITO** | Esperando fecha de lanzamiento...")
-                                elif estado_fase == "PRE":
-                                    st.warning(f"⏳ Inscripciones: {dt_apertura.strftime('%d/%m %H:%M')}")
-                                elif estado_fase == "CLOSED":
-                                    st.error("Inscripciones Cerradas")
-
-                            with c2:
-                                if estado_fase == "OPEN" and not esta_inscrito:
-                                    with st.popover("📝 INSCRIBIRME", use_container_width=True):
-                                        st.markdown(f"### ⚠️ Compromiso de Servicio")
-                                        st.markdown(f"**{m['nombre']}**")
-                                        st.error(f"**ADVERTENCIA:** {m['advertencia']}")
-                                        st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
-                                        
-                                        if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
-                                            with st.spinner("Firmando contrato..."):
-                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
-                                                    st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
-                                                    time.sleep(1.5)
-                                                    st.rerun()
-                                                else: st.error("Error de conexión.")
                                 elif esta_inscrito:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
                                 else:
