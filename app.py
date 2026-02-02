@@ -1675,7 +1675,7 @@ else:
                                     st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                                 
     with tab_codice:
-        st.markdown("### 📜 ARCHIVOS DE LA RED PRAXIS PRIMORIS")
+        st.markdown("### 📜 ARCHIVOS DE LA RED PRAXIS")
         
         if is_alumni:
             st.markdown("""
@@ -1717,62 +1717,69 @@ else:
             if not items_filtrados:
                 st.info("📡 No se encontraron registros con esos criterios.")
             else:
-                # Mapa de Iconos
-                icon_map = {
-                    "Video": "🎬", 
-                    "PDF": "📕", 
-                    "Infografía": "📊", 
-                    "Secreto": "🕵️‍♀️", 
-                    "General": "📄"
+                # --- PALETA DE COLORES SEMÁNTICA (ACCESIBILIDAD + ESTILO) ---
+                type_styles = {
+                    "Video":      {"color": "#d500f9", "bg": "rgba(213, 0, 249, 0.05)", "icon": "🎬"}, # Morado Neón
+                    "PDF":        {"color": "#ff4444", "bg": "rgba(255, 68, 68, 0.05)",  "icon": "📕"}, # Rojo
+                    "Infografía": {"color": "#00e676", "bg": "rgba(0, 230, 118, 0.05)", "icon": "📊"}, # Verde Matriz
+                    "Secreto":    {"color": "#ff1744", "bg": "rgba(20, 0, 0, 0.8)",     "icon": "👁️‍🗨️"}, # Rojo Oscuro
+                    "General":    {"color": "#00e5ff", "bg": "rgba(0, 229, 255, 0.05)", "icon": "📄"}  # Azul Cyan
                 }
 
                 for item in items_filtrados:
+                    # Datos del Estilo
+                    style = type_styles.get(item["tipo"], type_styles["General"])
+                    theme_color = style["color"]
+                    theme_bg = style["bg"]
+                    icon = style["icon"]
+                    
                     # Lógica de Bloqueo
                     is_locked = nivel_num < item["nivel"]
                     
-                    # Estilos Dinámicos
-                    icon = icon_map.get(item["tipo"], "📄")
-                    if item["tipo"] == "Secreto": icon = "👁️‍🗨️" # Icono especial para secretos
-                    
-                    card_bg = "#0a141f"
-                    border_color = THEME['primary']
+                    # Configuración Visual Base
+                    card_border = f"1px solid {theme_color}40" # Borde sutil
+                    card_left_border = f"4px solid {theme_color}" # Borde izquierdo fuerte
                     opacity = "1"
+                    status_icon = ""
                     
                     if is_locked:
                         card_bg = "#080808"
-                        border_color = "#333"
+                        card_border = "1px solid #333"
+                        card_left_border = "4px solid #333"
                         opacity = "0.6"
-                        action_btn = f'<span style="color:#ff4444; font-family:monospace; font-weight:bold; border:1px solid #ff4444; padding:5px 10px; border-radius:4px;">🔒 NIVEL {item["nivel"]}</span>'
-                        status_icon = "🔒"
+                        theme_color = "#666" # Gris para bloqueados
+                        action_btn = f'<span style="color:#ff4444; font-family:monospace; font-weight:bold; border:1px solid #ff4444; padding:6px 12px; border-radius:4px; font-size:0.8em; white-space:nowrap;">🔒 NIVEL {item["nivel"]}</span>'
                     else:
+                        card_bg = f"linear-gradient(90deg, #0a1018 0%, {theme_bg} 100%)"
+                        
                         if item["tipo"] == "Secreto":
-                            card_bg = "linear-gradient(135deg, #1a0505 0%, #000 100%)"
-                            border_color = "#ff1744"
                             action_text = "DESCLASIFICAR"
-                            btn_style = "background:#ff1744; color:white;"
+                            # Botón Rojo Intenso con texto Blanco (Alto Contraste)
+                            btn_style = "background:#ff1744; color:white; border:1px solid #ff1744; box-shadow: 0 0 10px rgba(255,23,68,0.4);"
                         else:
                             action_text = "ACCEDER"
-                            btn_style = f"background:{THEME['primary']}; color:black;"
+                            # Botón del color del tema con texto Negro (Alto Contraste) o Blanco según brillo
+                            # Usaremos color de fondo brillante y texto negro para asegurar legibilidad
+                            btn_style = f"background:{theme_color}; color:#000; border:1px solid {theme_color}; box-shadow: 0 0 10px {theme_color}40;"
                         
-                        action_btn = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; {btn_style} padding:6px 15px; border-radius:4px; font-weight:bold; font-size:0.8em; display:inline-block; transition:0.3s;">{action_text}</a>'
-                        status_icon = ""
+                        action_btn = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; {btn_style} padding:8px 20px; border-radius:4px; font-weight:bold; font-size:0.85em; display:inline-block; transition:0.3s; font-family:\'Orbitron\'; letter-spacing:1px;">{action_text}</a>'
 
-                    # --- FIX: HTML APLANADO (SIN SANGRÍA) ---
-                    # Nota: El HTML empieza pegado a la izquierda para evitar que Markdown lo detecte como código
+                    # --- HTML APLANADO (FIX PREVIO) ---
                     card_html = f"""
-<div style="display: flex; align-items: flex-start; background: {card_bg}; border: 1px solid {border_color}; border-left: 4px solid {border_color}; border-radius: 8px; padding: 15px; margin-bottom: 15px; opacity: {opacity}; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-<div style="font-size: 2em; margin-right: 15px; min-width: 50px; text-align: center;">{icon}</div>
+<div style="display: flex; align-items: flex-start; background: {card_bg}; border: {card_border}; border-left: {card_left_border}; border-radius: 8px; padding: 18px; margin-bottom: 15px; opacity: {opacity}; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+<div style="font-size: 2.2em; margin-right: 20px; min-width: 50px; text-align: center; filter: drop-shadow(0 0 5px {theme_color});">{icon}</div>
 <div style="flex-grow: 1;">
-<div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display:flex; justify-content:space-between;">
-<span>{item["nombre"]}</span>
-<span style="font-size:0.8em;">{status_icon}</span>
+<div style="font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center;">
+<span style="text-shadow: 0 0 10px {theme_color}80;">{item["nombre"]}</span>
 </div>
-<div style="font-size: 0.9em; color: #aaa; margin-bottom: 8px; line-height: 1.4;">
-<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:3px; font-size:0.7em; margin-right:5px; text-transform:uppercase;">{item['tipo']}</span>
+<div style="margin-bottom: 8px;">
+<span style="background:{theme_color}20; color:{theme_color}; border:1px solid {theme_color}40; padding:3px 8px; border-radius:4px; font-size:0.7em; font-weight:bold; text-transform:uppercase; letter-spacing:1px;">{item['tipo']}</span>
+</div>
+<div style="font-size: 0.95em; color: #e0e0e0; line-height: 1.5; font-weight: 300;">
 {item["descripcion"]}
 </div>
 </div>
-<div style="margin-left: 15px; display:flex; align-items:center;">
+<div style="margin-left: 20px; display:flex; align-items:center; align-self:center;">
 {action_btn}
 </div>
 </div>
