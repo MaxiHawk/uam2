@@ -97,7 +97,7 @@ def registrar_evento_sistema(usuario, accion, detalles, tipo="INFO", uni_overrid
     try: requests.post(url, headers=headers, json={"parent": {"database_id": DB_LOGS_ID}, "properties": properties}, timeout=5)
     except: pass
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def verificar_modo_mantenimiento():
     if not DB_CONFIG_ID: return False
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
