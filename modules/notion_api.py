@@ -188,31 +188,45 @@ def cargar_misiones_activas():
     return misiones
 
 # --- 📝 INSCRIPCIÓN (AHORA CON LOG LEGIBLE) ---
-def inscribir_jugador_mision(page_id, current_inscritos_str, player_name, mision_nombre="Actividad Clasificada"):
+# --- 📝 INSCRIPCIÓN BLINDADA (CONCURRENCIA SAFE) ---
+def inscribir_jugador_mision(page_id, _unused_str, player_name, mision_nombre="Actividad Clasificada"):
     """
-    Inscribe al jugador en la misión y deja un log legible con el nombre de la actividad.
+    Inscribe al jugador obteniendo primero la data FRESCA de Notion para evitar sobrescrituras
+    por caché. (Anti-Race Condition).
     """
     if not DB_MISIONES_ID: return False
     
-    # 1. Preparamos la nueva lista de inscritos
-    lista = [x.strip() for x in current_inscritos_str.split(",") if x.strip()]
-    if player_name in lista: return True # Ya estaba inscrito
-    
-    lista.append(player_name)
-    new_str = ", ".join(lista)
-    
-    url = f"https://api.notion.com/v1/pages/{page_id}"
-    payload = {
-        "properties": {
-            "Inscritos": {"rich_text": [{"text": {"content": new_str}}]}
-        }
-    }
+    url_page = f"https://api.notion.com/v1/pages/{page_id}"
     
     try:
-        # 2. Actualizamos Notion
-        requests.patch(url, headers=headers, json=payload, timeout=API_TIMEOUT)
+        # 1. BLINDAJE: Consultamos la lista REAL actual en el servidor (bypaseando caché local)
+        get_res = requests.get(url_page, headers=headers, timeout=API_TIMEOUT)
+        if get_res.status_code != 200: return False
         
-        # 3. LOG LEGIBLE (Usamos el nombre real en vez del ID)
+        props = get_res.json()["properties"]
+        # Leemos la propiedad "Inscritos" directamente de la fuente
+        current_real_str = get_notion_text(props, "Inscritos", "")
+        
+        # 2. Procesamos sobre la data fresca
+        lista = [x.strip() for x in current_real_str.split(",") if x.strip()]
+        
+        if player_name in lista: 
+            return True # Ya estaba inscrito (según Notion)
+            
+        lista.append(player_name)
+        new_str = ", ".join(lista)
+        
+        # 3. Guardamos la nueva lista
+        payload = {
+            "properties": {
+                "Inscritos": {"rich_text": [{"text": {"content": new_str}}]}
+            }
+        }
+        
+        patch_res = requests.patch(url_page, headers=headers, json=payload, timeout=API_TIMEOUT)
+        patch_res.raise_for_status()
+        
+        # 4. Log del Sistema
         registrar_evento_sistema(
             player_name, 
             "Inscripción Operación", 
@@ -220,8 +234,9 @@ def inscribir_jugador_mision(page_id, current_inscritos_str, player_name, mision
             "Misión"
         )
         return True
+        
     except Exception as e:
-        print(f"Error inscripción: {e}")
+        print(f"Error inscripción blindada: {e}")
         return False
 
 # --- ⚡ HABILIDADES ---
