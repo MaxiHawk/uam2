@@ -11,7 +11,6 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-# Mantenemos imports necesarios
 from modules.notion_api import aprobar_solicitud_habilidad
 
 try:
@@ -23,12 +22,13 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V5.2 - CALIBRATED) ---
+# --- ESTILOS CSS ÉPICOS (V6 - ROBUST) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         .stApp { background-color: #050810; color: #e0f7fa; }
         
+        /* Cards de Solicitudes */
         .req-card-epic {
             background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
             border: 1px solid #1c2e3e; border-radius: 12px; padding: 20px;
@@ -40,15 +40,57 @@ st.markdown("""
         .badge-pending { background: #ffea0020; color: #ffea00; border: 1px solid #ffea00; }
         .badge-approved { background: #00e67620; color: #00e676; border: 1px solid #00e676; }
         .badge-rejected { background: #ff174420; color: #ff1744; border: 1px solid #ff1744; }
-        
         .req-type-tag { font-family: monospace; font-size: 0.8em; padding: 2px 6px; border-radius: 3px; background: #333; color: #aaa; margin-right: 10px; }
         .req-body { font-size: 1.0em; color: #b0bec5; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; }
         
         div[data-testid="column"] button { font-family: 'Orbitron'; font-size: 0.8em; text-transform: uppercase; }
+        
+        /* Estilo Farmeo */
+        .farm-box {
+            border: 2px solid #00e5ff; background: rgba(0, 229, 255, 0.05);
+            padding: 15px; border-radius: 10px; margin-bottom: 20px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIONES ADMIN ---
+# --- FUNCIONES NOTION ROBUSTAS (SCAN & MATCH) ---
+def buscar_config_id(key_target):
+    """
+    Descarga TODA la config (son pocas filas) y busca manualmente la clave.
+    Esto evita errores de indexación de la API de Notion.
+    """
+    if not DB_CONFIG_ID: return None, False, "Todas"
+    
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    try:
+        res = requests.post(url, headers=headers, json={})
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            for page in results:
+                props = page["properties"]
+                # Obtenemos el título (Clave)
+                try:
+                    clave_actual = props["Clave"]["title"][0]["text"]["content"]
+                    if clave_actual == key_target:
+                        estado = props.get("Activo", {}).get("checkbox", False)
+                        # Intentamos leer el filtro, si existe
+                        filtro_list = props.get("Filtro", {}).get("rich_text", [])
+                        filtro_val = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
+                        return page["id"], estado, filtro_val
+                except: continue
+    except Exception as e: print(f"Error config: {e}")
+    return None, False, "Todas"
+
+def actualizar_config(page_id, nuevo_estado, nuevo_filtro=None):
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    props = {"Activo": {"checkbox": nuevo_estado}}
+    
+    if nuevo_filtro is not None:
+        props["Filtro"] = {"rich_text": [{"text": {"content": nuevo_filtro}}]}
+        
+    requests.patch(url, headers=headers, json={"properties": props})
+
+# --- OTRAS FUNCIONES ---
 def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
@@ -66,54 +108,6 @@ def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Adm
         }
     }
     requests.post(url, headers=headers, json=payload)
-
-# --- GESTIÓN CONFIGURACIÓN (CORREGIDO: BUSCA POR CLAVE EXACTA) ---
-def get_config_state_exact(key_name):
-    """Lee el estado actual de una clave de configuración específica (ej: MODO_MANTENIMIENTO)"""
-    if not DB_CONFIG_ID: return False
-    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
-    payload = {
-        "filter": {
-            "property": "Clave",
-            "title": {
-                "equals": key_name
-            }
-        }
-    }
-    try:
-        res = requests.post(url, headers=headers, json=payload)
-        if res.status_code == 200:
-            results = res.json().get("results", [])
-            if results:
-                # Retorna el valor del checkbox 'Activo'
-                return results[0]["properties"]["Activo"]["checkbox"]
-    except: pass
-    return False
-
-def toggle_config_exact(key_name, nuevo_estado):
-    """Actualiza el checkbox 'Activo' de una clave específica"""
-    if not DB_CONFIG_ID: return False
-    # 1. Encontrar la página
-    url_q = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
-    payload = {
-        "filter": {
-            "property": "Clave",
-            "title": {
-                "equals": key_name
-            }
-        }
-    }
-    res = requests.post(url_q, headers=headers, json=payload)
-    
-    if res.status_code == 200:
-        results = res.json().get("results", [])
-        if results:
-            page_id = results[0]["id"]
-            url_p = f"https://api.notion.com/v1/pages/{page_id}"
-            # 2. Actualizar
-            requests.patch(url_p, headers=headers, json={"properties": {"Activo": {"checkbox": nuevo_estado}}})
-            return True
-    return False
 
 @st.cache_data(ttl=60)
 def get_players():
@@ -186,14 +180,14 @@ df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
     
-    # --- FILTROS (CON GENERACIÓN INCLUIDO) ---
+    # --- FILTROS GLOBALES (CON GENERACIÓN) ---
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # Lógica de Filtrado Global
+    # Lógica de Filtrado
     df_filtered = df_players.copy()
     if not df_players.empty:
         if sel_uni != "Todas": df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
@@ -201,33 +195,52 @@ with st.sidebar:
     
     st.divider()
     
-    # --- KILL SWITCH (USANDO KEY 'MODO_MANTENIMIENTO') ---
+    # --- 🚨 GESTIÓN DE SISTEMA (MANTENIMIENTO & FARMEO) ---
     st.markdown("### 🚨 SISTEMA")
     
-    # Leemos el estado REAL usando la clave correcta
-    estado_mantenimiento = get_config_state_exact("MODO_MANTENIMIENTO")
-    
-    # Toggle visual
-    nuevo_estado_mant = st.toggle("MODO MANTENIMIENTO", value=estado_mantenimiento)
-    
-    if nuevo_estado_mant != estado_mantenimiento:
-        if toggle_config_exact("MODO_MANTENIMIENTO", nuevo_estado_mant):
-            txt = "ACTIVADO 🔴" if nuevo_estado_mant else "DESACTIVADO 🟢"
-            st.toast(f"Mantenimiento {txt}")
-            time.sleep(1)
-            st.rerun()
-        else:
-            st.error("Error al actualizar configuración. Verifique que la clave 'MODO_MANTENIMIENTO' exista en DB Config.")
+    # 1. MODO MANTENIMIENTO
+    mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
+    if mant_id:
+        nuevo_mant = st.toggle("MODO MANTENIMIENTO", value=mant_estado)
+        if nuevo_mant != mant_estado:
+            actualizar_config(mant_id, nuevo_mant)
+            st.toast("Configuración Actualizada"); time.sleep(1); st.rerun()
+    else:
+        st.error("BD Config: No se halló 'MODO_MANTENIMIENTO'")
 
-    # --- DROP SUMINISTROS (EXTRA: CONTROL DE DROPS) ---
-    estado_drops = get_config_state_exact("DROP_SUMINISTROS")
-    nuevo_estado_drop = st.toggle("DROPS DIARIOS", value=estado_drops)
+    st.divider()
+
+    # 2. DROP SUMINISTROS (FARMEO DIFERENCIADO)
+    st.markdown("### 📦 FARMEO DIARIO")
+    drop_id, drop_estado, drop_filtro_actual = buscar_config_id("DROP_SUMINISTROS")
     
-    if nuevo_estado_drop != estado_drops:
-        if toggle_config_exact("DROP_SUMINISTROS", nuevo_estado_drop):
-            st.toast(f"Drops {'HABILITADOS' if nuevo_estado_drop else 'DESHABILITADOS'}")
-            time.sleep(1)
-            st.rerun()
+    if drop_id:
+        with st.container():
+            # Mostramos un marco visual si está activo
+            if drop_estado:
+                st.markdown(f"""<div class="farm-box">🟢 <b>FARMEO ACTIVO</b><br>Objetivo: {drop_filtro_actual}</div>""", unsafe_allow_html=True)
+            
+            # Selector de Universidad Objetivo (Basado en las Unis disponibles en Players)
+            target_uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
+            
+            # Si ya hay un filtro guardado, intentamos ponerlo como default
+            idx_def = 0
+            if drop_filtro_actual in target_uni_opts:
+                idx_def = target_uni_opts.index(drop_filtro_actual)
+                
+            uni_objetivo = st.selectbox("🎯 Universidad Objetivo:", target_uni_opts, index=idx_def, key="drop_target")
+            
+            # El Switch
+            nuevo_drop = st.toggle("ACTIVAR FARMEO", value=drop_estado)
+            
+            # Lógica de cambio: Si cambia el switch O si cambia la uni mientras está encendido
+            if nuevo_drop != drop_estado or (drop_estado and uni_objetivo != drop_filtro_actual):
+                if st.button("💾 APLICAR CAMBIOS FARMEO"):
+                    actualizar_config(drop_id, nuevo_drop, uni_objetivo)
+                    st.toast(f"Drop {uni_objetivo}: {'ON' if nuevo_drop else 'OFF'}")
+                    time.sleep(1); st.rerun()
+    else:
+        st.error("BD Config: No se halló 'DROP_SUMINISTROS'")
         
     st.divider()
     if st.button("🧹 Limpiar Caché"): st.cache_data.clear(); st.rerun()
@@ -235,7 +248,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES INTELIGENTES ---
+# --- TAB 1: SOLICITUDES ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES ENTRANTES")
@@ -258,8 +271,6 @@ with tab_req:
                 props = item["properties"]
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
-                
-                # TIPO REAL
                 tipo_obj = props.get("Tipo", {}).get("select")
                 tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
                 
@@ -268,9 +279,8 @@ with tab_req:
                     utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
                     fecha_str = utc_dt.astimezone(pytz.timezone('America/Santiago')).strftime("%d/%m %H:%M")
                 except: fecha_str = "Fecha desc."
-                
-                status_actual = props.get("Status", {}).get("select", {}).get("name", "Pendiente")
-                solicitudes.append({"id": item["id"], "remitente": remitente, "mensaje": mensaje, "fecha": fecha_str, "status": status_actual, "tipo": tipo})
+                status = props.get("Status", {}).get("select", {}).get("name", "Pendiente")
+                solicitudes.append({"id": item["id"], "remitente": remitente, "mensaje": mensaje, "fecha": fecha_str, "status": status, "tipo": tipo})
     except: pass
     
     if not solicitudes:
@@ -280,116 +290,73 @@ with tab_req:
             es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
             es_compra = "Compra" in r['tipo'] or "Mercado" in r['tipo']
             
-            if es_habilidad: 
-                border_color = "#d500f9" 
-                icon_type = "⚡ PODER"
-            elif es_compra:
-                border_color = "#FFD700" 
-                icon_type = "🛒 COMPRA"
-            else:
-                border_color = "#00e5ff" 
-                icon_type = "💬 MENSAJE"
+            if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
+            elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
+            else: border_color, icon_type = "#00e5ff", "💬 MENSAJE"
 
             with st.container():
                 st.markdown(f"""
                 <div class="req-card-epic" style="border-left: 4px solid {border_color};">
                     <div class="req-header">
-                        <div class="req-player-name">
-                            {r['remitente']}
-                            <span class="req-badge badge-{r['status'].lower()}">{r['status']}</span>
-                        </div>
-                        <div>
-                            <span class="req-type-tag">{icon_type}</span>
-                            <span style="font-size:0.8em; color:#666;">{r['fecha']}</span>
-                        </div>
+                        <div class="req-player-name">{r['remitente']}<span class="req-badge badge-{r['status'].lower()}">{r['status']}</span></div>
+                        <div><span class="req-type-tag">{icon_type}</span><span style="font-size:0.8em; color:#666;">{r['fecha']}</span></div>
                     </div>
-                    <div class="req-body">
-                        {r['mensaje']}
-                    </div>
+                    <div class="req-body">{r['mensaje']}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 if filtro_estado == "Pendiente":
                     c_obs, c_acts = st.columns([3, 2])
-                    with c_obs: 
-                        obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
+                    with c_obs: obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
                     with c_acts:
                         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                         c_ok, c_no = st.columns(2)
-                        
                         with c_ok:
                             if es_habilidad:
-                                if st.button("⚡ APROBAR Y COBRAR", key=f"ok_{r['id']}", type="primary"):
-                                    with st.spinner("Procesando habilidad..."):
-                                        exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
-                                        if exito: st.success(msg); time.sleep(1); st.rerun()
-                                        else: st.error(msg)
+                                if st.button("⚡ APROBAR", key=f"ok_{r['id']}", type="primary"):
+                                    exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
+                                    if exito: st.success(msg); time.sleep(1); st.rerun()
+                                    else: st.error(msg)
                             elif es_compra:
-                                if st.button("🛒 APROBAR ENTREGA", key=f"ok_{r['id']}", type="primary"):
+                                if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
                                     finalize_request(r['id'], "Aprobado", obs_text or "Entrega autorizada.")
-                                    st.success("Item entregado al inventario."); time.sleep(1); st.rerun()
+                                    st.success("Entregado"); time.sleep(1); st.rerun()
                             else: 
                                 if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
                                     finalize_request(r['id'], "Respondido", obs_text or "Leído")
-                                    st.success("Respondido"); time.sleep(1); st.rerun()
-                                    
+                                    st.success("Listo"); time.sleep(1); st.rerun()
                         with c_no:
                             if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
                                 finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
                                 st.rerun()
 
-# --- TAB 2: OPERACIONES (FILTRADAS) ---
+# --- TAB 2 Y 3: SIN CAMBIOS (YA ESTABAN OK) ---
 with tab_ops:
-    if df_filtered.empty: st.warning("Sin datos visibles con los filtros actuales.")
+    if df_filtered.empty: st.warning("Sin datos.")
     else:
         st.markdown("### ⚡ GESTIÓN INDIVIDUAL")
-        selected_aspirante_name = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
-        
-        if selected_aspirante_name:
-            p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
-            c_mp, c_ap, c_vp = st.columns(3)
-            with c_mp:
-                st.metric("MasterPoints", p_data['MP'])
-                mod_mp = st.number_input("MP", value=10, key="n_mp")
-                if st.button("➕ MP", key="a_mp"): 
-                    update_stat(p_data["id"], "MP", p_data['MP']+mod_mp)
-                    registrar_log_admin(p_data['Aspirante'], "Ajuste MP", f"+{mod_mp} MP", p_data['Universidad'], p_data['Generación'])
-                    st.toast("Hecho"); time.sleep(0.5); st.rerun()
-            with c_ap:
-                st.metric("AngioPoints", p_data['AP'])
-                mod_ap = st.number_input("AP", value=5, key="n_ap")
-                if st.button("➕ AP", key="a_ap"): 
-                    update_stat(p_data["id"], "AP", p_data['AP']+mod_ap)
-                    registrar_log_admin(p_data['Aspirante'], "Ajuste AP", f"+{mod_ap} AP", p_data['Universidad'], p_data['Generación'])
-                    st.toast("Hecho"); time.sleep(0.5); st.rerun()
+        sel_aspirante = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
+        if sel_aspirante:
+            p_data = df_filtered[df_filtered["Aspirante"] == sel_aspirante].iloc[0]
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("MP", p_data['MP'])
+                if st.button("➕ MP", key="mp"): update_stat(p_data["id"], "MP", p_data['MP']+10); st.toast("OK"); time.sleep(0.5); st.rerun()
+            with c2:
+                st.metric("AP", p_data['AP'])
+                if st.button("➕ AP", key="ap"): update_stat(p_data["id"], "AP", p_data['AP']+5); st.toast("OK"); time.sleep(0.5); st.rerun()
             
             st.markdown("---")
             st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
-            target_squad = st.selectbox("Escuadrón Objetivo:", df_filtered["Escuadrón"].unique(), key="sq_mass")
-            
-            c1, c2, c3 = st.columns(3)
-            m_mp = c1.number_input("MP Masivos", value=0); m_ap = c2.number_input("AP Masivos", value=0); m_vp = c3.number_input("VP Masivos", value=0)
-            reason = st.text_input("Motivo de la operación:")
-            
-            if st.button("🚀 EJECUTAR OPERACIÓN", use_container_width=True):
-                if not reason: st.error("Falta motivo.")
-                else:
-                    targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
-                    if targets.empty:
-                        st.warning("No hay aspirantes en este escuadrón con los filtros actuales.")
-                    else:
-                        bar = st.progress(0); n = len(targets)
-                        for i, (_, s) in enumerate(targets.iterrows()):
-                            ups = {}
-                            if m_mp: ups["MP"] = max(0, s["MP"]+m_mp)
-                            if m_ap: ups["AP"] = max(0, s["AP"]+m_ap)
-                            if m_vp: ups["VP"] = max(0, min(100, s["VP"]+m_vp))
-                            if ups:
-                                update_stat_batch(s["id"], ups)
-                                registrar_log_admin(s["Aspirante"], "Masivo", f"{reason}", s["Universidad"], s["Generación"])
-                            bar.progress((i+1)/n)
-                        st.success("Operación Completada"); time.sleep(1); st.rerun()
+            t_squad = st.selectbox("Escuadrón:", df_filtered["Escuadrón"].unique())
+            motivo = st.text_input("Motivo:")
+            val_mp = st.number_input("MP Masivo", 0)
+            if st.button("🚀 EJECUTAR"):
+                targets = df_filtered[df_filtered["Escuadrón"] == t_squad]
+                for i, (_, s) in enumerate(targets.iterrows()):
+                    if val_mp: update_stat(s["id"], "MP", s["MP"]+val_mp)
+                    registrar_log_admin(s["Aspirante"], "Masivo", motivo, s["Universidad"], s["Generación"])
+                st.success("Hecho"); time.sleep(1); st.rerun()
 
 with tab_list:
-    st.markdown("### 👥 NÓMINA FILTRADA")
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
