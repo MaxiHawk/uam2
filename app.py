@@ -1618,8 +1618,6 @@ else:
                                     else:
                                         st.info("⏳ Esperando red neuronal...")
 
-                            # ... (Código anterior de la barra de progreso y columnas) ...
-
                             with c2:
                                 if not esta_inscrito:
                                     mision_vencida = dt_cierre and now_chile > dt_cierre
@@ -1632,7 +1630,6 @@ else:
                                                 if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("ENLACE ESTABLECIDO", icon="🧬")
                                                     
-                                                    # 🔥 NUEVO: OBLIGAMOS A REFRESCAR LA LISTA DESDE NOTION
                                                     cargar_misiones_activas.clear()
                                                     
                                                     time.sleep(1)
