@@ -366,16 +366,133 @@ with tab_ops:
                 if st.button("➕ AP", key="ap"): update_stat(p_data["id"], "AP", p_data['AP']+5); st.toast("OK"); time.sleep(0.5); st.rerun()
             
             st.markdown("---")
-            st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
-            t_squad = st.selectbox("Escuadrón:", df_filtered["Escuadrón"].unique())
-            motivo = st.text_input("Motivo:")
-            val_mp = st.number_input("MP Masivo", 0)
-            if st.button("🚀 EJECUTAR"):
-                targets = df_filtered[df_filtered["Escuadrón"] == t_squad]
-                for i, (_, s) in enumerate(targets.iterrows()):
-                    if val_mp: update_stat(s["id"], "MP", s["MP"]+val_mp)
-                    registrar_log_admin(s["Aspirante"], "Masivo", motivo, s["Universidad"], s["Generación"])
-                st.success("Hecho"); time.sleep(1); st.rerun()
+            
+            # --- TACTICAL OPS CENTER (V2.0) ---
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.2) 100%); 
+                        border: 1px solid #333; border-radius: 12px; padding: 20px; margin-top: 20px;">
+                <h3 style="margin-top:0; color:#fff; font-family:'Orbitron';">🛰️ OPERACIONES MASIVAS DE ESCUADRÓN</h3>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            c_squad, c_mode = st.columns([2, 1])
+            with c_squad:
+                # Filtramos escuadrones según la vista actual
+                squads_disponibles = df_filtered["Escuadrón"].unique()
+                target_squad = st.selectbox("🎯 Escuadrón Objetivo:", squads_disponibles, key="sq_mass")
+            
+            with c_mode:
+                mode_op = st.radio("Tipo de Operación:", ["🎁 AIRDROP (Premio)", "💣 BOMBARDEO (Castigo)"], horizontal=True, label_visibility="collapsed")
+
+            # --- MODO RECOMPENSA (AIRDROP) ---
+            if "AIRDROP" in mode_op:
+                st.caption("📦 Despliegue de suministros por méritos en misión.")
+                
+                # PRESETS DE VICTORIA
+                cols_preset = st.columns(4)
+                preset_selected = None
+                
+                # Definición de Valores por Defecto (¡AJUSTA ESTOS VALORES A TU GUSTO!)
+                # Estructura: [MP, AP, Motivo Base]
+                rewards = {
+                    "gold": [100, 200, "🥇 1er Lugar: "],
+                    "silver": [70, 100, "🥈 2do Lugar: "],
+                    "bronze": [50, 50, "🥉 3er Lugar: "],
+                    "part": [20, 20, "🎖️ Participación: "]
+                }
+
+                # Botones de Acción Rápida (Simulan selección)
+                if "preset_choice" not in st.session_state: st.session_state.preset_choice = "custom"
+                
+                with cols_preset[0]: 
+                    if st.button("🥇 ORO", use_container_width=True): st.session_state.preset_choice = "gold"
+                with cols_preset[1]: 
+                    if st.button("🥈 PLATA", use_container_width=True): st.session_state.preset_choice = "silver"
+                with cols_preset[2]: 
+                    if st.button("🥉 BRONCE", use_container_width=True): st.session_state.preset_choice = "bronze"
+                with cols_preset[3]: 
+                    if st.button("🎖️ PARTIC.", use_container_width=True): st.session_state.preset_choice = "part"
+
+                # Cargar valores según preset
+                def_mp, def_ap, def_reason = 0, 0, ""
+                if st.session_state.preset_choice in rewards:
+                    def_mp, def_ap, def_reason = rewards[st.session_state.preset_choice]
+
+                # Inputs Editables (se pre-llenan con el preset)
+                c1, c2, c3 = st.columns([1, 1, 2])
+                m_mp = c1.number_input("MP (MasterPoints)", value=def_mp, key="mass_mp")
+                m_ap = c2.number_input("AP (AngioPoints)", value=def_ap, key="mass_ap")
+                
+                # Motivo Inteligente
+                mision_tag = st.text_input("Etiqueta de Misión:", value="Misión Semanal", placeholder="Ej: Misión 01")
+                full_reason = f"{def_reason}{mision_tag}"
+                st.info(f"📝 Se registrará como: **{full_reason}**")
+                
+                if st.button("🚀 LANZAR AIRDROP", type="primary", use_container_width=True):
+                    targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
+                    if targets.empty:
+                        st.warning("No hay agentes en este escuadrón con los filtros actuales.")
+                    else:
+                        progress_text = "Desplegando suministros..."
+                        my_bar = st.progress(0, text=progress_text)
+                        total = len(targets)
+                        
+                        for i, (_, s) in enumerate(targets.iterrows()):
+                            ups = {}
+                            if m_mp > 0: ups["MP"] = s["MP"] + m_mp
+                            if m_ap > 0: ups["AP"] = s["AP"] + m_ap
+                            
+                            if ups:
+                                update_stat_batch(s["id"], ups)
+                                registrar_log_admin(s["Aspirante"], "Airdrop Squad", full_reason, s["Universidad"], s["Generación"])
+                            
+                            time.sleep(0.1) # Pequeña pausa para no saturar API
+                            my_bar.progress((i + 1) / total, text=f"Procesando agente {i+1}/{total}")
+                        
+                        st.success(f"✅ ¡Operación Exitosa! {total} agentes recompensados.")
+                        time.sleep(2)
+                        st.rerun()
+
+            # --- MODO CASTIGO (BOMBARDEO) ---
+            else:
+                st.error("⚠️ ZONA DE PELIGRO: Estas acciones reducirán los recursos del escuadrón.")
+                
+                c1, c2 = st.columns(2)
+                dmg_vp = c1.number_input("Daño a VP (VitaPoints)", value=0, min_value=0, help="Cantidad a RESTAR")
+                pen_mp = c2.number_input("Penalización MP", value=0, min_value=0, help="Cantidad a RESTAR")
+                
+                reason_bomb = st.text_input("Motivo del Castigo:", placeholder="Ej: Incumplimiento de Misión")
+                
+                # Checkbox de seguridad
+                confirm = st.checkbox("Confirmar orden de fuego", key="nuke_confirm")
+                
+                if st.button("💣 EJECUTAR BOMBARDEO", type="secondary", disabled=not confirm, use_container_width=True):
+                    if not reason_bomb:
+                        st.error("Se requiere un motivo para el expediente.")
+                    else:
+                        targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
+                        if targets.empty:
+                            st.warning("No hay objetivos válidos.")
+                        else:
+                            my_bar = st.progress(0, text="Iniciando secuencia de ataque...")
+                            total = len(targets)
+                            
+                            for i, (_, s) in enumerate(targets.iterrows()):
+                                ups = {}
+                                # Lógica de resta (sin bajar de 0)
+                                if pen_mp > 0: ups["MP"] = max(0, s["MP"] - pen_mp)
+                                if dmg_vp > 0: ups["VP"] = max(0, s["VP"] - dmg_vp)
+                                
+                                if ups:
+                                    update_stat_batch(s["id"], ups)
+                                    registrar_log_admin(s["Aspirante"], "Sanción Squad", f"BOMBARDEO: {reason_bomb}", s["Universidad"], s["Generación"])
+                                
+                                time.sleep(0.1)
+                                my_bar.progress((i + 1) / total)
+                            
+                            st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥")
+                            time.sleep(2)
+                            st.rerun()
 
 with tab_list:
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
