@@ -1421,10 +1421,13 @@ else:
         import re
         import os
 
-        # --- CSS TÁCTICO (V6: SQUAD SYNC SUPPORT) ---
-        st.markdown("""
+        # --- CSS TÁCTICO (V7: HIGH CONTRAST & ACCESSIBILITY) ---
+        # Cambio de color: De #d500f9 (oscuro) a #e040fb (más brillante) o #d05ce3 (Lavanda)
+        primary_sync_color = "#e040fb" 
+        
+        st.markdown(f"""
         <style>
-            .mission-card {
+            .mission-card {{
                 background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
                 border: 1px solid #333;
                 border-radius: 12px;
@@ -1433,43 +1436,48 @@ else:
                 overflow: hidden;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                 transition: transform 0.2s;
-            }
-            .mission-header {
+            }}
+            .mission-header {{
                 padding: 12px 20px;
                 display: flex; justify-content: space-between; align-items: center;
                 border-bottom: 1px solid rgba(255,255,255,0.1);
                 background: rgba(0,0,0,0.2);
-            }
-            .mission-title {
+            }}
+            .mission-title {{
                 font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.2em;
                 color: #fff; text-transform: uppercase; display: flex; align-items: center; gap: 10px;
-            }
-            .mission-narrative {
+            }}
+            
+            .mission-narrative {{
                 background: rgba(0, 229, 255, 0.05); color: #00e5ff; 
                 font-style: italic; font-size: 0.85em; padding: 8px 20px;
                 border-bottom: 1px dashed rgba(0, 229, 255, 0.2);
-            }
-            .mission-body { padding: 15px 20px; color: #b0bec5; font-size: 0.95em; line-height: 1.5; }
+            }}
+            .mission-body {{ padding: 15px 20px; color: #b0bec5; font-size: 0.95em; line-height: 1.5; }}
             
-            .rewards-box {
+            .rewards-box {{
                 background: rgba(0,0,0,0.3); margin: 0 20px 15px 20px; padding: 10px;
                 border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; gap: 15px;
-            }
-            .reward-badge-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 5px #FFD700); }
-            .reward-text { font-size: 0.9em; color: #e0e0e0; font-family: monospace; letter-spacing: 0.5px; }
+            }}
+            .reward-badge-img {{ width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 5px #FFD700); }}
+            .reward-text {{ font-size: 0.9em; color: #e0e0e0; font-family: monospace; letter-spacing: 0.5px; }}
             
-            .mission-footer {
+            .mission-footer {{
                 background: rgba(0, 0, 0, 0.4); padding: 10px 20px;
                 display: flex; justify-content: space-between; align-items: center;
                 border-top: 1px solid rgba(255,255,255,0.05);
-            }
-            .mission-timer { font-family: monospace; font-size: 0.85em; color: #aaa; display: flex; align-items: center; gap: 5px; }
-            .mission-status { font-weight: bold; font-size: 0.8em; letter-spacing: 1px; text-transform: uppercase; }
+            }}
+            .mission-timer {{ font-family: monospace; font-size: 0.85em; color: #aaa; display: flex; align-items: center; gap: 5px; }}
+            .mission-status {{ font-weight: bold; font-size: 0.8em; letter-spacing: 1px; text-transform: uppercase; }}
 
-            /* ESTILOS DE SINCRONIZACIÓN (NUEVO) */
-            .sync-bar-bg { width: 100%; height: 8px; background: #333; border-radius: 4px; margin-top: 5px; overflow: hidden; }
-            .sync-bar-fill { height: 100%; background: #d500f9; box-shadow: 0 0 10px #d500f9; transition: width 0.5s ease; }
-            .sync-label { font-family: 'Orbitron'; font-size: 0.8em; color: #d500f9; margin-top: 5px; display: flex; justify-content: space-between; }
+            /* SYNC BAR MEJORADA */
+            .sync-bar-bg {{ width: 100%; height: 10px; background: #2a2a2a; border-radius: 5px; margin-top: 8px; overflow: hidden; border: 1px solid #444; }}
+            .sync-bar-fill {{ height: 100%; background: {primary_sync_color}; box-shadow: 0 0 15px {primary_sync_color}; transition: width 0.5s ease; }}
+            .sync-label {{ 
+                font-family: 'Orbitron'; font-size: 0.85em; color: {primary_sync_color}; 
+                margin-top: 5px; display: flex; justify-content: space-between; font-weight: bold;
+                text-shadow: 0 0 5px rgba(224, 64, 251, 0.3);
+            }}
         </style>
         """, unsafe_allow_html=True)
 
@@ -1481,10 +1489,16 @@ else:
             st.caption("Calendario de despliegue de Operaciones.")
             misiones = cargar_misiones_activas()
             
-            # Pre-cargamos miembros del escuadrón si hay misiones grupales
+            # --- FIX: Carga inteligente de miembros (Filtrado por Uni y Año) ---
             mi_escuadron_lista = []
+            # Solo llamamos a la API si hay alguna misión grupal activa para ahorrar recursos
             if any(m['tipo'] == "Misión" for m in misiones):
-                mi_escuadron_lista = obtener_miembros_escuadron(st.session_state.squad_name)
+                mi_escuadron_lista = obtener_miembros_escuadron(
+                    st.session_state.squad_name, 
+                    st.session_state.uni_actual, 
+                    st.session_state.ano_actual
+                )
+            # -------------------------------------------------------------------
 
             chile_tz = pytz.timezone('America/Santiago')
             now_chile = datetime.now(chile_tz)
@@ -1511,42 +1525,38 @@ else:
                     dt_cierre = parse_notion_date(m['f_cierre'])
                     dt_lanzamiento = parse_notion_date(m['f_lanzamiento'])
                     
-                    # Limpieza lista inscritos
                     lista_inscritos = [x.strip() for x in m['inscritos'].split(",") if x.strip()]
                     esta_inscrito = st.session_state.nombre in lista_inscritos
                     
-                    # --- LÓGICA DIFERENCIADA POR TIPO ---
+                    # --- LÓGICA POR TIPO ---
                     es_mision_grupal = (m['tipo'] == "Misión")
                     
                     if es_mision_grupal:
-                        # === LÓGICA DE SINCRONIZACIÓN ===
+                        # === MISIÓN GRUPAL (SYNC) ===
                         icon_type = "🧬"
-                        border_color = "#d500f9" # Morado Neón
+                        border_color = primary_sync_color # Lavanda Neón
                         
-                        # Cálculo de Progreso
-                        # Filtramos inscritos que sean de MI escuadrón (por si hay otros en la misma misión)
+                        # Cálculo preciso con la lista filtrada
                         confirmados_escuadron = [p for p in lista_inscritos if p in mi_escuadron_lista]
                         total_squad = len(mi_escuadron_lista) if mi_escuadron_lista else 1
                         count_confirmados = len(confirmados_escuadron)
                         
-                        # Evitar división por cero
                         progress_pct = int((count_confirmados / total_squad) * 100) if total_squad > 0 else 0
                         squad_synced = (progress_pct >= 100)
                         
                         glow = f"box-shadow: 0 0 15px {border_color}40;"
                         status_text = "PROTOCOLO DE SINCRONIZACIÓN"
-                        status_color = "#d500f9"
+                        status_color = border_color
                         
-                        # Texto de estado
-                        time_display = f"CIERRE: {dt_cierre.strftime('%d/%m %H:%M')}" if dt_cierre else "SIN FECHA LÍMITE"
+                        # Usamos "Cierre Inscripciones" como fecha límite de sincronización
+                        time_display = f"LÍMITE SYNC: {dt_cierre.strftime('%d/%m %H:%M')}" if dt_cierre else "SIN LÍMITE"
 
                     else:
-                        # === LÓGICA HAZAÑA/EXPEDICIÓN ===
+                        # === INDIVIDUAL (HAZAÑA/EXPEDICIÓN) ===
                         es_expedicion = m['tipo'] == "Expedición"
                         border_color = "#bf360c" if es_expedicion else "#FFD700"
                         icon_type = "🌋" if es_expedicion else "⚔️"
                         
-                        # Máquina de Estados (Solo para Individuales)
                         if dt_apertura and now_chile < dt_apertura:
                             estado_fase, status_text, status_color = "PRE", "🔒 ENCRIPTADO", "#666"
                         elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
@@ -1559,7 +1569,7 @@ else:
                         glow = f"box-shadow: 0 0 15px {border_color}40;" if estado_fase == "OPEN" else ""
                         time_display = f"INICIO: {dt_lanzamiento.strftime('%d/%m %H:%M') if dt_lanzamiento else 'TBA'}"
 
-                    # --- CORRECCIÓN IMAGEN BASE64 ---
+                    # --- IMAGEN ---
                     badge_html = ""
                     raw_filename = m.get('insignia_file', "")
                     if raw_filename:
@@ -1603,48 +1613,89 @@ else:
 """
                         st.markdown(card_html, unsafe_allow_html=True)
                         
-                        # --- BOTONERA Y LÓGICA DE ACCIÓN ---
-                        
+                        # --- BOTONERA ---
                         if es_mision_grupal:
-                            # === ZONA GRUPAL (SQUAD SYNC) ===
                             st.markdown(f"""
                             <div class="sync-bar-bg">
                                 <div class="sync-bar-fill" style="width: {progress_pct}%;"></div>
                             </div>
                             <div class="sync-label">
                                 <span>SINCRONIZACIÓN AL {progress_pct}%</span>
-                                <span>({count_confirmados}/{total_squad} ASPIRANTES LISTOS)</span>
+                                <span>({count_confirmados}/{total_squad} AGENTES)</span>
                             </div>
                             """, unsafe_allow_html=True)
-                            st.markdown("<br>", unsafe_allow_html=True) # Espacio
+                            st.markdown("<br>", unsafe_allow_html=True)
 
                             c1, c2 = st.columns([2, 1])
                             with c1:
                                 if squad_synced:
-                                    st.success("✅ **SQUAD SINCRONIZADO AL 100%**")
+                                    st.success("✅ **SQUAD SINCRONIZADO**")
                                     with st.expander("🔓 ACCESO A DATOS CLASIFICADOS", expanded=True):
                                         st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
                                         st.markdown(f"**🌐 ENLACE:** [ACCEDER AL TERMINAL]({m['link']})")
                                 else:
-                                    # Mostrar quién falta (Presión Social Positiva)
                                     faltantes = [nm for nm in mi_escuadron_lista if nm not in confirmados_escuadron]
                                     if faltantes:
-                                        st.info(f"⏳ **ESPERANDO CONFIRMACIÓN DE:** {', '.join(faltantes)}")
+                                        # Si la lista es muy larga, mostramos solo los primeros
+                                        faltantes_str = ", ".join(faltantes[:3]) + ("..." if len(faltantes) > 3 else "")
+                                        st.info(f"⏳ **FALTAN:** {faltantes_str}")
                                     else:
-                                        st.info("⏳ Esperando sincronización del servidor...")
+                                        st.info("⏳ Esperando red neuronal...")
 
                             with c2:
                                 if not esta_inscrito:
-                                    if st.button("🫡 CONFIRMAR ORDEN", key=f"sync_{m['id']}", type="primary", use_container_width=True):
-                                        with st.spinner("Estableciendo enlace neural..."):
-                                            # Usamos la misma función de inscribir, funciona igual (agrega nombre a lista)
-                                            if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
-                                                st.toast("ENLACE ESTABLECIDO", icon="🧬")
-                                                time.sleep(1)
-                                                st.rerun()
-                                            else: st.error("Fallo de conexión.")
+                                    # Verificar si la fecha límite (cierre) ya pasó
+                                    mision_vencida = dt_cierre and now_chile > dt_cierre
+                                    
+                                    if mision_vencida:
+                                        st.button("🔒 TIEMPO AGOTADO", disabled=True, use_container_width=True)
+                                    else:
+                                        if st.button("🫡 CONFIRMAR ORDEN", key=f"sync_{m['id']}", type="primary", use_container_width=True):
+                                            with st.spinner("Sincronizando..."):
+                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                                    st.toast("ENLACE ESTABLECIDO", icon="🧬")
+                                                    time.sleep(1)
+                                                    st.rerun()
+                                                else: st.error("Error.")
                                 else:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_sync_{m['id']}", use_container_width=True)
+
+                        else:
+                            # Lógica Individual (Mantiene lo anterior)
+                            c1, c2 = st.columns([2, 1])
+                            with c1:
+                                if esta_inscrito:
+                                    mision_lanzada = now_chile >= dt_lanzamiento
+                                    if mision_lanzada:
+                                        st.success("🟢 **OPERACIÓN EN CURSO**")
+                                        with st.expander("📂 ACCEDER A DATOS DE ACTIVIDAD", expanded=True):
+                                            st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
+                                            st.markdown(f"**🌐 ENLACE:** [INICIAR]({m['link']})")
+                                    else:
+                                        st.info(f"✅ **INSCRITO** | Esperando fecha de lanzamiento...")
+                                elif estado_fase == "PRE":
+                                    st.warning(f"⏳ Inscripciones: {dt_apertura.strftime('%d/%m %H:%M')}")
+                                elif estado_fase == "CLOSED":
+                                    st.error("Inscripciones Cerradas")
+
+                            with c2:
+                                if estado_fase == "OPEN" and not esta_inscrito:
+                                    with st.popover("📝 INSCRIBIRME", use_container_width=True):
+                                        st.markdown(f"### ⚠️ Compromiso de Servicio")
+                                        st.markdown(f"**{m['nombre']}**")
+                                        st.error(f"**ADVERTENCIA:** {m['advertencia']}")
+                                        st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
+                                        if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
+                                            with st.spinner("Firmando contrato..."):
+                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                                    st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
+                                                    time.sleep(1.5)
+                                                    st.rerun()
+                                                else: st.error("Error.")
+                                elif esta_inscrito:
+                                    st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
+                                else:
+                                    st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
 
                         else:
                             # === ZONA INDIVIDUAL (HAZAÑA/EXPEDICIÓN) ===
