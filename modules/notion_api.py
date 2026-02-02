@@ -648,14 +648,28 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
              err_msg = e.response.text
         return False, f"Cobro OK, pero falló actualizar solicitud (Revisar nombres columnas): {err_msg}"
 
-# --- 🧬 SQUAD SYNC (NUEVO) ---
-def obtener_miembros_escuadron(nombre_escuadron):
-    """Retorna una lista con los nombres de todos los miembros del escuadrón."""
+# --- 🧬 SQUAD SYNC (CALIBRADO: UNI + AÑO + NO ALUMNI) ---
+def obtener_miembros_escuadron(nombre_escuadron, uni, ano):
+    """
+    Retorna miembros del escuadrón que coincidan en Universidad y Año,
+    y que NO sean Alumni (Estado != Finalizado).
+    """
     if not nombre_escuadron or nombre_escuadron == "Sin Escuadrón": return []
+    if not uni or not ano: return []
     
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
-    # Filtramos por nombre exacto de escuadrón
-    payload = {"filter": {"property": "Nombre Escuadrón", "rich_text": {"equals": nombre_escuadron}}}
+    
+    # Filtro compuesto: Escuadrón + Uni + Año + Activo
+    payload = {
+        "filter": {
+            "and": [
+                {"property": "Nombre Escuadrón", "rich_text": {"equals": nombre_escuadron}},
+                {"property": "Universidad", "select": {"equals": uni}},
+                {"property": "Año", "select": {"equals": ano}},
+                {"property": "Estado UAM", "select": {"does_not_equal": "Finalizado"}} # Excluye Alumni
+            ]
+        }
+    }
     
     try:
         res = requests.post(url, headers=headers, json=payload, timeout=API_TIMEOUT)
@@ -663,7 +677,6 @@ def obtener_miembros_escuadron(nombre_escuadron):
         if res.status_code == 200:
             for r in res.json()["results"]:
                 try:
-                    # Extraemos el nombre del aspirante (Title)
                     props = r["properties"]
                     if "Jugador" in props and props["Jugador"]["title"]:
                         name = props["Jugador"]["title"][0]["text"]["content"]
