@@ -1294,27 +1294,62 @@ else:
                 st.rerun()
 
     with tab_habilidades:
-        # --- PARCHE CSS: Estilo para el título de la habilidad ---
+        # --- CSS TÁCTICO ADAPTATIVO (RESPONSIVE) ---
         st.markdown("""
         <style>
-            .skill-title {
-                font-family: 'Orbitron', sans-serif;
-                font-weight: 900;
-                font-size: 1.3em;
-                color: #ffffff !important;
-                margin-bottom: 5px;
-                text-transform: uppercase;
-                text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            /* ESTILO BASE (ESCRITORIO) */
+            .skill-card-container {
+                display: flex; align-items: stretch; min-height: 120px;
+                background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
+                margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px;
             }
-            .skill-desc {
-                font-size: 0.85em;
-                color: #b0bec5;
-                line-height: 1.4;
+            .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }
+            .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
+            .skill-cost-col { width: 100px; flex-shrink: 0; background: rgba(255, 255, 255, 0.03); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
+            .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }
+            .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; filter: drop-shadow(0 0 5px #00e5ff); }
+            
+            /* --- MODO MÓVIL (STACK VERTICAL) --- */
+            @media (max-width: 768px) {
+                .skill-card-container {
+                    flex-direction: column !important; /* Cambia a vertical */
+                    height: auto !important;
+                    min-height: auto !important;
+                }
+                .skill-banner-col {
+                    width: 100% !important; /* Banner ocupa todo el ancho */
+                    height: 100px !important;
+                    border-right: none !important;
+                    border-bottom: 1px solid #1c2e3e;
+                }
+                .skill-banner-col img {
+                    width: 100%; height: 100%; object-fit: cover; opacity: 0.8;
+                }
+                .skill-content-col {
+                    width: 100% !important;
+                    padding: 15px !important;
+                }
+                .skill-cost-col {
+                    width: 100% !important;
+                    border-left: none !important;
+                    border-top: 1px solid #1c2e3e;
+                    flex-direction: row !important; /* Costo en fila horizontal abajo */
+                    justify-content: space-between !important;
+                    padding: 10px 20px !important;
+                    background: rgba(0,0,0,0.4) !important;
+                    min-height: 60px !important;
+                }
+                .skill-cost-icon { margin-bottom: 0 !important; margin-right: 10px; }
+                .skill-cost-val { font-size: 1.5em !important; }
+                /* Texto "COSTO:" para móvil */
+                .skill-cost-col::before {
+                    content: "REQUISITO:";
+                    color: #aaa; font-size: 0.8em; letter-spacing: 2px;
+                }
             }
         </style>
         """, unsafe_allow_html=True)
       
-        
         # Recuperamos datos del Rol
         rol_data = p.get("Rol", {}).get("select")
         rol_jugador_actual = rol_data.get("name") if rol_data else None
@@ -1322,7 +1357,7 @@ else:
         titulo_rol = rol_jugador_actual.upper() if rol_jugador_actual else "RECLUTA"
         st.markdown(f"### ⚡ HABILIDADES DE: {titulo_rol}")
         
-        # Panel de Energía
+        # Panel de Energía (AP)
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ANGIOPOINTS<br>DISPONIBLES</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
         st.markdown(core_html, unsafe_allow_html=True)
 
@@ -1331,46 +1366,40 @@ else:
         elif not rol_jugador_actual:
              st.warning("⚠️ Tu perfil no tiene un ROL asignado. Contacta al comando.")
         else:
-            # Forzamos recarga si el nombre no se ve (limpia cache en la primera carga)
             skills_reales = cargar_habilidades(rol_jugador_actual)
             
             if not skills_reales:
                 st.info(f"No se encontraron habilidades tácticas para **{rol_jugador_actual}**.")
             else:
                 for i, item in enumerate(skills_reales):
-                    # Lógica
                     bloqueada_por_nivel = nivel_num < item['nivel_req']
                     sin_saldo = ap < item['costo']
                     
-                    # Estilos
                     primary_col = THEME.get('primary', '#00ff9d')
                     border_color = primary_col if not bloqueada_por_nivel else "#444"
                     opacity = "1.0" if not bloqueada_por_nivel else "0.7"
                     grayscale = "" if not bloqueada_por_nivel else "filter: grayscale(100%);"
-                    
-                    # Imagen
                     img_src = item['icon_url'] if item['icon_url'] else "https://cdn-icons-png.flaticon.com/512/2646/2646067.png"
                     
-                    # --- DISEÑO MEJORADO: Texto más grande ---
+                    # HTML SIN INLINE STYLES COMPLEJOS (Usa las clases del CSS de arriba)
                     card_html = f"""
-                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale} height: 150px;">
-                        <div class="skill-banner-col" style="width: 150px; padding: 0; overflow: hidden; background: #000;">
+                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
+                        <div class="skill-banner-col">
                             <img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
                         </div>
-                        <div class="skill-content-col" style="padding-left: 25px;">
-                            <div class="skill-title" style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.4em; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,0,0,0.8); margin-bottom: 5px;">{item['nombre']}</div>
-                            <div class="skill-desc" style="font-size: 1em; color: #ddd; margin-top: 5px; line-height: 1.3;">{item['desc']}</div>
-                            <div style="font-size: 0.85em; color: {border_color}; margin-top: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">🔒 NIVEL REQUERIDO: {item['nivel_req']}</div>
+                        <div class="skill-content-col">
+                            <div style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.3em; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,0,0,0.8); margin-bottom: 5px; line-height: 1.2;">{item['nombre']}</div>
+                            <div style="font-size: 0.95em; color: #b0bec5; margin-top: 5px; line-height: 1.4;">{item['desc']}</div>
+                            <div style="font-size: 0.8em; color: {border_color}; margin-top: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">🔒 NIVEL REQUERIDO: {item['nivel_req']}</div>
                         </div>
-                        <div class="skill-cost-col" style="min-width: 100px; background: rgba(0,0,0,0.3);">
-                            <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon" style="width: 40px; margin-bottom: 5px;">
-                            <div class="skill-cost-val" style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.8em; color: #fff; text-shadow: 0 0 10px #00e5ff;">{item['costo']}</div>
+                        <div class="skill-cost-col">
+                            <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">
+                            <div class="skill-cost-val" style="text-shadow: 0 0 10px #00e5ff;">{item['costo']}</div>
                         </div>
                     </div>
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # Botones
                     c_fill, c_btn = st.columns([1.5, 1.5])
                     with c_btn:
                         if bloqueada_por_nivel:
@@ -1390,31 +1419,15 @@ else:
                                     <div style="font-size: 0.8em; color: #ccc; font-style: italic;">"Se enviará una solicitud prioritaria al Comando."</div>
                                 </div>
                                 """, unsafe_allow_html=True)
-                                
                                 st.markdown("<br>", unsafe_allow_html=True)
-                                
                                 if st.button("🚀 EJECUTAR PROTOCOLO", key=f"btn_{item['id']}", type="primary", use_container_width=True):
                                     with st.spinner("Estableciendo enlace neural..."):
-                                        exito, msg = procesar_compra_habilidad(
-                                            item['nombre'], 
-                                            item['costo'], 
-                                            0, 
-                                            item['id']
-                                        )
+                                        exito, msg = procesar_compra_habilidad(item['nombre'], item['costo'], 0, item['id'])
                                         if exito:
-                                            # --- NUEVO DISEÑO: AZUL AP Y SIN GLOBOS ---
-                                            st.markdown(f"""
-                                            <div style="margin-top: 15px; text-align: center; padding: 15px; border: 1px solid #00e5ff; background: rgba(0, 229, 255, 0.1); border-radius: 10px; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);">
-                                                <div style="font-family: 'Orbitron'; font-size: 1.2em; font-weight: bold; color: #00e5ff; text-shadow: 0 0 5px #00e5ff;">✅ SOLICITUD ENVIADA</div>
-                                                <div style="font-size: 0.9em; color: #fff; margin-top: 5px;">Se han descontado <strong style="color: #00e5ff;">{item['costo']} AP</strong> de tu saldo.</div>
-                                                <div style="font-size: 0.75em; color: #aaa; margin-top: 5px;">Esperando confirmación del Comando.</div>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                            # ------------------------------------------
-                                            time.sleep(2.5) # Damos un poco más de tiempo para leer
+                                            st.markdown(f"""<div style="text-align:center; padding:15px; border:1px solid #00e5ff; background:rgba(0,229,255,0.1); border-radius:10px;"><div style="font-family:'Orbitron'; color:#00e5ff; font-weight:bold;">✅ SOLICITUD ENVIADA</div></div>""", unsafe_allow_html=True)
+                                            time.sleep(2)
                                             st.rerun()
-                                        else:
-                                            st.error(msg)
+                                        else: st.error(msg)
                                             
        
     with tab_misiones:
@@ -1675,6 +1688,44 @@ else:
                                     st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                                 
     with tab_codice:
+        # --- CSS PARA CÓDICE RESPONSIVO ---
+        st.markdown("""
+        <style>
+            /* Clase base para la tarjeta del códice */
+            .codex-responsive-card {
+                display: flex; align-items: flex-start;
+                border-radius: 8px; padding: 18px; margin-bottom: 15px; 
+                transition: transform 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            }
+            .codex-icon-col { font-size: 2.2em; margin-right: 20px; min-width: 50px; text-align: center; }
+            .codex-info-col { flex-grow: 1; }
+            .codex-action-col { margin-left: 20px; display: flex; align-items: center; align-self: center; }
+            .codex-btn { 
+                text-decoration: none; padding: 8px 20px; border-radius: 4px; 
+                font-weight: bold; font-size: 0.85em; display: inline-block; 
+                transition: 0.3s; font-family: 'Orbitron'; letter-spacing: 1px; 
+                text-align: center; white-space: nowrap;
+            }
+            .codex-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+
+            /* --- MODO MÓVIL (STACK VERTICAL) --- */
+            @media (max-width: 768px) {
+                .codex-responsive-card {
+                    flex-direction: column; /* Apila todo verticalmente */
+                    align-items: center;
+                    text-align: center;
+                }
+                .codex-icon-col { margin-right: 0; margin-bottom: 10px; }
+                .codex-info-col { width: 100%; margin-bottom: 15px; }
+                .codex-action-col { margin-left: 0; width: 100%; }
+                .codex-btn { width: 100%; display: block; padding: 12px 0; } /* Botón ancho completo */
+                
+                /* Ajustes de texto para móvil */
+                .codex-title-row { flex-direction: column; gap: 5px; }
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
         st.markdown("### 📜 ARCHIVOS DE LA RED PRAXIS")
         
         if is_alumni:
@@ -1688,9 +1739,7 @@ else:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            
         else:
-            # --- BARRA DE BÚSQUEDA Y FILTROS ---
             c_search, c_filter = st.columns([2, 1])
             with c_search:
                 search_query = st.text_input("🔍 Buscar en los archivos:", placeholder="Escribe palabras clave...", label_visibility="collapsed")
@@ -1698,47 +1747,31 @@ else:
                 filter_type = st.selectbox("📂 Categoría:", ["Todas", "Video", "PDF", "Infografía", "Secreto"], label_visibility="collapsed")
 
             st.markdown("<br>", unsafe_allow_html=True)
-
             codice_items = st.session_state.codice_data
-            
-            # --- LÓGICA DE FILTRADO ---
             items_filtrados = []
             if codice_items:
                 for item in codice_items:
-                    # Filtro Texto
                     match_text = search_query.lower() in item["nombre"].lower() or search_query.lower() in item["descripcion"].lower()
-                    # Filtro Categoría
                     match_cat = (filter_type == "Todas") or (item["tipo"] == filter_type)
-                    
-                    if match_text and match_cat:
-                        items_filtrados.append(item)
+                    if match_text and match_cat: items_filtrados.append(item)
             
-            # --- RENDERIZADO ---
-            if not items_filtrados:
-                st.info("📡 No se encontraron registros con esos criterios.")
+            if not items_filtrados: st.info("📡 No se encontraron registros.")
             else:
-                # --- PALETA DE COLORES SEMÁNTICA (ACCESIBILIDAD + ESTILO) ---
                 type_styles = {
-                    "Video":      {"color": "#d500f9", "bg": "rgba(213, 0, 249, 0.05)", "icon": "🎬"}, # Morado Neón
-                    "PDF":        {"color": "#ff4444", "bg": "rgba(255, 68, 68, 0.05)",  "icon": "📕"}, # Rojo
-                    "Infografía": {"color": "#00e676", "bg": "rgba(0, 230, 118, 0.05)", "icon": "📊"}, # Verde Matriz
-                    "Secreto":    {"color": "#ff1744", "bg": "rgba(20, 0, 0, 0.8)",     "icon": "👁️‍🗨️"}, # Rojo Oscuro
-                    "General":    {"color": "#00e5ff", "bg": "rgba(0, 229, 255, 0.05)", "icon": "📄"}  # Azul Cyan
+                    "Video":      {"color": "#d500f9", "bg": "rgba(213, 0, 249, 0.05)", "icon": "🎬"}, 
+                    "PDF":        {"color": "#ff4444", "bg": "rgba(255, 68, 68, 0.05)",  "icon": "📕"}, 
+                    "Infografía": {"color": "#00e676", "bg": "rgba(0, 230, 118, 0.05)", "icon": "📊"}, 
+                    "Secreto":    {"color": "#ff1744", "bg": "rgba(20, 0, 0, 0.8)",     "icon": "👁️‍🗨️"}, 
+                    "General":    {"color": "#00e5ff", "bg": "rgba(0, 229, 255, 0.05)", "icon": "📄"}  
                 }
 
                 for item in items_filtrados:
-                    # Datos del Estilo
                     style = type_styles.get(item["tipo"], type_styles["General"])
-                    theme_color = style["color"]
-                    theme_bg = style["bg"]
-                    icon = style["icon"]
-                    
-                    # Lógica de Bloqueo
+                    theme_color, theme_bg, icon = style["color"], style["bg"], style["icon"]
                     is_locked = nivel_num < item["nivel"]
                     
-                    # Configuración Visual Base
-                    card_border = f"1px solid {theme_color}40" # Borde sutil
-                    card_left_border = f"4px solid {theme_color}" # Borde izquierdo fuerte
+                    card_border = f"1px solid {theme_color}40"
+                    card_left_border = f"4px solid {theme_color}"
                     opacity = "1"
                     status_icon = ""
                     
@@ -1747,41 +1780,33 @@ else:
                         card_border = "1px solid #333"
                         card_left_border = "4px solid #333"
                         opacity = "0.6"
-                        theme_color = "#666" # Gris para bloqueados
-                        action_btn = f'<span style="color:#ff4444; font-family:monospace; font-weight:bold; border:1px solid #ff4444; padding:6px 12px; border-radius:4px; font-size:0.8em; white-space:nowrap;">🔒 NIVEL {item["nivel"]}</span>'
+                        theme_color = "#666"
+                        action_btn = f'<span class="codex-btn" style="color:#ff4444; border:1px solid #ff4444; cursor: not-allowed;">🔒 NIVEL {item["nivel"]}</span>'
                     else:
                         card_bg = f"linear-gradient(90deg, #0a1018 0%, {theme_bg} 100%)"
-                        
                         if item["tipo"] == "Secreto":
-                            action_text = "DESCLASIFICAR"
-                            # Botón Rojo Intenso con texto Blanco (Alto Contraste)
                             btn_style = "background:#ff1744; color:white; border:1px solid #ff1744; box-shadow: 0 0 10px rgba(255,23,68,0.4);"
+                            action_text = "DESCLASIFICAR"
                         else:
-                            action_text = "ACCEDER"
-                            # Botón del color del tema con texto Negro (Alto Contraste) o Blanco según brillo
-                            # Usaremos color de fondo brillante y texto negro para asegurar legibilidad
                             btn_style = f"background:{theme_color}; color:#000; border:1px solid {theme_color}; box-shadow: 0 0 10px {theme_color}40;"
-                        
-                        action_btn = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; {btn_style} padding:8px 20px; border-radius:4px; font-weight:bold; font-size:0.85em; display:inline-block; transition:0.3s; font-family:\'Orbitron\'; letter-spacing:1px;">{action_text}</a>'
+                            action_text = "ACCEDER"
+                        action_btn = f'<a href="{item["url"]}" target="_blank" class="codex-btn" style="{btn_style}">{action_text}</a>'
 
-                    # --- HTML APLANADO (FIX PREVIO) ---
                     card_html = f"""
-<div style="display: flex; align-items: flex-start; background: {card_bg}; border: {card_border}; border-left: {card_left_border}; border-radius: 8px; padding: 18px; margin-bottom: 15px; opacity: {opacity}; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-<div style="font-size: 2.2em; margin-right: 20px; min-width: 50px; text-align: center; filter: drop-shadow(0 0 5px {theme_color});">{icon}</div>
-<div style="flex-grow: 1;">
-<div style="font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center;">
-<span style="text-shadow: 0 0 10px {theme_color}80;">{item["nombre"]}</span>
-</div>
-<div style="margin-bottom: 8px;">
-<span style="background:{theme_color}20; color:{theme_color}; border:1px solid {theme_color}40; padding:3px 8px; border-radius:4px; font-size:0.7em; font-weight:bold; text-transform:uppercase; letter-spacing:1px;">{item['tipo']}</span>
-</div>
-<div style="font-size: 0.95em; color: #e0e0e0; line-height: 1.5; font-weight: 300;">
-{item["descripcion"]}
-</div>
-</div>
-<div style="margin-left: 20px; display:flex; align-items:center; align-self:center;">
-{action_btn}
-</div>
+<div class="codex-responsive-card" style="background: {card_bg}; border: {card_border}; border-left: {card_left_border}; opacity: {opacity};">
+    <div class="codex-icon-col" style="filter: drop-shadow(0 0 5px {theme_color});">{icon}</div>
+    <div class="codex-info-col">
+        <div class="codex-title-row" style="font-family: 'Orbitron'; font-size: 1.2em; color: #fff; margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="text-shadow: 0 0 10px {theme_color}80;">{item["nombre"]}</span>
+        </div>
+        <div style="margin-bottom: 8px;">
+            <span style="background:{theme_color}20; color:{theme_color}; border:1px solid {theme_color}40; padding:3px 8px; border-radius:4px; font-size:0.7em; font-weight:bold; text-transform:uppercase; letter-spacing:1px;">{item['tipo']}</span>
+        </div>
+        <div style="font-size: 0.95em; color: #e0e0e0; line-height: 1.5; font-weight: 300;">{item["descripcion"]}</div>
+    </div>
+    <div class="codex-action-col">
+        {action_btn}
+    </div>
 </div>
 """
                     st.markdown(card_html, unsafe_allow_html=True)
