@@ -188,7 +188,6 @@ def cargar_misiones_activas():
     return misiones
 
 # --- 📝 INSCRIPCIÓN (AHORA CON LOG LEGIBLE) ---
-# --- 📝 INSCRIPCIÓN BLINDADA (CONCURRENCIA SAFE) ---
 def inscribir_jugador_mision(page_id, _unused_str, player_name, mision_nombre="Actividad Clasificada"):
     """
     Inscribe al jugador obteniendo primero la data FRESCA de Notion para evitar sobrescrituras
@@ -712,4 +711,53 @@ def obtener_miembros_escuadron(nombre_escuadron, uni, ano):
         return miembros
     except Exception as e:
         print(f"Error obteniendo squad: {e}")
+        return []
+# --- 📜 CÓDICE (CALIBRADO CON SCHEMA) ---
+@st.cache_data(ttl=3600)
+def cargar_codice():
+    if not DB_CODICE_ID: return []
+    url = f"https://api.notion.com/v1/databases/{DB_CODICE_ID}/query"
+    # Ordenamos por nivel requerido (los más básicos primero)
+    payload = {"sorts": [{"property": "Nivel Requerido", "direction": "ascending"}]}
+    
+    try:
+        raw_results = notion_fetch_all(url, payload)
+        items = []
+        for r in raw_results:
+            props = r["properties"]
+            try:
+                # 1. Título
+                nombre = get_notion_text(props, "Nombre", "Documento Sin Título")
+                
+                # 2. Descripción (Ojo con la tilde)
+                desc = get_notion_text(props, "Descripción", "Sin descripción disponible.")
+                
+                # 3. Tipo (Select)
+                tipo = get_notion_select(props, "Tipo", "General")
+                
+                # 4. Nivel
+                nivel = get_notion_number(props, "Nivel Requerido", 1)
+                
+                # 5. URL del Recurso (Prioridad: Archivo > Enlace)
+                url_recurso = "#"
+                file_url = get_notion_file_url(props, "Archivo")
+                link_url = get_notion_url(props, "Enlace")
+                
+                if file_url: url_recurso = file_url
+                elif link_url: url_recurso = link_url
+                
+                items.append({
+                    "id": r["id"],
+                    "nombre": nombre, 
+                    "descripcion": desc,
+                    "tipo": tipo,
+                    "nivel": nivel, 
+                    "url": url_recurso
+                })
+            except Exception as e:
+                print(f"Error parseando item codice: {e}")
+                pass
+        return items
+    except Exception as e:
+        print(f"Error carga codice: {e}")
         return []
