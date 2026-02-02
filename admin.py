@@ -53,32 +53,51 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIONES NOTION ROBUSTAS (SCAN & MATCH) ---
 def buscar_config_id(key_target):
     """
-    Descarga TODA la config (son pocas filas) y busca manualmente la clave.
-    Esto evita errores de indexación de la API de Notion.
+    Descarga TODA la config y busca la clave de forma flexible.
     """
-    if not DB_CONFIG_ID: return None, False, "Todas"
+    if not DB_CONFIG_ID: 
+        print("⚠️ DEBUG: Falta DB_CONFIG_ID en config.py")
+        return None, False, "Todas"
     
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
+        # Traemos todo sin filtros para evitar errores de la API
         res = requests.post(url, headers=headers, json={})
-        if res.status_code == 200:
-            results = res.json().get("results", [])
-            for page in results:
-                props = page["properties"]
+        
+        if res.status_code != 200:
+            print(f"⚠️ DEBUG ERROR NOTION: {res.status_code} - {res.text}")
+            return None, False, "Todas"
+            
+        results = res.json().get("results", [])
+        print(f"ℹ️ DEBUG: Encontradas {len(results)} filas en Config.")
+        
+        target_clean = key_target.strip().lower()
+        
+        for page in results:
+            props = page["properties"]
+            try:
                 # Obtenemos el título (Clave)
-                try:
-                    clave_actual = props["Clave"]["title"][0]["text"]["content"]
-                    if clave_actual == key_target:
-                        estado = props.get("Activo", {}).get("checkbox", False)
-                        # Intentamos leer el filtro, si existe
-                        filtro_list = props.get("Filtro", {}).get("rich_text", [])
-                        filtro_val = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
-                        return page["id"], estado, filtro_val
-                except: continue
-    except Exception as e: print(f"Error config: {e}")
+                clave_raw = props["Clave"]["title"][0]["text"]["content"]
+                clave_clean = clave_raw.strip().lower()
+                
+                # Comparación flexible
+                if clave_clean == target_clean:
+                    estado = props.get("Activo", {}).get("checkbox", False)
+                    
+                    # Intentamos leer el filtro
+                    filtro_list = props.get("Filtro", {}).get("rich_text", [])
+                    filtro_val = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
+                    
+                    return page["id"], estado, filtro_val
+            except Exception as e:
+                print(f"⚠️ Error leyendo fila config: {e}")
+                continue
+                
+    except Exception as e: 
+        print(f"❌ Error conexión config: {e}")
+        
     return None, False, "Todas"
 
 def actualizar_config(page_id, nuevo_estado, nuevo_filtro=None):
