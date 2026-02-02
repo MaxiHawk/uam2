@@ -337,8 +337,18 @@ def procesar_suministro(tier, rewards):
     }
     try:
         requests.patch(url, headers=headers, json=payload, timeout=API_TIMEOUT)
+        
         detalles = f"Suministro {tier}: +{rewards.get('AP',0)} AP, +{rewards.get('MP',0)} MP"
-        registrar_evento_sistema(st.session_state.nombre, "Claim Suministro", detalles, "Sistema")
+        
+        # --- CORRECCIÓN AQUÍ ---
+        # Antes: "Claim Suministro", "Sistema"
+        # Ahora: "Suministro Reclamado", "Suministro"
+        registrar_evento_sistema(
+            st.session_state.nombre, 
+            "Suministro Reclamado",  # Título en Español
+            detalles, 
+            "Suministro"             # Etiqueta Correcta
+        )
         return True
     except: return False
 
