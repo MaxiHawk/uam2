@@ -1049,13 +1049,32 @@ else:
     with tab_perfil:
         # DIAGNOSTICO SUMINISTROS (SOLO ACTIVOS)
         # Si es Alumni, no mostramos nada. Si es activo, mostramos el estado.
+        # --- LÓGICA DE SUMINISTROS CON FILTRO ---
         if not is_alumni:
+            # Ahora cargar_estado_suministros debe devolver (estado, filtro)
+            # Si no has actualizado modules/notion_api.py, hazlo primero.
+            # Ojo: Aquí asumiremos que actualizas la función en notion_api.py
+            supply_active, supply_filter = cargar_estado_suministros() 
+            
+            # Verificación de Universidad
+            mi_uni = st.session_state.uni_actual
+            puede_farmear = False
+            
+            if supply_active:
+                if supply_filter == "Todas":
+                    puede_farmear = True
+                elif supply_filter == mi_uni:
+                    puede_farmear = True
+                # Si no coincide, supply_active es True pero puede_farmear sigue False
+            
             supply_status_text = "🔴 ENLACE DE SUMINISTROS: OFF"
-            supply_active = cargar_estado_suministros()
-            if supply_active: supply_status_text = "🟢 ENLACE DE SUMINISTROS: ON"
+            if supply_active:
+                if puede_farmear:
+                    supply_status_text = f"🟢 ENLACE DE SUMINISTROS: ON ({supply_filter})"
+                else:
+                    supply_status_text = f"🟡 ENLACE ACTIVO (Solo para {supply_filter})"
+            
             st.caption(supply_status_text)
-        else:
-            supply_active = False # Forzamos apagado para Alumni por seguridad
         
         avatar_url = None
         try:
