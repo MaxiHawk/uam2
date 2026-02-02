@@ -1675,7 +1675,7 @@ else:
                                     st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                                 
     with tab_codice:
-        st.markdown("### 📜 ARCHIVOS DE LA RED PRAXIS")
+        st.markdown("### 📜 ARCHIVOS DE LA RED PRAXIS PRIMORIS")
         
         if is_alumni:
             st.markdown("""
@@ -1757,32 +1757,27 @@ else:
                         action_btn = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; {btn_style} padding:6px 15px; border-radius:4px; font-weight:bold; font-size:0.8em; display:inline-block; transition:0.3s;">{action_text}</a>'
                         status_icon = ""
 
-                    # Diseño de la Tarjeta
-                    st.markdown(f"""
-                    <div style="
-                        display: flex; align-items: flex-start; 
-                        background: {card_bg}; 
-                        border: 1px solid {border_color}; border-left: 4px solid {border_color};
-                        border-radius: 8px; padding: 15px; margin-bottom: 15px; 
-                        opacity: {opacity}; transition: transform 0.2s;
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-                    ">
-                        <div style="font-size: 2em; margin-right: 15px; min-width: 50px; text-align: center;">{icon}</div>
-                        <div style="flex-grow: 1;">
-                            <div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display:flex; justify-content:space-between;">
-                                <span>{item["nombre"]}</span>
-                                <span style="font-size:0.8em;">{status_icon}</span>
-                            </div>
-                            <div style="font-size: 0.9em; color: #aaa; margin-bottom: 8px; line-height: 1.4;">
-                                <span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:3px; font-size:0.7em; margin-right:5px; text-transform:uppercase;">{item['tipo']}</span>
-                                {item["descripcion"]}
-                            </div>
-                        </div>
-                        <div style="margin-left: 15px; display:flex; align-items:center;">
-                            {action_btn}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # --- FIX: HTML APLANADO (SIN SANGRÍA) ---
+                    # Nota: El HTML empieza pegado a la izquierda para evitar que Markdown lo detecte como código
+                    card_html = f"""
+<div style="display: flex; align-items: flex-start; background: {card_bg}; border: 1px solid {border_color}; border-left: 4px solid {border_color}; border-radius: 8px; padding: 15px; margin-bottom: 15px; opacity: {opacity}; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+<div style="font-size: 2em; margin-right: 15px; min-width: 50px; text-align: center;">{icon}</div>
+<div style="flex-grow: 1;">
+<div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display:flex; justify-content:space-between;">
+<span>{item["nombre"]}</span>
+<span style="font-size:0.8em;">{status_icon}</span>
+</div>
+<div style="font-size: 0.9em; color: #aaa; margin-bottom: 8px; line-height: 1.4;">
+<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:3px; font-size:0.7em; margin-right:5px; text-transform:uppercase;">{item['tipo']}</span>
+{item["descripcion"]}
+</div>
+</div>
+<div style="margin-left: 15px; display:flex; align-items:center;">
+{action_btn}
+</div>
+</div>
+"""
+                    st.markdown(card_html, unsafe_allow_html=True)
     
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
