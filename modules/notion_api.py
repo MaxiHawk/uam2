@@ -773,3 +773,52 @@ def cargar_codice():
     except Exception as e:
         print(f"Error carga codice: {e}")
         return []
+# --- Asegúrate de que al inicio del archivo tengas este import: ---
+# from config import HEADERS, DB_CONFIG_ID, ... (etc)
+
+# --- PEGA ESTO AL FINAL DE modules/notion_api.py ---
+
+def cargar_estado_suministros():
+    """
+    Consulta la configuración de 'DROP_SUMINISTROS' en Notion.
+    Retorna una tupla: (estado_activo: bool, filtro_universidad: str)
+    Ejemplo: (True, "Universidad de Valparaíso")
+    """
+    # Si no hay ID de config en config.py, asumimos apagado
+    # IMPORTANTE: Asegúrate de que DB_CONFIG_ID esté importado arriba en este archivo
+    if 'DB_CONFIG_ID' not in globals(): return False, "Todas"
+    if not DB_CONFIG_ID: return False, "Todas"
+    
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    
+    # Filtramos para buscar la clave exacta
+    payload = {
+        "filter": {
+            "property": "Clave",
+            "title": {
+                "equals": "DROP_SUMINISTROS"
+            }
+        }
+    }
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=5)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results:
+                props = results[0]["properties"]
+                
+                # 1. Leemos el Checkbox "Activo"
+                estado = props.get("Activo", {}).get("checkbox", False)
+                
+                # 2. Leemos el Texto "Filtro" (Si no existe, "Todas")
+                filtro_list = props.get("Filtro", {}).get("rich_text", [])
+                filtro_txt = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
+                
+                return estado, filtro_txt
+                
+    except Exception as e:
+        print(f"Error consultando suministros: {e}")
+        pass
+        
+    return False, "Todas"
