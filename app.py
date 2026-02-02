@@ -1618,6 +1618,8 @@ else:
                                     else:
                                         st.info("⏳ Esperando red neuronal...")
 
+                            # ... (Código anterior de la barra de progreso y columnas) ...
+
                             with c2:
                                 if not esta_inscrito:
                                     mision_vencida = dt_cierre and now_chile > dt_cierre
@@ -1626,9 +1628,13 @@ else:
                                     else:
                                         if st.button("🫡 CONFIRMAR ORDEN", key=f"sync_{m['id']}", type="primary", use_container_width=True):
                                             with st.spinner("Sincronizando..."):
-                                                # FIX AQUÍ: Pasamos m['nombre']
+                                                # Pasamos el nombre real m['nombre']
                                                 if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("ENLACE ESTABLECIDO", icon="🧬")
+                                                    
+                                                    # 🔥 NUEVO: OBLIGAMOS A REFRESCAR LA LISTA DESDE NOTION
+                                                    cargar_misiones_activas.clear()
+                                                    
                                                     time.sleep(1)
                                                     st.rerun()
                                                 else: st.error("Error.")
@@ -1636,22 +1642,9 @@ else:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_sync_{m['id']}", use_container_width=True)
 
                         else:
-                            c1, c2 = st.columns([2, 1])
-                            with c1:
-                                if esta_inscrito:
-                                    mision_lanzada = now_chile >= dt_lanzamiento
-                                    if mision_lanzada:
-                                        st.success("🟢 **OPERACIÓN EN CURSO**")
-                                        with st.expander("📂 ACCEDER A DATOS DE ACTIVIDAD", expanded=True):
-                                            st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
-                                            st.markdown(f"**🌐 ENLACE:** [INICIAR]({m['link']})")
-                                    else:
-                                        st.info(f"✅ **INSCRITO** | Esperando fecha de lanzamiento...")
-                                elif estado_fase == "PRE":
-                                    st.warning(f"⏳ Inscripciones: {dt_apertura.strftime('%d/%m %H:%M')}")
-                                elif estado_fase == "CLOSED":
-                                    st.error("Inscripciones Cerradas")
-
+                            # === ZONA INDIVIDUAL (HAZAÑA/EXPEDICIÓN) ===
+                            # ... (Código visual anterior) ...
+                            
                             with c2:
                                 if estado_fase == "OPEN" and not esta_inscrito:
                                     with st.popover("📝 INSCRIBIRME", use_container_width=True):
@@ -1661,9 +1654,13 @@ else:
                                         st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
                                         if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
                                             with st.spinner("Firmando contrato..."):
-                                                # FIX AQUÍ: Pasamos m['nombre']
+                                                # Pasamos el nombre real m['nombre']
                                                 if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
+                                                    
+                                                    # 🔥 NUEVO: AQUÍ TAMBIÉN BORRAMOS CACHÉ
+                                                    cargar_misiones_activas.clear()
+                                                    
                                                     time.sleep(1.5)
                                                     st.rerun()
                                                 else: st.error("Error.")
