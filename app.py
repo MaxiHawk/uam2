@@ -1540,7 +1540,7 @@ else:
                         glow = f"box-shadow: 0 0 15px {border_color}40;"
                         status_text = "PROTOCOLO DE SINCRONIZACIÓN"
                         status_color = border_color
-                        time_display = f"LÍMITE SYNC: {dt_cierre.strftime('%d/%m %H:%M')}" if dt_cierre else "SIN LÍMITE"
+                        time_display = f"LÍMITE DE ENVÍO: {dt_cierre.strftime('%d/%m %H:%M')}" if dt_cierre else "SIN LÍMITE"
                     else:
                         es_expedicion = m['tipo'] == "Expedición"
                         border_color = "#bf360c" if es_expedicion else "#FFD700"
