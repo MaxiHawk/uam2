@@ -647,3 +647,29 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
         if hasattr(e, 'response') and e.response is not None:
              err_msg = e.response.text
         return False, f"Cobro OK, pero falló actualizar solicitud (Revisar nombres columnas): {err_msg}"
+
+# --- 🧬 SQUAD SYNC (NUEVO) ---
+def obtener_miembros_escuadron(nombre_escuadron):
+    """Retorna una lista con los nombres de todos los miembros del escuadrón."""
+    if not nombre_escuadron or nombre_escuadron == "Sin Escuadrón": return []
+    
+    url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
+    # Filtramos por nombre exacto de escuadrón
+    payload = {"filter": {"property": "Nombre Escuadrón", "rich_text": {"equals": nombre_escuadron}}}
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=API_TIMEOUT)
+        miembros = []
+        if res.status_code == 200:
+            for r in res.json()["results"]:
+                try:
+                    # Extraemos el nombre del aspirante (Title)
+                    props = r["properties"]
+                    if "Jugador" in props and props["Jugador"]["title"]:
+                        name = props["Jugador"]["title"][0]["text"]["content"]
+                        miembros.append(name)
+                except: pass
+        return miembros
+    except Exception as e:
+        print(f"Error obteniendo squad: {e}")
+        return []
