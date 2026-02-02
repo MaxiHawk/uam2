@@ -1421,8 +1421,8 @@ else:
         import re
         import os
 
-        # --- CSS TÁCTICO (V7.1: FINAL STABLE) ---
-        primary_sync_color = "#e040fb" # Lavanda Neón para Misiones Grupales
+        # --- CSS TÁCTICO (V7.2: LOGS FIX) ---
+        primary_sync_color = "#e040fb" 
         
         st.markdown(f"""
         <style>
@@ -1446,21 +1446,18 @@ else:
                 font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.2em;
                 color: #fff; text-transform: uppercase; display: flex; align-items: center; gap: 10px;
             }}
-            
             .mission-narrative {{
                 background: rgba(0, 229, 255, 0.05); color: #00e5ff; 
                 font-style: italic; font-size: 0.85em; padding: 8px 20px;
                 border-bottom: 1px dashed rgba(0, 229, 255, 0.2);
             }}
             .mission-body {{ padding: 15px 20px; color: #b0bec5; font-size: 0.95em; line-height: 1.5; }}
-            
             .rewards-box {{
                 background: rgba(0,0,0,0.3); margin: 0 20px 15px 20px; padding: 10px;
                 border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; gap: 15px;
             }}
             .reward-badge-img {{ width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 5px #FFD700); }}
             .reward-text {{ font-size: 0.9em; color: #e0e0e0; font-family: monospace; letter-spacing: 0.5px; }}
-            
             .mission-footer {{
                 background: rgba(0, 0, 0, 0.4); padding: 10px 20px;
                 display: flex; justify-content: space-between; align-items: center;
@@ -1468,8 +1465,6 @@ else:
             }}
             .mission-timer {{ font-family: monospace; font-size: 0.85em; color: #aaa; display: flex; align-items: center; gap: 5px; }}
             .mission-status {{ font-weight: bold; font-size: 0.8em; letter-spacing: 1px; text-transform: uppercase; }}
-
-            /* SYNC BAR */
             .sync-bar-bg {{ width: 100%; height: 10px; background: #2a2a2a; border-radius: 5px; margin-top: 8px; overflow: hidden; border: 1px solid #444; }}
             .sync-bar-fill {{ height: 100%; background: {primary_sync_color}; box-shadow: 0 0 15px {primary_sync_color}; transition: width 0.5s ease; }}
             .sync-label {{ 
@@ -1488,7 +1483,6 @@ else:
             st.caption("Calendario de despliegue de Operaciones.")
             misiones = cargar_misiones_activas()
             
-            # Carga inteligente de miembros
             mi_escuadron_lista = []
             if any(m['tipo'] == "Misión" for m in misiones):
                 mi_escuadron_lista = obtener_miembros_escuadron(
@@ -1526,17 +1520,15 @@ else:
                     esta_inscrito = st.session_state.nombre in lista_inscritos
                     es_mision_grupal = (m['tipo'] == "Misión")
                     
-                    # --- PREPARACIÓN DE DATOS VISUALES ---
+                    # --- PREPARACIÓN VISUAL ---
                     if es_mision_grupal:
                         icon_type = "🧬"
                         border_color = primary_sync_color
-                        
                         confirmados_escuadron = [p for p in lista_inscritos if p in mi_escuadron_lista]
                         total_squad = len(mi_escuadron_lista) if mi_escuadron_lista else 1
                         count_confirmados = len(confirmados_escuadron)
                         progress_pct = int((count_confirmados / total_squad) * 100) if total_squad > 0 else 0
                         squad_synced = (progress_pct >= 100)
-                        
                         glow = f"box-shadow: 0 0 15px {border_color}40;"
                         status_text = "PROTOCOLO DE SINCRONIZACIÓN"
                         status_color = border_color
@@ -1545,7 +1537,6 @@ else:
                         es_expedicion = m['tipo'] == "Expedición"
                         border_color = "#bf360c" if es_expedicion else "#FFD700"
                         icon_type = "🌋" if es_expedicion else "⚔️"
-                        
                         if dt_apertura and now_chile < dt_apertura:
                             estado_fase, status_text, status_color = "PRE", "🔒 ENCRIPTADO", "#666"
                         elif (dt_apertura and dt_cierre) and (dt_apertura <= now_chile <= dt_cierre):
@@ -1554,7 +1545,6 @@ else:
                             estado_fase, status_text, status_color = "CLOSED", "🔒 CERRADO", "#ff1744"
                         else:
                             estado_fase, status_text, status_color = "CLOSED", "🔒 CERRADO", "#666"
-                        
                         glow = f"box-shadow: 0 0 15px {border_color}40;" if estado_fase == "OPEN" else ""
                         time_display = f"INICIO: {dt_lanzamiento.strftime('%d/%m %H:%M') if dt_lanzamiento else 'TBA'}"
 
@@ -1573,12 +1563,10 @@ else:
                     else:
                         badge_html = '<span style="font-size: 2em;">🏆</span>'
 
-                    # --- COLORIZACIÓN ---
                     txt_recompensas = m['recompensas_txt']
                     txt_recompensas = re.sub(r'(\d+\s*AP)', r'<span style="color:#00e5ff; font-weight:bold;">\1</span>', txt_recompensas)
                     txt_recompensas = re.sub(r'(\d+\s*MP)', r'<span style="color:#FFD700; font-weight:bold;">\1</span>', txt_recompensas)
 
-                    # --- RENDERIZADO HTML ---
                     with st.container():
                         card_html = f"""
 <div class="mission-card" style="border-left: 5px solid {border_color}; {glow}">
@@ -1602,9 +1590,8 @@ else:
 """
                         st.markdown(card_html, unsafe_allow_html=True)
                         
-                        # --- BOTONERA ---
+                        # --- BOTONES ---
                         if es_mision_grupal:
-                            # LÓGICA GRUPAL
                             st.markdown(f"""
                             <div class="sync-bar-bg">
                                 <div class="sync-bar-fill" style="width: {progress_pct}%;"></div>
@@ -1619,7 +1606,6 @@ else:
                             c1, c2 = st.columns([2, 1])
                             with c1:
                                 if squad_synced:
-                                    # CAMBIO AQUÍ: SQUAD -> ESCUADRÓN
                                     st.success("✅ **ESCUADRÓN SINCRONIZADO**")
                                     with st.expander("🔓 ACCESO A DATOS CLASIFICADOS", expanded=True):
                                         st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
@@ -1640,7 +1626,8 @@ else:
                                     else:
                                         if st.button("🫡 CONFIRMAR ORDEN", key=f"sync_{m['id']}", type="primary", use_container_width=True):
                                             with st.spinner("Sincronizando..."):
-                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                                # FIX AQUÍ: Pasamos m['nombre']
+                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("ENLACE ESTABLECIDO", icon="🧬")
                                                     time.sleep(1)
                                                     st.rerun()
@@ -1649,7 +1636,6 @@ else:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_sync_{m['id']}", use_container_width=True)
 
                         else:
-                            # LÓGICA INDIVIDUAL
                             c1, c2 = st.columns([2, 1])
                             with c1:
                                 if esta_inscrito:
@@ -1675,7 +1661,8 @@ else:
                                         st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
                                         if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
                                             with st.spinner("Firmando contrato..."):
-                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre):
+                                                # FIX AQUÍ: Pasamos m['nombre']
+                                                if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
                                                     time.sleep(1.5)
                                                     st.rerun()
@@ -1683,7 +1670,7 @@ else:
                                 elif esta_inscrito:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_{m['id']}", use_container_width=True)
                                 else:
-                                    st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True) 
+                                    st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                                 
     with tab_codice:
         st.markdown("### 📜 ARCHIVOS SECRETOS")
