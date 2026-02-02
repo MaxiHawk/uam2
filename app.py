@@ -721,7 +721,7 @@ def cargar_mercado():
 
 def obtener_mis_solicitudes(jugador_nombre):
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
-    payload = {"filter": {"property": "Remitente", "title": {"equals": jugador_nombre}}, "sorts": [{"timestamp": "created_time", "direction": "descending"}], "page_size": 15}
+    payload = {"filter": {"property": "Remitente", "title": {"equals": jugador_nombre}}, "sorts": [{"timestamp": "created_time", "direction": "descending"}], "page_size": 20}
     res = requests.post(url, headers=headers, json=payload)
     historial = []
     if res.status_code == 200:
@@ -732,6 +732,12 @@ def obtener_mis_solicitudes(jugador_nombre):
                 mensaje = msg_list[0]["text"]["content"] if msg_list else "Sin contenido"
                 status_obj = props.get("Status", {}).get("select")
                 status = status_obj["name"] if status_obj else "Pendiente"
+                
+                # --- NUEVO: Extraemos el TIPO ---
+                tipo_obj = props.get("Tipo", {}).get("select")
+                tipo = tipo_obj["name"] if tipo_obj else "General"
+                # --------------------------------
+                
                 obs_list = props.get("Observaciones", {}).get("rich_text", [])
                 obs = obs_list[0]["text"]["content"] if obs_list else None
                 created = r["created_time"]
@@ -743,11 +749,13 @@ def obtener_mis_solicitudes(jugador_nombre):
                 historial.append({
                     "mensaje": mensaje, 
                     "status": status, 
+                    "tipo": tipo, # <--- Guardamos el tipo
                     "obs": obs, 
                     "fecha": created,
                     "fecha_respuesta": fecha_resp 
                 })
-            except: pass
+            except Exception as e: 
+                pass
     return historial
 
 def obtener_puntaje_equipo_filtrado(nombre_escuadron, uni, ano):
@@ -1884,23 +1892,23 @@ else:
                 
                 if is_alumni:
                     if not is_exclusive and not is_real_money:
-                        mostrar_item = True # Mostramos pero bloqueamos botón
+                        mostrar_item = True 
                         texto_bloqueo = "⛔ CICLO CERRADO"
                 else:
-                    if is_exclusive: mostrar_item = False # Activos no ven items exclusivos de veteranos
+                    if is_exclusive: mostrar_item = False 
                 
                 if mostrar_item:
-                    # Estilos según tipo de moneda
+                    # Estilos
                     if is_real_money:
-                        border_color = "#FFD700" # Dorado
+                        border_color = "#FFD700" 
                         price_color = "#FFD700"
                         costo_display = f"${item['costo']:,}"
                         moneda_label = "CLP"
-                        puede_comprar = True # Siempre puedes intentar comprar con dinero real
+                        puede_comprar = True 
                         glow_style = f"box-shadow: 0 0 10px {border_color}20;"
                         badge_type = "👑 PREMIUM"
                     else:
-                        border_color = "#00e5ff" # Cian
+                        border_color = "#00e5ff" 
                         price_color = "#00e5ff"
                         costo_display = str(item['costo'])
                         moneda_label = "AP"
@@ -1909,7 +1917,7 @@ else:
                         glow_style = ""
                         badge_type = "🔹 ESTÁNDAR"
 
-                    # Renderizado Tarjeta Responsiva
+                    # Renderizado
                     card_html = f"""
                     <div class="market-card-responsive" style="border-left: 4px solid {border_color}; {glow_style}">
                         <div class="market-icon-col" style="color: {border_color}; text-shadow: 0 0 10px {border_color};">
@@ -1930,7 +1938,6 @@ else:
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # Botonera
                     c1, c2 = st.columns([2, 1])
                     with c2:
                         if texto_bloqueo:
@@ -1960,7 +1967,7 @@ else:
                         else:
                             st.button(f"💸 FALTA SALDO", disabled=True, key=f"no_fund_{item['id']}", use_container_width=True)
 
-            # --- SECCIÓN 2: INVENTARIO (CORREGIDA) ---
+            # --- SECCIÓN 2: INVENTARIO (AHORA MÁS ROBUSTA) ---
             st.markdown("---")
             st.markdown("### 🎒 MI INVENTARIO")
             
@@ -1969,14 +1976,28 @@ else:
             
             if historial:
                 for h in historial:
-                    # FIX: AHORA ACEPTAMOS "Aprobado" O "Respondido"
-                    status_ok = h['status'] in ["Aprobado", "Respondido"]
-                    is_market_msg = "Mercado" in h['mensaje'] or "Compra" in h['mensaje']
+                    # FIX 1: Aceptamos "Aprobado", "Respondido" o "Entregado"
+                    status_ok = h['status'] in ["Aprobado", "Respondido", "Entregado"]
                     
-                    if status_ok and is_market_msg:
+                    # FIX 2: Miramos el TIPO (mucho más seguro que el texto)
+                    tipo_safe = h.get('tipo', '').lower() # Viene del paso 1
+                    msg_safe = h['mensaje'].lower()
+                    
+                    # Detectamos si es una compra por TIPO o por PALABRAS CLAVE en mensaje
+                    is_market_item = (
+                        "compra" in tipo_safe or 
+                        "mercado" in tipo_safe or 
+                        "adquisición" in tipo_safe or
+                        "mercado" in msg_safe or 
+                        "compra" in msg_safe
+                    )
+                    
+                    if status_ok and is_market_item:
+                        # Limpiamos el nombre para quitar prefijos administrativos
                         raw_name = h['mensaje']
-                        clean_name = raw_name.replace("Solicitud de compra:", "").replace("Compra Mercado:", "").strip()
+                        clean_name = raw_name.replace("Solicitud de compra:", "").replace("Compra Mercado:", "").replace("Pedido:", "").strip()
                         
+                        # Buscamos ícono
                         icon_display = "📦"
                         for m_item in market_items:
                             if m_item['nombre'] in clean_name:
