@@ -187,26 +187,38 @@ def cargar_misiones_activas():
         })
     return misiones
 
-def inscribir_jugador_mision(page_id, inscritos_frontend, nombre_jugador):
-    url_get = f"https://api.notion.com/v1/pages/{page_id}"
+# --- 📝 INSCRIPCIÓN (AHORA CON LOG LEGIBLE) ---
+def inscribir_jugador_mision(page_id, current_inscritos_str, player_name, mision_nombre="Actividad Clasificada"):
+    """
+    Inscribe al jugador en la misión y deja un log legible con el nombre de la actividad.
+    """
+    if not DB_MISIONES_ID: return False
+    
+    # 1. Preparamos la nueva lista de inscritos
+    lista = [x.strip() for x in current_inscritos_str.split(",") if x.strip()]
+    if player_name in lista: return True # Ya estaba inscrito
+    
+    lista.append(player_name)
+    new_str = ", ".join(lista)
+    
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    payload = {
+        "properties": {
+            "Inscritos": {"rich_text": [{"text": {"content": new_str}}]}
+        }
+    }
+    
     try:
-        res_get = requests.get(url_get, headers=headers, timeout=API_TIMEOUT)
-        res_get.raise_for_status()
+        # 2. Actualizamos Notion
+        requests.patch(url, headers=headers, json=payload, timeout=API_TIMEOUT)
         
-        props_live = res_get.json()["properties"]
-        texto_inscritos_real = get_notion_text(props_live, "Inscritos")
-        
-        lista_actual = [x.strip() for x in texto_inscritos_real.split(",")]
-        if nombre_jugador in lista_actual: return True 
-            
-        nuevo_texto = f"{texto_inscritos_real}, {nombre_jugador}" if texto_inscritos_real else nombre_jugador
-        url_patch = f"https://api.notion.com/v1/pages/{page_id}"
-        payload = {"properties": {"Inscritos": {"rich_text": [{"text": {"content": nuevo_texto}}]}}}
-        res_patch = requests.patch(url_patch, headers=headers, json=payload, timeout=API_TIMEOUT)
-        res_patch.raise_for_status()
-        
-        registrar_evento_sistema(nombre_jugador, "Inscripción Misión", f"ID: {page_id}", "Misión")
-        st.cache_data.clear() 
+        # 3. LOG LEGIBLE (Usamos el nombre real en vez del ID)
+        registrar_evento_sistema(
+            player_name, 
+            "Inscripción Operación", 
+            f"Confirmado en: {mision_nombre}", 
+            "Misión"
+        )
         return True
     except Exception as e:
         print(f"Error inscripción: {e}")
