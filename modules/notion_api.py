@@ -522,3 +522,45 @@ def obtener_miembros_escuadron(nombre_escuadron, uni, ano):
                 except: pass
         return miembros
     except: return []
+
+# --- EN modules/notion_api.py ---
+
+@st.cache_data(ttl=60)
+def cargar_todas_misiones_admin():
+    """
+    Trae TODAS las misiones (Activas y Cerradas) para el panel de Admin.
+    Retorna una lista de diccionarios con nombre e ID.
+    """
+    if not DB_MISIONES_ID: return []
+    
+    url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
+    
+    # Sin filtro de 'Activa'. Solo ordenamos por fecha de creación descendente.
+    payload = {
+        "sorts": [{"timestamp": "created_time", "direction": "descending"}]
+    }
+    
+    try:
+        # Usamos notion_fetch_all para traer todo si hay muchas paginas
+        raw_results = notion_fetch_all(url, payload)
+        misiones = []
+        
+        for r in raw_results:
+            p = r["properties"]
+            # Intentamos obtener el nombre
+            nombre = "Sin Nombre"
+            if "Nombre" in p and p["Nombre"]["title"]:
+                nombre = p["Nombre"]["title"][0]["text"]["content"]
+            
+            # Opcional: Podríamos traer recompensas pre-definidas aquí si las tienes en Notion
+            # reward_gold_mp = get_notion_number(p, "Premio Oro MP") ... etc
+            
+            misiones.append({
+                "id": r["id"],
+                "nombre": nombre
+            })
+            
+        return misiones
+    except Exception as e:
+        print(f"Error cargando misiones admin: {e}")
+        return []
