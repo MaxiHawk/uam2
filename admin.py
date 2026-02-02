@@ -12,7 +12,7 @@ from config import (
     DB_LOGS_ID, DB_CONFIG_ID
 )
 # IMPORTANTE: Añadimos cargar_misiones_activas para leer las misiones reales
-from modules.notion_api import aprobar_solicitud_habilidad, cargar_misiones_activas
+from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -369,14 +369,21 @@ with tab_ops:
         if "AIRDROP" in mode_op:
             st.caption("📦 Despliegue de suministros tácticos por cumplimiento de misión.")
             
-            # --- SELECTOR DE MISIÓN REAL (DESDE NOTION) ---
-            misiones_activas = cargar_misiones_activas()
-            # Creamos lista simple de nombres
-            lista_misiones = [m['nombre'] for m in misiones_activas] if misiones_activas else ["Misión Genérica"]
+            # --- SELECTOR DE MISIÓN REAL (CAMBIO TÁCTICO) ---
+            # Usamos la nueva función que trae TODO el historial
+            lista_misiones_data = cargar_todas_misiones_admin()
+            
+            if not lista_misiones_data:
+                st.warning("⚠️ No se encontraron misiones en la Base de Datos.")
+                lista_nombres = ["Misión Genérica"]
+            else:
+                lista_nombres = [m['nombre'] for m in lista_misiones_data]
             
             c_mis, c_custom = st.columns([2, 1])
             with c_mis:
-                mision_seleccionada = st.selectbox("📜 Misión / Actividad:", lista_misiones)
+                mision_seleccionada = st.selectbox("📜 Misión / Actividad:", lista_nombres)
+            
+            # ... (el resto del código sigue igual) ...
             
             # --- BOTONES ÉPICOS DE RANGO ---
             st.markdown("##### 🏅 SELECCIONA EL RANGO DE VICTORIA")
