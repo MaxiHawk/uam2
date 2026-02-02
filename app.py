@@ -1960,27 +1960,23 @@ else:
                         else:
                             st.button(f"💸 FALTA SALDO", disabled=True, key=f"no_fund_{item['id']}", use_container_width=True)
 
-            # --- SECCIÓN 2: INVENTARIO (NUEVO) ---
+            # --- SECCIÓN 2: INVENTARIO (CORREGIDA) ---
             st.markdown("---")
             st.markdown("### 🎒 MI INVENTARIO")
             
-            # Lógica para obtener inventario (reutilizando historial de solicitudes)
             historial = obtener_mis_solicitudes(st.session_state.nombre)
-            
-            # Filtramos: Que sea de Mercado y que esté Aprobado
-            # Nota: Asumimos que el "Mensaje" de la solicitud contiene el nombre del item
-            # O que podemos inferirlo. Generalmente el mensaje es "Compra Mercado: NOMBRE_ITEM"
             items_inventario = []
             
             if historial:
                 for h in historial:
-                    if h['status'] == "Aprobado" and ("Mercado" in h['mensaje'] or "Compra" in h['mensaje']):
-                        # Intentamos limpiar el nombre
-                        # Ej: "Solicitud de compra: Beca Congreso" -> "Beca Congreso"
+                    # FIX: AHORA ACEPTAMOS "Aprobado" O "Respondido"
+                    status_ok = h['status'] in ["Aprobado", "Respondido"]
+                    is_market_msg = "Mercado" in h['mensaje'] or "Compra" in h['mensaje']
+                    
+                    if status_ok and is_market_msg:
                         raw_name = h['mensaje']
                         clean_name = raw_name.replace("Solicitud de compra:", "").replace("Compra Mercado:", "").strip()
                         
-                        # Buscamos un icono aproximado en el mercado actual
                         icon_display = "📦"
                         for m_item in market_items:
                             if m_item['nombre'] in clean_name:
@@ -1996,7 +1992,6 @@ else:
             if not items_inventario:
                 st.info("Tu inventario está vacío. Adquiere ítems para verlos aquí.")
             else:
-                # Render Grid de Inventario
                 inv_html = '<div class="inventory-grid">'
                 for inv in items_inventario:
                     inv_html += f"""
