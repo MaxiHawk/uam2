@@ -11,7 +11,8 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-from modules.notion_api import aprobar_solicitud_habilidad
+# IMPORTANTE: Añadimos cargar_misiones_activas para leer las misiones reales
+from modules.notion_api import aprobar_solicitud_habilidad, cargar_misiones_activas
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -22,13 +23,34 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V6 - ROBUST) ---
+# --- ESTILOS CSS ÉPICOS (V7 - WAR ROOM) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         .stApp { background-color: #050810; color: #e0f7fa; }
         
-        /* Cards de Solicitudes */
+        /* HEADER DE SECCIÓN ÉPICO */
+        .war-room-header {
+            background: linear-gradient(90deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 100%);
+            border-left: 5px solid #00e5ff;
+            padding: 15px;
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 20px;
+        }
+        .war-room-title { font-family: 'Orbitron'; font-size: 1.5em; color: #fff; font-weight: bold; margin: 0; }
+        .war-room-sub { color: #00e5ff; font-size: 0.8em; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* BOTONES DE RANGO (ORO/PLATA/BRONCE) */
+        .rank-btn-gold { border: 1px solid #FFD700 !important; color: #FFD700 !important; background: rgba(255, 215, 0, 0.1) !important; }
+        .rank-btn-gold:hover { background: #FFD700 !important; color: #000 !important; box-shadow: 0 0 15px #FFD700; }
+        
+        .rank-btn-silver { border: 1px solid #C0C0C0 !important; color: #C0C0C0 !important; background: rgba(192, 192, 192, 0.1) !important; }
+        .rank-btn-silver:hover { background: #C0C0C0 !important; color: #000 !important; box-shadow: 0 0 15px #C0C0C0; }
+        
+        .rank-btn-bronze { border: 1px solid #cd7f32 !important; color: #cd7f32 !important; background: rgba(205, 127, 50, 0.1) !important; }
+        .rank-btn-bronze:hover { background: #cd7f32 !important; color: #000 !important; box-shadow: 0 0 15px #cd7f32; }
+
+        /* TARJETAS DE SOLICITUD */
         .req-card-epic {
             background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
             border: 1px solid #1c2e3e; border-radius: 12px; padding: 20px;
@@ -45,71 +67,38 @@ st.markdown("""
         
         div[data-testid="column"] button { font-family: 'Orbitron'; font-size: 0.8em; text-transform: uppercase; }
         
-        /* Estilo Farmeo */
-        .farm-box {
-            border: 2px solid #00e5ff; background: rgba(0, 229, 255, 0.05);
-            padding: 15px; border-radius: 10px; margin-bottom: 20px;
-        }
+        .farm-box { border: 2px solid #00e5ff; background: rgba(0, 229, 255, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
+# --- FUNCIONES NOTION ---
 def buscar_config_id(key_target):
-    """
-    Descarga TODA la config y busca la clave de forma flexible.
-    """
-    if not DB_CONFIG_ID: 
-        print("⚠️ DEBUG: Falta DB_CONFIG_ID en config.py")
-        return None, False, "Todas"
-    
+    if not DB_CONFIG_ID: return None, False, "Todas"
     url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
     try:
-        # Traemos todo sin filtros para evitar errores de la API
         res = requests.post(url, headers=headers, json={})
-        
-        if res.status_code != 200:
-            print(f"⚠️ DEBUG ERROR NOTION: {res.status_code} - {res.text}")
-            return None, False, "Todas"
-            
-        results = res.json().get("results", [])
-        print(f"ℹ️ DEBUG: Encontradas {len(results)} filas en Config.")
-        
-        target_clean = key_target.strip().lower()
-        
-        for page in results:
-            props = page["properties"]
-            try:
-                # Obtenemos el título (Clave)
-                clave_raw = props["Clave"]["title"][0]["text"]["content"]
-                clave_clean = clave_raw.strip().lower()
-                
-                # Comparación flexible
-                if clave_clean == target_clean:
-                    estado = props.get("Activo", {}).get("checkbox", False)
-                    
-                    # Intentamos leer el filtro
-                    filtro_list = props.get("Filtro", {}).get("rich_text", [])
-                    filtro_val = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
-                    
-                    return page["id"], estado, filtro_val
-            except Exception as e:
-                print(f"⚠️ Error leyendo fila config: {e}")
-                continue
-                
-    except Exception as e: 
-        print(f"❌ Error conexión config: {e}")
-        
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            for page in results:
+                props = page["properties"]
+                try:
+                    clave_actual = props["Clave"]["title"][0]["text"]["content"]
+                    if clave_actual == key_target:
+                        estado = props.get("Activo", {}).get("checkbox", False)
+                        filtro_list = props.get("Filtro", {}).get("rich_text", [])
+                        filtro_val = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
+                        return page["id"], estado, filtro_val
+                except: continue
+    except: pass
     return None, False, "Todas"
 
 def actualizar_config(page_id, nuevo_estado, nuevo_filtro=None):
     url = f"https://api.notion.com/v1/pages/{page_id}"
     props = {"Activo": {"checkbox": nuevo_estado}}
-    
     if nuevo_filtro is not None:
         props["Filtro"] = {"rich_text": [{"text": {"content": nuevo_filtro}}]}
-        
     requests.patch(url, headers=headers, json={"properties": props})
 
-# --- OTRAS FUNCIONES ---
 def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
@@ -143,12 +132,15 @@ def get_players():
                     name = props["Jugador"]["title"][0]["text"]["content"]
                     uni = props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar")
                     gen = props.get("Año", {}).get("select", {}).get("name", "Sin Año")
+                    # NUEVO: Recuperamos estado para filtrar activos
+                    estado = props.get("Estado UAM", {}).get("select", {}).get("name", "Desconocido")
                     
                     players.append({
                         "id": p["id"], "Aspirante": name, 
                         "Escuadrón": props.get("Nombre Escuadrón", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "Sin Escuadrón"),
                         "Universidad": uni,
                         "Generación": gen,
+                        "Estado": estado,
                         "MP": props.get("MP", {}).get("number", 0), 
                         "AP": props.get("AP", {}).get("number", 0), 
                         "VP": props.get("VP", {}).get("number", 0)
@@ -199,67 +191,57 @@ df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
     
-    # --- FILTROS GLOBALES (CON GENERACIÓN) ---
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # Lógica de Filtrado
+    # Lógica de Filtrado (AHORA INCLUYE ESTADO != FINALIZADO)
     df_filtered = df_players.copy()
     if not df_players.empty:
+        # Filtro de Seguridad: Solo activos
+        df_filtered = df_filtered[df_filtered["Estado"] != "Finalizado"]
+        
         if sel_uni != "Todas": df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_filtered = df_filtered[df_filtered["Generación"] == sel_gen]
     
     st.divider()
     
-    # --- 🚨 GESTIÓN DE SISTEMA (MANTENIMIENTO & FARMEO) ---
+    # --- SISTEMAS DE CONTROL ---
     st.markdown("### 🚨 SISTEMA")
     
-    # 1. MODO MANTENIMIENTO
+    # 1. MANTENIMIENTO
     mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
     if mant_id:
         nuevo_mant = st.toggle("MODO MANTENIMIENTO", value=mant_estado)
         if nuevo_mant != mant_estado:
             actualizar_config(mant_id, nuevo_mant)
             st.toast("Configuración Actualizada"); time.sleep(1); st.rerun()
-    else:
-        st.error("BD Config: No se halló 'MODO_MANTENIMIENTO'")
+    else: st.error("BD Config: No se halló 'MODO_MANTENIMIENTO'")
 
     st.divider()
 
-    # 2. DROP SUMINISTROS (FARMEO DIFERENCIADO)
+    # 2. DROPS
     st.markdown("### 📦 FARMEO DIARIO")
     drop_id, drop_estado, drop_filtro_actual = buscar_config_id("DROP_SUMINISTROS")
     
     if drop_id:
         with st.container():
-            # Mostramos un marco visual si está activo
             if drop_estado:
                 st.markdown(f"""<div class="farm-box">🟢 <b>FARMEO ACTIVO</b><br>Objetivo: {drop_filtro_actual}</div>""", unsafe_allow_html=True)
             
-            # Selector de Universidad Objetivo (Basado en las Unis disponibles en Players)
             target_uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
-            
-            # Si ya hay un filtro guardado, intentamos ponerlo como default
             idx_def = 0
-            if drop_filtro_actual in target_uni_opts:
-                idx_def = target_uni_opts.index(drop_filtro_actual)
-                
-            uni_objetivo = st.selectbox("🎯 Universidad Objetivo:", target_uni_opts, index=idx_def, key="drop_target")
-            
-            # El Switch
+            if drop_filtro_actual in target_uni_opts: idx_def = target_uni_opts.index(drop_filtro_actual)
+            uni_objetivo = st.selectbox("🎯 Objetivo:", target_uni_opts, index=idx_def, key="drop_target")
             nuevo_drop = st.toggle("ACTIVAR FARMEO", value=drop_estado)
             
-            # Lógica de cambio: Si cambia el switch O si cambia la uni mientras está encendido
             if nuevo_drop != drop_estado or (drop_estado and uni_objetivo != drop_filtro_actual):
-                if st.button("💾 APLICAR CAMBIOS FARMEO"):
+                if st.button("💾 APLICAR CAMBIOS"):
                     actualizar_config(drop_id, nuevo_drop, uni_objetivo)
-                    st.toast(f"Drop {uni_objetivo}: {'ON' if nuevo_drop else 'OFF'}")
-                    time.sleep(1); st.rerun()
-    else:
-        st.error("BD Config: No se halló 'DROP_SUMINISTROS'")
+                    st.toast(f"Drop actualizado"); time.sleep(1); st.rerun()
+    else: st.error("BD Config: No se halló 'DROP_SUMINISTROS'")
         
     st.divider()
     if st.button("🧹 Limpiar Caché"): st.cache_data.clear(); st.rerun()
@@ -292,7 +274,6 @@ with tab_req:
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 tipo_obj = props.get("Tipo", {}).get("select")
                 tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
-                
                 raw_date = item["created_time"]
                 try:
                     utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
@@ -302,8 +283,7 @@ with tab_req:
                 solicitudes.append({"id": item["id"], "remitente": remitente, "mensaje": mensaje, "fecha": fecha_str, "status": status, "tipo": tipo})
     except: pass
     
-    if not solicitudes:
-        st.info(f"📭 Bandeja vacía ({filtro_estado})")
+    if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
             es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
@@ -349,14 +329,15 @@ with tab_req:
                                 finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
                                 st.rerun()
 
-# --- TAB 2 Y 3: SIN CAMBIOS (YA ESTABAN OK) ---
+# --- TAB 2: OPERACIONES (WAR ROOM) ---
 with tab_ops:
-    if df_filtered.empty: st.warning("Sin datos.")
+    if df_filtered.empty: st.warning("Sin datos visibles con los filtros actuales.")
     else:
+        # --- GESTIÓN INDIVIDUAL ---
         st.markdown("### ⚡ GESTIÓN INDIVIDUAL")
-        sel_aspirante = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
-        if sel_aspirante:
-            p_data = df_filtered[df_filtered["Aspirante"] == sel_aspirante].iloc[0]
+        selected_aspirante_name = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
+        if selected_aspirante_name:
+            p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.metric("MP", p_data['MP'])
@@ -364,135 +345,143 @@ with tab_ops:
             with c2:
                 st.metric("AP", p_data['AP'])
                 if st.button("➕ AP", key="ap"): update_stat(p_data["id"], "AP", p_data['AP']+5); st.toast("OK"); time.sleep(0.5); st.rerun()
+        
+        st.markdown("---")
+        
+        # --- WAR ROOM: OPERACIONES MASIVAS V3.0 ---
+        st.markdown("""
+        <div class="war-room-header">
+            <h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3>
+            <div class="war-room-sub">PROTOCOLOS DE RECOMPENSA Y SANCIÓN MASIVA</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 1. SELECCIÓN DE OBJETIVO
+        c_squad, c_mode = st.columns([2, 1])
+        with c_squad:
+            squads_disponibles = df_filtered["Escuadrón"].unique()
+            target_squad = st.selectbox("🎯 Escuadrón Objetivo:", squads_disponibles, key="sq_mass")
+        
+        with c_mode:
+            mode_op = st.radio("Protocolo:", ["🎁 AIRDROP (Premio)", "💣 BOMBARDEO (Castigo)"], horizontal=True, label_visibility="collapsed")
+
+        # 2. MODO AIRDROP (PREMIOS)
+        if "AIRDROP" in mode_op:
+            st.caption("📦 Despliegue de suministros tácticos por cumplimiento de misión.")
             
-            st.markdown("---")
+            # --- SELECTOR DE MISIÓN REAL (DESDE NOTION) ---
+            misiones_activas = cargar_misiones_activas()
+            # Creamos lista simple de nombres
+            lista_misiones = [m['nombre'] for m in misiones_activas] if misiones_activas else ["Misión Genérica"]
             
-            # --- TACTICAL OPS CENTER (V2.0) ---
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.2) 100%); 
-                        border: 1px solid #333; border-radius: 12px; padding: 20px; margin-top: 20px;">
-                <h3 style="margin-top:0; color:#fff; font-family:'Orbitron';">🛰️ OPERACIONES MASIVAS DE ESCUADRÓN</h3>
+            c_mis, c_custom = st.columns([2, 1])
+            with c_mis:
+                mision_seleccionada = st.selectbox("📜 Misión / Actividad:", lista_misiones)
+            
+            # --- BOTONES ÉPICOS DE RANGO ---
+            st.markdown("##### 🏅 SELECCIONA EL RANGO DE VICTORIA")
+            cols_rank = st.columns(4)
+            
+            # Estado para guardar los valores
+            if "mass_mp_val" not in st.session_state: st.session_state.mass_mp_val = 0
+            if "mass_ap_val" not in st.session_state: st.session_state.mass_ap_val = 0
+            if "mass_reason" not in st.session_state: st.session_state.mass_reason = ""
+
+            # Definición de Botones
+            with cols_rank[0]:
+                if st.button("🥇 1er LUGAR", use_container_width=True):
+                    st.session_state.mass_mp_val = 150
+                    st.session_state.mass_ap_val = 100
+                    st.session_state.mass_reason = f"🥇 1er Lugar: {mision_seleccionada}"
+            with cols_rank[1]:
+                if st.button("🥈 2do LUGAR", use_container_width=True):
+                    st.session_state.mass_mp_val = 100
+                    st.session_state.mass_ap_val = 75
+                    st.session_state.mass_reason = f"🥈 2do Lugar: {mision_seleccionada}"
+            with cols_rank[2]:
+                if st.button("🥉 3er LUGAR", use_container_width=True):
+                    st.session_state.mass_mp_val = 70
+                    st.session_state.mass_ap_val = 50
+                    st.session_state.mass_reason = f"🥉 3er Lugar: {mision_seleccionada}"
+            with cols_rank[3]:
+                if st.button("🎖️ PARTICIPACIÓN", use_container_width=True):
+                    st.session_state.mass_mp_val = 30
+                    st.session_state.mass_ap_val = 30
+                    st.session_state.mass_reason = f"🎖️ Participación: {mision_seleccionada}"
+
+            # --- PANEL DE CONFIRMACIÓN EDITABLE ---
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid #333; margin-top:10px;">
+                <div style="font-size:0.8em; color:#aaa;">CONFIGURACIÓN DEL ENVÍO:</div>
+                <div style="font-family:'Orbitron'; color:#fff; font-size:1.1em;">{st.session_state.mass_reason if st.session_state.mass_reason else 'Selecciona un rango arriba...'}</div>
             </div>
             """, unsafe_allow_html=True)
             
-            c_squad, c_mode = st.columns([2, 1])
-            with c_squad:
-                # Filtramos escuadrones según la vista actual
-                squads_disponibles = df_filtered["Escuadrón"].unique()
-                target_squad = st.selectbox("🎯 Escuadrón Objetivo:", squads_disponibles, key="sq_mass")
+            c_val1, c_val2, c_go = st.columns([1, 1, 2])
+            val_mp = c_val1.number_input("MP a enviar:", value=st.session_state.mass_mp_val, key="in_mp")
+            val_ap = c_val2.number_input("AP a enviar:", value=st.session_state.mass_ap_val, key="in_ap")
             
-            with c_mode:
-                mode_op = st.radio("Tipo de Operación:", ["🎁 AIRDROP (Premio)", "💣 BOMBARDEO (Castigo)"], horizontal=True, label_visibility="collapsed")
-
-            # --- MODO RECOMPENSA (AIRDROP) ---
-            if "AIRDROP" in mode_op:
-                st.caption("📦 Despliegue de suministros por méritos en misión.")
-                
-                # PRESETS DE VICTORIA
-                cols_preset = st.columns(4)
-                preset_selected = None
-                
-                # Definición de Valores por Defecto (¡AJUSTA ESTOS VALORES A TU GUSTO!)
-                # Estructura: [MP, AP, Motivo Base]
-                rewards = {
-                    "gold": [100, 200, "🥇 1er Lugar: "],
-                    "silver": [70, 100, "🥈 2do Lugar: "],
-                    "bronze": [50, 50, "🥉 3er Lugar: "],
-                    "part": [20, 20, "🎖️ Participación: "]
-                }
-
-                # Botones de Acción Rápida (Simulan selección)
-                if "preset_choice" not in st.session_state: st.session_state.preset_choice = "custom"
-                
-                with cols_preset[0]: 
-                    if st.button("🥇 ORO", use_container_width=True): st.session_state.preset_choice = "gold"
-                with cols_preset[1]: 
-                    if st.button("🥈 PLATA", use_container_width=True): st.session_state.preset_choice = "silver"
-                with cols_preset[2]: 
-                    if st.button("🥉 BRONCE", use_container_width=True): st.session_state.preset_choice = "bronze"
-                with cols_preset[3]: 
-                    if st.button("🎖️ PARTIC.", use_container_width=True): st.session_state.preset_choice = "part"
-
-                # Cargar valores según preset
-                def_mp, def_ap, def_reason = 0, 0, ""
-                if st.session_state.preset_choice in rewards:
-                    def_mp, def_ap, def_reason = rewards[st.session_state.preset_choice]
-
-                # Inputs Editables (se pre-llenan con el preset)
-                c1, c2, c3 = st.columns([1, 1, 2])
-                m_mp = c1.number_input("MP (MasterPoints)", value=def_mp, key="mass_mp")
-                m_ap = c2.number_input("AP (AngioPoints)", value=def_ap, key="mass_ap")
-                
-                # Motivo Inteligente
-                mision_tag = st.text_input("Etiqueta de Misión:", value="Misión Semanal", placeholder="Ej: Misión 01")
-                full_reason = f"{def_reason}{mision_tag}"
-                st.info(f"📝 Se registrará como: **{full_reason}**")
-                
-                if st.button("🚀 LANZAR AIRDROP", type="primary", use_container_width=True):
-                    targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
-                    if targets.empty:
-                        st.warning("No hay agentes en este escuadrón con los filtros actuales.")
-                    else:
-                        progress_text = "Desplegando suministros..."
-                        my_bar = st.progress(0, text=progress_text)
-                        total = len(targets)
-                        
-                        for i, (_, s) in enumerate(targets.iterrows()):
-                            ups = {}
-                            if m_mp > 0: ups["MP"] = s["MP"] + m_mp
-                            if m_ap > 0: ups["AP"] = s["AP"] + m_ap
-                            
-                            if ups:
-                                update_stat_batch(s["id"], ups)
-                                registrar_log_admin(s["Aspirante"], "Airdrop Squad", full_reason, s["Universidad"], s["Generación"])
-                            
-                            time.sleep(0.1) # Pequeña pausa para no saturar API
-                            my_bar.progress((i + 1) / total, text=f"Procesando agente {i+1}/{total}")
-                        
-                        st.success(f"✅ ¡Operación Exitosa! {total} agentes recompensados.")
-                        time.sleep(2)
-                        st.rerun()
-
-            # --- MODO CASTIGO (BOMBARDEO) ---
-            else:
-                st.error("⚠️ ZONA DE PELIGRO: Estas acciones reducirán los recursos del escuadrón.")
-                
-                c1, c2 = st.columns(2)
-                dmg_vp = c1.number_input("Daño a VP (VitaPoints)", value=0, min_value=0, help="Cantidad a RESTAR")
-                pen_mp = c2.number_input("Penalización MP", value=0, min_value=0, help="Cantidad a RESTAR")
-                
-                reason_bomb = st.text_input("Motivo del Castigo:", placeholder="Ej: Incumplimiento de Misión")
-                
-                # Checkbox de seguridad
-                confirm = st.checkbox("Confirmar orden de fuego", key="nuke_confirm")
-                
-                if st.button("💣 EJECUTAR BOMBARDEO", type="secondary", disabled=not confirm, use_container_width=True):
-                    if not reason_bomb:
-                        st.error("Se requiere un motivo para el expediente.")
+            with c_go:
+                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                if st.button("🚀 EJECUTAR AIRDROP MASIVO", type="primary", use_container_width=True):
+                    if not st.session_state.mass_reason:
+                        st.error("Selecciona un rango o escribe un motivo.")
                     else:
                         targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
                         if targets.empty:
-                            st.warning("No hay objetivos válidos.")
+                            st.warning("No hay agentes activos en este escuadrón.")
                         else:
-                            my_bar = st.progress(0, text="Iniciando secuencia de ataque...")
+                            prog_text = "Desplegando suministros..."
+                            bar = st.progress(0, text=prog_text)
                             total = len(targets)
                             
                             for i, (_, s) in enumerate(targets.iterrows()):
                                 ups = {}
-                                # Lógica de resta (sin bajar de 0)
-                                if pen_mp > 0: ups["MP"] = max(0, s["MP"] - pen_mp)
-                                if dmg_vp > 0: ups["VP"] = max(0, s["VP"] - dmg_vp)
+                                if val_mp > 0: ups["MP"] = s["MP"] + val_mp
+                                if val_ap > 0: ups["AP"] = s["AP"] + val_ap
                                 
                                 if ups:
                                     update_stat_batch(s["id"], ups)
-                                    registrar_log_admin(s["Aspirante"], "Sanción Squad", f"BOMBARDEO: {reason_bomb}", s["Universidad"], s["Generación"])
-                                
+                                    registrar_log_admin(
+                                        s["Aspirante"], "Airdrop Squad", 
+                                        st.session_state.mass_reason, 
+                                        s["Universidad"], s["Generación"]
+                                    )
+                                bar.progress((i + 1) / total)
                                 time.sleep(0.1)
-                                my_bar.progress((i + 1) / total)
                             
-                            st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥")
-                            time.sleep(2)
-                            st.rerun()
+                            st.success(f"✅ ¡Operación Exitosa! {total} agentes recompensados.")
+                            time.sleep(2); st.rerun()
+
+        # 3. MODO BOMBARDEO (CASTIGOS)
+        else:
+            st.error("⚠️ ZONA DE PELIGRO: Estas acciones reducirán los recursos del escuadrón.")
+            
+            c1, c2 = st.columns(2)
+            dmg_vp = c1.number_input("Daño a VP (VitaPoints)", value=0, min_value=0, help="Cantidad a RESTAR")
+            pen_mp = c2.number_input("Penalización MP", value=0, min_value=0, help="Cantidad a RESTAR")
+            
+            reason_bomb = st.text_input("Motivo del Castigo:", placeholder="Ej: Incumplimiento de Misión")
+            confirm = st.checkbox("Confirmar orden de fuego", key="nuke_confirm")
+            
+            if st.button("💣 EJECUTAR BOMBARDEO", type="secondary", disabled=not confirm, use_container_width=True):
+                if not reason_bomb: st.error("Falta motivo.")
+                else:
+                    targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
+                    bar = st.progress(0, text="Iniciando ataque...")
+                    total = len(targets)
+                    for i, (_, s) in enumerate(targets.iterrows()):
+                        ups = {}
+                        if pen_mp > 0: ups["MP"] = max(0, s["MP"] - pen_mp)
+                        if dmg_vp > 0: ups["VP"] = max(0, s["VP"] - dmg_vp)
+                        if ups:
+                            update_stat_batch(s["id"], ups)
+                            registrar_log_admin(s["Aspirante"], "Sanción Squad", f"BOMBARDEO: {reason_bomb}", s["Universidad"], s["Generación"])
+                        bar.progress((i + 1) / total)
+                        time.sleep(0.1)
+                    st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥")
+                    time.sleep(2); st.rerun()
 
 with tab_list:
+    st.markdown("### 👥 NÓMINA FILTRADA (SOLO ACTIVOS)")
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
