@@ -1675,10 +1675,9 @@ else:
                                     st.button("🔒", disabled=True, key=f"lck_{m['id']}", use_container_width=True)
                                 
     with tab_codice:
-        st.markdown("### 📜 ARCHIVOS SECRETOS")
+        st.markdown("### 📜 ARCHIVOS DE LA RED PRAXIS")
         
         if is_alumni:
-            # PANTALLA DE BLOQUEO PARA VETERANOS
             st.markdown("""
             <div style="background: rgba(40, 10, 10, 0.5); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center; margin-top: 20px;">
                 <div style="font-size: 3em;">⛔</div>
@@ -1691,20 +1690,99 @@ else:
             """, unsafe_allow_html=True)
             
         else:
-            st.caption("Documentos clasificados recuperados de la Era Dorada.")
-            codice_items = st.session_state.codice_data
-            if not codice_items: st.info("Sin registros en el Códice.")
-            else:
-                for item in codice_items:
-                    if nivel_num < item["nivel"]:
-                        lock_class, lock_icon = ("locked", "🔒")
-                        action_html = f'<span style="color:#ff4444; font-size:0.8em; font-weight:bold;">NIVEL {item["nivel"]} REQ.</span>'
-                    else:
-                        lock_class, lock_icon = ("", "🔓")
-                        action_html = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; background:{THEME["primary"]}; color:black; padding:5px 15px; border-radius:5px; font-weight:bold; font-size:0.8em;">ACCEDER</a>'
+            # --- BARRA DE BÚSQUEDA Y FILTROS ---
+            c_search, c_filter = st.columns([2, 1])
+            with c_search:
+                search_query = st.text_input("🔍 Buscar en los archivos:", placeholder="Escribe palabras clave...", label_visibility="collapsed")
+            with c_filter:
+                filter_type = st.selectbox("📂 Categoría:", ["Todas", "Video", "PDF", "Infografía", "Secreto"], label_visibility="collapsed")
 
-                    card_html = f"""<div class="codex-card {lock_class}"><div class="codex-icon">📄</div><div class="codex-info"><div class="codex-title">{item["nombre"]} {lock_icon}</div><div class="codex-desc">{item["descripcion"]}</div></div><div class="codex-action">{action_html}</div></div>"""
-                    st.markdown(card_html, unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            codice_items = st.session_state.codice_data
+            
+            # --- LÓGICA DE FILTRADO ---
+            items_filtrados = []
+            if codice_items:
+                for item in codice_items:
+                    # Filtro Texto
+                    match_text = search_query.lower() in item["nombre"].lower() or search_query.lower() in item["descripcion"].lower()
+                    # Filtro Categoría
+                    match_cat = (filter_type == "Todas") or (item["tipo"] == filter_type)
+                    
+                    if match_text and match_cat:
+                        items_filtrados.append(item)
+            
+            # --- RENDERIZADO ---
+            if not items_filtrados:
+                st.info("📡 No se encontraron registros con esos criterios.")
+            else:
+                # Mapa de Iconos
+                icon_map = {
+                    "Video": "🎬", 
+                    "PDF": "📕", 
+                    "Infografía": "📊", 
+                    "Secreto": "🕵️‍♀️", 
+                    "General": "📄"
+                }
+
+                for item in items_filtrados:
+                    # Lógica de Bloqueo
+                    is_locked = nivel_num < item["nivel"]
+                    
+                    # Estilos Dinámicos
+                    icon = icon_map.get(item["tipo"], "📄")
+                    if item["tipo"] == "Secreto": icon = "👁️‍🗨️" # Icono especial para secretos
+                    
+                    card_bg = "#0a141f"
+                    border_color = THEME['primary']
+                    opacity = "1"
+                    
+                    if is_locked:
+                        card_bg = "#080808"
+                        border_color = "#333"
+                        opacity = "0.6"
+                        action_btn = f'<span style="color:#ff4444; font-family:monospace; font-weight:bold; border:1px solid #ff4444; padding:5px 10px; border-radius:4px;">🔒 NIVEL {item["nivel"]}</span>'
+                        status_icon = "🔒"
+                    else:
+                        if item["tipo"] == "Secreto":
+                            card_bg = "linear-gradient(135deg, #1a0505 0%, #000 100%)"
+                            border_color = "#ff1744"
+                            action_text = "DESCLASIFICAR"
+                            btn_style = "background:#ff1744; color:white;"
+                        else:
+                            action_text = "ACCEDER"
+                            btn_style = f"background:{THEME['primary']}; color:black;"
+                        
+                        action_btn = f'<a href="{item["url"]}" target="_blank" style="text-decoration:none; {btn_style} padding:6px 15px; border-radius:4px; font-weight:bold; font-size:0.8em; display:inline-block; transition:0.3s;">{action_text}</a>'
+                        status_icon = ""
+
+                    # Diseño de la Tarjeta
+                    st.markdown(f"""
+                    <div style="
+                        display: flex; align-items: flex-start; 
+                        background: {card_bg}; 
+                        border: 1px solid {border_color}; border-left: 4px solid {border_color};
+                        border-radius: 8px; padding: 15px; margin-bottom: 15px; 
+                        opacity: {opacity}; transition: transform 0.2s;
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                    ">
+                        <div style="font-size: 2em; margin-right: 15px; min-width: 50px; text-align: center;">{icon}</div>
+                        <div style="flex-grow: 1;">
+                            <div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display:flex; justify-content:space-between;">
+                                <span>{item["nombre"]}</span>
+                                <span style="font-size:0.8em;">{status_icon}</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: #aaa; margin-bottom: 8px; line-height: 1.4;">
+                                <span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:3px; font-size:0.7em; margin-right:5px; text-transform:uppercase;">{item['tipo']}</span>
+                                {item["descripcion"]}
+                            </div>
+                        </div>
+                        <div style="margin-left: 15px; display:flex; align-items:center;">
+                            {action_btn}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
     
     with tab_mercado:
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
