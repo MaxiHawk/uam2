@@ -9,9 +9,8 @@ import pytz
 # --- IMPORTS Y CONFIGURACIÓN ---
 from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
-    DB_LOGS_ID, DB_CONFIG_ID # Asegúrate de tener DB_CONFIG_ID en config.py
+    DB_LOGS_ID, DB_CONFIG_ID
 )
-# Asumimos que tienes funciones para aprobar mercado en notion_api, si no, las improvisamos aquí abajo
 from modules.notion_api import aprobar_solicitud_habilidad, verificar_modo_mantenimiento
 
 try:
@@ -23,7 +22,7 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V5 - GOD MODE) ---
+# --- ESTILOS CSS ÉPICOS (V5.1 - FIXED) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -68,24 +67,38 @@ def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Adm
     }
     requests.post(url, headers=headers, json=payload)
 
-# --- TOGGLE MANTENIMIENTO ---
+# --- TOGGLE MANTENIMIENTO (CORREGIDO: Propiedad 'Activo') ---
 def toggle_mantenimiento(nuevo_estado):
     if not DB_CONFIG_ID: return
-    # Asumimos que DB_CONFIG_ID es el ID de la base de datos de config
-    # Buscamos la página de "Mantenimiento" (o la creamos/usamos una fija)
-    # Para simplificar, buscamos una entrada llamada "Mantenimiento"
+    # Buscamos la entrada de configuración (asumiendo que es la única o se llama "Mantenimiento")
+    # Para ser seguros, listamos y buscamos la que tenga la propiedad "Activo"
     url_q = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
-    res = requests.post(url_q, headers=headers, json={"filter": {"property": "Clave", "title": {"equals": "Mantenimiento"}}})
-    if res.status_code == 200 and res.json()["results"]:
-        page_id = res.json()["results"][0]["id"]
-        url_p = f"https://api.notion.com/v1/pages/{page_id}"
-        requests.patch(url_p, headers=headers, json={"properties": {"Valor": {"checkbox": nuevo_estado}}})
-        st.toast(f"Mantenimiento {'ACTIVADO' if nuevo_estado else 'DESACTIVADO'}")
+    res = requests.post(url_q, headers=headers, json={})
+    
+    if res.status_code == 200:
+        results = res.json().get("results", [])
+        target_page_id = None
+        
+        # Estrategia: Buscamos la primera página que tenga la propiedad "Activo"
+        # O buscamos específicamente por título si tienes varios registros
+        for page in results:
+            props = page["properties"]
+            # Opción A: Buscamos por nombre "Mantenimiento" (si así se llama la fila)
+            # Opción B (Más genérica): Usamos la primera fila encontrada
+            target_page_id = page["id"]
+            break # Asumimos que hay un solo registro de config global o usamos el primero
+            
+        if target_page_id:
+            url_p = f"https://api.notion.com/v1/pages/{target_page_id}"
+            # Actualizamos el Checkbox "Activo"
+            requests.patch(url_p, headers=headers, json={"properties": {"Activo": {"checkbox": nuevo_estado}}})
+            estado_txt = "ACTIVADO 🔴" if nuevo_estado else "DESACTIVADO 🟢"
+            st.toast(f"Mantenimiento {estado_txt}")
+        else:
+            st.error("No se encontró registro de Configuración.")
 
 @st.cache_data(ttl=60)
 def get_players():
-    # ... (Tu función get_players existente se mantiene igual, es buena) ...
-    # Solo la copio resumida para contexto
     url = f"https://api.notion.com/v1/databases/{DB_JUGADORES_ID}/query"
     has_more = True; next_cursor = None; players = []
     while has_more:
@@ -97,12 +110,18 @@ def get_players():
                 props = p["properties"]
                 try:
                     name = props["Jugador"]["title"][0]["text"]["content"]
+                    # Extracción segura de datos
+                    uni = props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar")
+                    gen = props.get("Año", {}).get("select", {}).get("name", "Sin Año") # Recuperamos Año/Generación
+                    
                     players.append({
                         "id": p["id"], "Aspirante": name, 
                         "Escuadrón": props.get("Nombre Escuadrón", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "Sin Escuadrón"),
-                        "Universidad": props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar"),
-                        "Generación": props.get("Año", {}).get("select", {}).get("name", "Sin Año"),
-                        "MP": props.get("MP", {}).get("number", 0), "AP": props.get("AP", {}).get("number", 0), "VP": props.get("VP", {}).get("number", 0)
+                        "Universidad": uni,
+                        "Generación": gen,
+                        "MP": props.get("MP", {}).get("number", 0), 
+                        "AP": props.get("AP", {}).get("number", 0), 
+                        "VP": props.get("VP", {}).get("number", 0)
                     })
                 except: pass
             has_more = data["has_more"]; next_cursor = data["next_cursor"]
@@ -149,22 +168,34 @@ if not st.session_state.admin_logged_in:
 df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
+    
+    # --- FILTROS RECUPERADOS ---
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
+    gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
+    sel_gen = st.selectbox("📅 Generación (Año):", gen_opts) # ¡Aquí está de vuelta!
+    
+    # Lógica de Filtrado Global
     df_filtered = df_players.copy()
-    if not df_players.empty and sel_uni != "Todas": 
-        df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
+    if not df_players.empty:
+        if sel_uni != "Todas": df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
+        if sel_gen != "Todas": df_filtered = df_filtered[df_filtered["Generación"] == sel_gen]
     
     st.divider()
     
-    # --- KILL SWITCH ---
-    mant_estado = verificar_modo_mantenimiento()
+    # --- KILL SWITCH (Conectado a 'Activo') ---
+    mant_estado = verificar_modo_mantenimiento() # Lee el estado actual de Notion
     st.markdown("### 🚨 SISTEMA")
-    if st.toggle("MODO MANTENIMIENTO", value=mant_estado):
-        if not mant_estado: toggle_mantenimiento(True); time.sleep(1); st.rerun()
-    else:
-        if mant_estado: toggle_mantenimiento(False); time.sleep(1); st.rerun()
+    
+    # Toggle visual
+    nuevo_estado = st.toggle("MODO MANTENIMIENTO", value=mant_estado)
+    
+    if nuevo_estado != mant_estado:
+        # Solo si cambió el switch, llamamos a la API
+        toggle_mantenimiento(nuevo_estado)
+        time.sleep(1)
+        st.rerun()
         
     st.divider()
     if st.button("🧹 Limpiar Caché"): st.cache_data.clear(); st.rerun()
@@ -196,10 +227,9 @@ with tab_req:
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 
-                # --- NUEVO: OBTENER TIPO REAL ---
+                # OBTENER TIPO REAL
                 tipo_obj = props.get("Tipo", {}).get("select")
                 tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
-                # --------------------------------
                 
                 raw_date = item["created_time"]
                 try:
@@ -215,19 +245,18 @@ with tab_req:
         st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
-            # --- DETECCIÓN INTELIGENTE ---
+            # DETECCIÓN INTELIGENTE
             es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
             es_compra = "Compra" in r['tipo'] or "Mercado" in r['tipo']
             
-            # Colores según tipo
             if es_habilidad: 
-                border_color = "#d500f9" # Morado
+                border_color = "#d500f9" 
                 icon_type = "⚡ PODER"
             elif es_compra:
-                border_color = "#FFD700" # Dorado
+                border_color = "#FFD700" 
                 icon_type = "🛒 COMPRA"
             else:
-                border_color = "#00e5ff" # Azul
+                border_color = "#00e5ff" 
                 icon_type = "💬 MENSAJE"
 
             with st.container():
@@ -257,7 +286,6 @@ with tab_req:
                         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                         c_ok, c_no = st.columns(2)
                         
-                        # --- BOTÓN DE APROBACIÓN DINÁMICO ---
                         with c_ok:
                             if es_habilidad:
                                 if st.button("⚡ APROBAR Y COBRAR", key=f"ok_{r['id']}", type="primary"):
@@ -265,17 +293,11 @@ with tab_req:
                                         exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                         if exito: st.success(msg); time.sleep(1); st.rerun()
                                         else: st.error(msg)
-                            
                             elif es_compra:
-                                # Lógica para compras: Aprobamos para que salga en inventario
-                                # Nota: Aquí podrías agregar lógica para descontar AP si quieres
                                 if st.button("🛒 APROBAR ENTREGA", key=f"ok_{r['id']}", type="primary"):
-                                    # Marcamos como APROBADO (para que salga en inventario)
-                                    # Si quisieras cobrar AP automáticamente, aquí iría la lógica de descuento similar a habilidades
                                     finalize_request(r['id'], "Aprobado", obs_text or "Entrega autorizada.")
                                     st.success("Item entregado al inventario."); time.sleep(1); st.rerun()
-                            
-                            else: # Mensaje normal
+                            else: 
                                 if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
                                     finalize_request(r['id'], "Respondido", obs_text or "Leído")
                                     st.success("Respondido"); time.sleep(1); st.rerun()
@@ -285,52 +307,61 @@ with tab_req:
                                 finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
                                 st.rerun()
 
-# --- TAB 2: OPERACIONES (SE MANTIENE IGUAL DE PODEROSA) ---
+# --- TAB 2: OPERACIONES (FILTRADAS POR AÑO Y UNI) ---
 with tab_ops:
-    # ... (Tu código actual de operaciones está bien, lo mantenemos) ...
-    if df_filtered.empty: st.warning("Sin datos visibles.")
+    if df_filtered.empty: st.warning("Sin datos visibles con los filtros actuales.")
     else:
         st.markdown("### ⚡ GESTIÓN INDIVIDUAL")
+        # El selector ahora respeta el filtro df_filtered
         selected_aspirante_name = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
-        p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
-        c_mp, c_ap, c_vp = st.columns(3)
-        with c_mp:
-            st.metric("MasterPoints", p_data['MP'])
-            mod_mp = st.number_input("MP", value=10, key="n_mp")
-            if st.button("➕ MP", key="a_mp"): 
-                update_stat(p_data["id"], "MP", p_data['MP']+mod_mp)
-                registrar_log_admin(p_data['Aspirante'], "Ajuste MP", f"+{mod_mp} MP", p_data['Universidad'], p_data['Generación'])
-                st.toast("Hecho"); time.sleep(0.5); st.rerun()
-        with c_ap:
-            st.metric("AngioPoints", p_data['AP'])
-            mod_ap = st.number_input("AP", value=5, key="n_ap")
-            if st.button("➕ AP", key="a_ap"): 
-                update_stat(p_data["id"], "AP", p_data['AP']+mod_ap)
-                registrar_log_admin(p_data['Aspirante'], "Ajuste AP", f"+{mod_ap} AP", p_data['Universidad'], p_data['Generación'])
-                st.toast("Hecho"); time.sleep(0.5); st.rerun()
         
-        st.markdown("---")
-        st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
-        target_squad = st.selectbox("Escuadrón:", df_filtered["Escuadrón"].unique(), key="sq_mass")
-        c1, c2, c3 = st.columns(3)
-        m_mp = c1.number_input("MP", value=0); m_ap = c2.number_input("AP", value=0); m_vp = c3.number_input("VP", value=0)
-        reason = st.text_input("Motivo:")
-        if st.button("🚀 EJECUTAR", use_container_width=True):
-            if not reason: st.error("Falta motivo.")
-            else:
-                targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
-                bar = st.progress(0); n = len(targets)
-                for i, (_, s) in enumerate(targets.iterrows()):
-                    ups = {}
-                    if m_mp: ups["MP"] = max(0, s["MP"]+m_mp)
-                    if m_ap: ups["AP"] = max(0, s["AP"]+m_ap)
-                    if m_vp: ups["VP"] = max(0, min(100, s["VP"]+m_vp))
-                    if ups:
-                        update_stat_batch(s["id"], ups)
-                        registrar_log_admin(s["Aspirante"], "Masivo", f"{reason}", s["Universidad"], s["Generación"])
-                    bar.progress((i+1)/n)
-                st.success("Listo"); time.sleep(1); st.rerun()
+        if selected_aspirante_name:
+            p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
+            c_mp, c_ap, c_vp = st.columns(3)
+            with c_mp:
+                st.metric("MasterPoints", p_data['MP'])
+                mod_mp = st.number_input("MP", value=10, key="n_mp")
+                if st.button("➕ MP", key="a_mp"): 
+                    update_stat(p_data["id"], "MP", p_data['MP']+mod_mp)
+                    registrar_log_admin(p_data['Aspirante'], "Ajuste MP", f"+{mod_mp} MP", p_data['Universidad'], p_data['Generación'])
+                    st.toast("Hecho"); time.sleep(0.5); st.rerun()
+            with c_ap:
+                st.metric("AngioPoints", p_data['AP'])
+                mod_ap = st.number_input("AP", value=5, key="n_ap")
+                if st.button("➕ AP", key="a_ap"): 
+                    update_stat(p_data["id"], "AP", p_data['AP']+mod_ap)
+                    registrar_log_admin(p_data['Aspirante'], "Ajuste AP", f"+{mod_ap} AP", p_data['Universidad'], p_data['Generación'])
+                    st.toast("Hecho"); time.sleep(0.5); st.rerun()
+            
+            st.markdown("---")
+            st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
+            # El selector de escuadrón también respeta el filtro global
+            target_squad = st.selectbox("Escuadrón Objetivo:", df_filtered["Escuadrón"].unique(), key="sq_mass")
+            
+            c1, c2, c3 = st.columns(3)
+            m_mp = c1.number_input("MP Masivos", value=0); m_ap = c2.number_input("AP Masivos", value=0); m_vp = c3.number_input("VP Masivos", value=0)
+            reason = st.text_input("Motivo de la operación:")
+            
+            if st.button("🚀 EJECUTAR OPERACIÓN", use_container_width=True):
+                if not reason: st.error("Falta motivo.")
+                else:
+                    # Aplicamos solo a los filtrados que pertenezcan al escuadrón
+                    targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
+                    if targets.empty:
+                        st.warning("No hay aspirantes en este escuadrón con los filtros actuales.")
+                    else:
+                        bar = st.progress(0); n = len(targets)
+                        for i, (_, s) in enumerate(targets.iterrows()):
+                            ups = {}
+                            if m_mp: ups["MP"] = max(0, s["MP"]+m_mp)
+                            if m_ap: ups["AP"] = max(0, s["AP"]+m_ap)
+                            if m_vp: ups["VP"] = max(0, min(100, s["VP"]+m_vp))
+                            if ups:
+                                update_stat_batch(s["id"], ups)
+                                registrar_log_admin(s["Aspirante"], "Masivo", f"{reason}", s["Universidad"], s["Generación"])
+                            bar.progress((i+1)/n)
+                        st.success("Operación Completada"); time.sleep(1); st.rerun()
 
 with tab_list:
-    st.markdown("### 👥 NÓMINA")
+    st.markdown("### 👥 NÓMINA FILTRADA")
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
