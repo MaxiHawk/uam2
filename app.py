@@ -1611,7 +1611,7 @@ else:
                             </div>
                             <div class="sync-label">
                                 <span>SINCRONIZACIÓN AL {progress_pct}%</span>
-                                <span>({count_confirmados}/{total_squad} AGENTES)</span>
+                                <span>({count_confirmados}/{total_squad} ASPIRANTES)</span>
                             </div>
                             """, unsafe_allow_html=True)
                             st.markdown("<br>", unsafe_allow_html=True)
@@ -1619,7 +1619,8 @@ else:
                             c1, c2 = st.columns([2, 1])
                             with c1:
                                 if squad_synced:
-                                    st.success("✅ **SQUAD SINCRONIZADO**")
+                                    # CAMBIO AQUÍ: SQUAD -> ESCUADRÓN
+                                    st.success("✅ **ESCUADRÓN SINCRONIZADO**")
                                     with st.expander("🔓 ACCESO A DATOS CLASIFICADOS", expanded=True):
                                         st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
                                         st.markdown(f"**🌐 ENLACE:** [ACCEDER AL TERMINAL]({m['link']})")
