@@ -378,39 +378,51 @@ def cargar_estado_suministros():
         return False
     except: return False
 
-def procesar_suministro(rarity_name, rewards):
-    try:
-        url_get = f"https://api.notion.com/v1/pages/{st.session_state.player_page_id}"
-        res_get = requests.get(url_get, headers=headers, timeout=API_TIMEOUT)
-        res_get.raise_for_status()
-        
-        props_reales = res_get.json()["properties"]
-        current_ap = get_notion_number(props_reales, "AP")
-        current_mp = get_notion_number(props_reales, "MP")
-        current_vp = get_notion_number(props_reales, "VP")
+# --- EN modules/notion_api.py ---
 
-        new_ap = current_ap + rewards["AP"]
-        new_mp = current_mp + rewards["MP"]
-        new_vp = min(100, current_vp + rewards["VP"])
-        
-        now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
-        payload = {
-            "properties": {
-                "AP": {"number": new_ap},
-                "MP": {"number": new_mp},
-                "VP": {"number": new_vp},
-                "Ultimo Suministro": {"date": {"start": now_iso}}
+def cargar_estado_suministros():
+    """
+    Consulta la configuración de 'DROP_SUMINISTROS' en Notion.
+    Retorna una tupla: (estado_activo: bool, filtro_universidad: str)
+    Ejemplo: (True, "Universidad de Valparaíso") o (False, "Todas")
+    """
+    # Si no hay ID de config, asumimos apagado
+    if not DB_CONFIG_ID: return False, "Todas"
+    
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    
+    # Filtramos para buscar exactamente la fila de configuración de Drops
+    payload = {
+        "filter": {
+            "property": "Clave",
+            "title": {
+                "equals": "DROP_SUMINISTROS"
             }
         }
-        res_patch = requests.patch(url_get, headers=headers, json=payload, timeout=API_TIMEOUT)
-        res_patch.raise_for_status()
+    }
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=5)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results:
+                props = results[0]["properties"]
+                
+                # 1. Leemos el Checkbox "Activo"
+                estado = props.get("Activo", {}).get("checkbox", False)
+                
+                # 2. Leemos el Texto "Filtro" (Si está vacío, asumimos "Todas")
+                filtro_list = props.get("Filtro", {}).get("rich_text", [])
+                filtro_txt = filtro_list[0]["text"]["content"] if filtro_list else "Todas"
+                
+                return estado, filtro_txt
+                
+    except Exception as e:
+        print(f"Error consultando suministros: {e}")
+        pass
         
-        detalle = f"Farmeo {rarity_name}: AP: +{rewards['AP']} | MP: +{rewards['MP']} | VP: +{rewards['VP']}"
-        registrar_evento_sistema(st.session_state.nombre, "Suministro Reclamado", detalle, "Suministro")
-        return True
-    except Exception as e: 
-        print(f"Error Suministro: {e}")
-        return False
+    # Default por seguridad: Apagado y para Todas
+    return False, "Todas"
 
 # --- 🔐 CÓDIGOS (VERSIÓN 2.0: INSIGNIAS + SEGURIDAD) ---
 def procesar_codigo_canje(codigo_input):
