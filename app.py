@@ -1844,10 +1844,10 @@ else:
             
             /* INVENTARIO */
             .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 20px; }
-            .inventory-item { background: #0a1018; border: 1px solid #333; border-radius: 8px; padding: 10px; text-align: center; position: relative; }
+            .inventory-item { background: #0a1018; border: 1px solid #333; border-radius: 8px; padding: 10px; text-align: center; position: relative; overflow: hidden; }
             .inventory-item:hover { border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.2); }
             .inv-icon { font-size: 2em; margin-bottom: 5px; }
-            .inv-name { font-family: 'Orbitron'; font-size: 0.8em; color: #fff; line-height: 1.2; }
+            .inv-name { font-family: 'Orbitron'; font-size: 0.8em; color: #fff; line-height: 1.2; max-height: 40px; overflow: hidden; }
             .inv-date { font-size: 0.6em; color: #666; margin-top: 5px; }
 
             /* --- MODO MÓVIL --- */
@@ -1917,25 +1917,23 @@ else:
                         glow_style = ""
                         badge_type = "🔹 ESTÁNDAR"
 
-                    # Renderizado
+                    # Renderizado (HTML Aplanado)
                     card_html = f"""
-                    <div class="market-card-responsive" style="border-left: 4px solid {border_color}; {glow_style}">
-                        <div class="market-icon-col" style="color: {border_color}; text-shadow: 0 0 10px {border_color};">
-                            {item['icon']}
-                        </div>
-                        <div class="market-info-col">
-                            <div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display: flex; justify-content: space-between;">
-                                <span>{item['nombre']}</span>
-                                <span style="font-size: 0.6em; background: {border_color}20; color: {border_color}; padding: 2px 6px; border-radius: 4px; border: 1px solid {border_color}40;">{badge_type}</span>
-                            </div>
-                            <div style="font-size: 0.9em; color: #aaa; line-height: 1.3;">{item['desc']}</div>
-                        </div>
-                        <div class="market-cost-col">
-                            <div style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.4em; color: {price_color}; text-shadow: 0 0 5px {price_color};">{costo_display}</div>
-                            <div style="font-size: 0.7em; color: #888;">{moneda_label}</div>
-                        </div>
-                    </div>
-                    """
+<div class="market-card-responsive" style="border-left: 4px solid {border_color}; {glow_style}">
+<div class="market-icon-col" style="color: {border_color}; text-shadow: 0 0 10px {border_color};">{item['icon']}</div>
+<div class="market-info-col">
+<div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display: flex; justify-content: space-between;">
+<span>{item['nombre']}</span>
+<span style="font-size: 0.6em; background: {border_color}20; color: {border_color}; padding: 2px 6px; border-radius: 4px; border: 1px solid {border_color}40;">{badge_type}</span>
+</div>
+<div style="font-size: 0.9em; color: #aaa; line-height: 1.3;">{item['desc']}</div>
+</div>
+<div class="market-cost-col">
+<div style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.4em; color: {price_color}; text-shadow: 0 0 5px {price_color};">{costo_display}</div>
+<div style="font-size: 0.7em; color: #888;">{moneda_label}</div>
+</div>
+</div>
+"""
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     c1, c2 = st.columns([2, 1])
@@ -1967,7 +1965,7 @@ else:
                         else:
                             st.button(f"💸 FALTA SALDO", disabled=True, key=f"no_fund_{item['id']}", use_container_width=True)
 
-            # --- SECCIÓN 2: INVENTARIO (AHORA MÁS ROBUSTA) ---
+            # --- SECCIÓN 2: INVENTARIO (FIXED) ---
             st.markdown("---")
             st.markdown("### 🎒 MI INVENTARIO")
             
@@ -1976,14 +1974,10 @@ else:
             
             if historial:
                 for h in historial:
-                    # FIX 1: Aceptamos "Aprobado", "Respondido" o "Entregado"
                     status_ok = h['status'] in ["Aprobado", "Respondido", "Entregado"]
-                    
-                    # FIX 2: Miramos el TIPO (mucho más seguro que el texto)
-                    tipo_safe = h.get('tipo', '').lower() # Viene del paso 1
+                    tipo_safe = h.get('tipo', '').lower()
                     msg_safe = h['mensaje'].lower()
                     
-                    # Detectamos si es una compra por TIPO o por PALABRAS CLAVE en mensaje
                     is_market_item = (
                         "compra" in tipo_safe or 
                         "mercado" in tipo_safe or 
@@ -1993,16 +1987,28 @@ else:
                     )
                     
                     if status_ok and is_market_item:
-                        # Limpiamos el nombre para quitar prefijos administrativos
-                        raw_name = h['mensaje']
-                        clean_name = raw_name.replace("Solicitud de compra:", "").replace("Compra Mercado:", "").replace("Pedido:", "").strip()
+                        # --- LIMPIEZA INTELIGENTE DEL NOMBRE ---
+                        raw_msg = h['mensaje']
+                        clean_name = raw_msg # Fallback inicial
                         
-                        # Buscamos ícono
+                        # 1. Estrategia Exacta: Buscar si el nombre de un item del mercado está en el mensaje
+                        found_match = False
                         icon_display = "📦"
+                        
                         for m_item in market_items:
-                            if m_item['nombre'] in clean_name:
+                            if m_item['nombre'] in raw_msg:
+                                clean_name = m_item['nombre']
                                 icon_display = m_item['icon']
+                                found_match = True
                                 break
+                        
+                        # 2. Estrategia Manual (Si el item ya no existe en la tienda)
+                        if not found_match:
+                            # Quitamos prefijos comunes
+                            clean_name = raw_msg.replace("Solicitud de compra:", "").replace("Compra Mercado:", "").replace("Pedido:", "").strip()
+                            # Quitamos sufijos como "Detalles:..."
+                            if "Detalles:" in clean_name:
+                                clean_name = clean_name.split("Detalles:")[0].strip()
                         
                         items_inventario.append({
                             "nombre": clean_name,
@@ -2013,16 +2019,12 @@ else:
             if not items_inventario:
                 st.info("Tu inventario está vacío. Adquiere ítems para verlos aquí.")
             else:
+                # CONSTRUCCIÓN HTML EN UNA SOLA LÍNEA (EVITA EL ERROR VISUAL)
                 inv_html = '<div class="inventory-grid">'
                 for inv in items_inventario:
-                    inv_html += f"""
-                    <div class="inventory-item">
-                        <div class="inv-icon">{inv['icon']}</div>
-                        <div class="inv-name">{inv['nombre']}</div>
-                        <div class="inv-date">ADQUIRIDO: {inv['fecha']}</div>
-                    </div>
-                    """
+                    inv_html += f'<div class="inventory-item"><div class="inv-icon">{inv["icon"]}</div><div class="inv-name">{inv["nombre"]}</div><div class="inv-date">ADQUIRIDO: {inv["fecha"]}</div></div>'
                 inv_html += '</div>'
+                
                 st.markdown(inv_html, unsafe_allow_html=True)
 
     with tab_trivia:
