@@ -11,7 +11,8 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-from modules.notion_api import aprobar_solicitud_habilidad, verificar_modo_mantenimiento
+# Mantenemos imports necesarios
+from modules.notion_api import aprobar_solicitud_habilidad
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -22,7 +23,7 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V5.1 - FIXED) ---
+# --- ESTILOS CSS ÉPICOS (V5.2 - CALIBRATED) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -43,7 +44,6 @@ st.markdown("""
         .req-type-tag { font-family: monospace; font-size: 0.8em; padding: 2px 6px; border-radius: 3px; background: #333; color: #aaa; margin-right: 10px; }
         .req-body { font-size: 1.0em; color: #b0bec5; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; }
         
-        /* Botones Admin */
         div[data-testid="column"] button { font-family: 'Orbitron'; font-size: 0.8em; text-transform: uppercase; }
     </style>
 """, unsafe_allow_html=True)
@@ -67,35 +67,53 @@ def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Adm
     }
     requests.post(url, headers=headers, json=payload)
 
-# --- TOGGLE MANTENIMIENTO (CORREGIDO: Propiedad 'Activo') ---
-def toggle_mantenimiento(nuevo_estado):
-    if not DB_CONFIG_ID: return
-    # Buscamos la entrada de configuración (asumiendo que es la única o se llama "Mantenimiento")
-    # Para ser seguros, listamos y buscamos la que tenga la propiedad "Activo"
+# --- GESTIÓN CONFIGURACIÓN (CORREGIDO: BUSCA POR CLAVE EXACTA) ---
+def get_config_state_exact(key_name):
+    """Lee el estado actual de una clave de configuración específica (ej: MODO_MANTENIMIENTO)"""
+    if not DB_CONFIG_ID: return False
+    url = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
+    payload = {
+        "filter": {
+            "property": "Clave",
+            "title": {
+                "equals": key_name
+            }
+        }
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+            if results:
+                # Retorna el valor del checkbox 'Activo'
+                return results[0]["properties"]["Activo"]["checkbox"]
+    except: pass
+    return False
+
+def toggle_config_exact(key_name, nuevo_estado):
+    """Actualiza el checkbox 'Activo' de una clave específica"""
+    if not DB_CONFIG_ID: return False
+    # 1. Encontrar la página
     url_q = f"https://api.notion.com/v1/databases/{DB_CONFIG_ID}/query"
-    res = requests.post(url_q, headers=headers, json={})
+    payload = {
+        "filter": {
+            "property": "Clave",
+            "title": {
+                "equals": key_name
+            }
+        }
+    }
+    res = requests.post(url_q, headers=headers, json=payload)
     
     if res.status_code == 200:
         results = res.json().get("results", [])
-        target_page_id = None
-        
-        # Estrategia: Buscamos la primera página que tenga la propiedad "Activo"
-        # O buscamos específicamente por título si tienes varios registros
-        for page in results:
-            props = page["properties"]
-            # Opción A: Buscamos por nombre "Mantenimiento" (si así se llama la fila)
-            # Opción B (Más genérica): Usamos la primera fila encontrada
-            target_page_id = page["id"]
-            break # Asumimos que hay un solo registro de config global o usamos el primero
-            
-        if target_page_id:
-            url_p = f"https://api.notion.com/v1/pages/{target_page_id}"
-            # Actualizamos el Checkbox "Activo"
+        if results:
+            page_id = results[0]["id"]
+            url_p = f"https://api.notion.com/v1/pages/{page_id}"
+            # 2. Actualizar
             requests.patch(url_p, headers=headers, json={"properties": {"Activo": {"checkbox": nuevo_estado}}})
-            estado_txt = "ACTIVADO 🔴" if nuevo_estado else "DESACTIVADO 🟢"
-            st.toast(f"Mantenimiento {estado_txt}")
-        else:
-            st.error("No se encontró registro de Configuración.")
+            return True
+    return False
 
 @st.cache_data(ttl=60)
 def get_players():
@@ -110,9 +128,8 @@ def get_players():
                 props = p["properties"]
                 try:
                     name = props["Jugador"]["title"][0]["text"]["content"]
-                    # Extracción segura de datos
                     uni = props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar")
-                    gen = props.get("Año", {}).get("select", {}).get("name", "Sin Año") # Recuperamos Año/Generación
+                    gen = props.get("Año", {}).get("select", {}).get("name", "Sin Año")
                     
                     players.append({
                         "id": p["id"], "Aspirante": name, 
@@ -169,12 +186,12 @@ df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
     
-    # --- FILTROS RECUPERADOS ---
+    # --- FILTROS (CON GENERACIÓN INCLUIDO) ---
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
-    sel_gen = st.selectbox("📅 Generación (Año):", gen_opts) # ¡Aquí está de vuelta!
+    sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
     # Lógica de Filtrado Global
     df_filtered = df_players.copy()
@@ -184,18 +201,33 @@ with st.sidebar:
     
     st.divider()
     
-    # --- KILL SWITCH (Conectado a 'Activo') ---
-    mant_estado = verificar_modo_mantenimiento() # Lee el estado actual de Notion
+    # --- KILL SWITCH (USANDO KEY 'MODO_MANTENIMIENTO') ---
     st.markdown("### 🚨 SISTEMA")
     
-    # Toggle visual
-    nuevo_estado = st.toggle("MODO MANTENIMIENTO", value=mant_estado)
+    # Leemos el estado REAL usando la clave correcta
+    estado_mantenimiento = get_config_state_exact("MODO_MANTENIMIENTO")
     
-    if nuevo_estado != mant_estado:
-        # Solo si cambió el switch, llamamos a la API
-        toggle_mantenimiento(nuevo_estado)
-        time.sleep(1)
-        st.rerun()
+    # Toggle visual
+    nuevo_estado_mant = st.toggle("MODO MANTENIMIENTO", value=estado_mantenimiento)
+    
+    if nuevo_estado_mant != estado_mantenimiento:
+        if toggle_config_exact("MODO_MANTENIMIENTO", nuevo_estado_mant):
+            txt = "ACTIVADO 🔴" if nuevo_estado_mant else "DESACTIVADO 🟢"
+            st.toast(f"Mantenimiento {txt}")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Error al actualizar configuración. Verifique que la clave 'MODO_MANTENIMIENTO' exista en DB Config.")
+
+    # --- DROP SUMINISTROS (EXTRA: CONTROL DE DROPS) ---
+    estado_drops = get_config_state_exact("DROP_SUMINISTROS")
+    nuevo_estado_drop = st.toggle("DROPS DIARIOS", value=estado_drops)
+    
+    if nuevo_estado_drop != estado_drops:
+        if toggle_config_exact("DROP_SUMINISTROS", nuevo_estado_drop):
+            st.toast(f"Drops {'HABILITADOS' if nuevo_estado_drop else 'DESHABILITADOS'}")
+            time.sleep(1)
+            st.rerun()
         
     st.divider()
     if st.button("🧹 Limpiar Caché"): st.cache_data.clear(); st.rerun()
@@ -227,7 +259,7 @@ with tab_req:
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 
-                # OBTENER TIPO REAL
+                # TIPO REAL
                 tipo_obj = props.get("Tipo", {}).get("select")
                 tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
                 
@@ -245,7 +277,6 @@ with tab_req:
         st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
-            # DETECCIÓN INTELIGENTE
             es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
             es_compra = "Compra" in r['tipo'] or "Mercado" in r['tipo']
             
@@ -307,12 +338,11 @@ with tab_req:
                                 finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
                                 st.rerun()
 
-# --- TAB 2: OPERACIONES (FILTRADAS POR AÑO Y UNI) ---
+# --- TAB 2: OPERACIONES (FILTRADAS) ---
 with tab_ops:
     if df_filtered.empty: st.warning("Sin datos visibles con los filtros actuales.")
     else:
         st.markdown("### ⚡ GESTIÓN INDIVIDUAL")
-        # El selector ahora respeta el filtro df_filtered
         selected_aspirante_name = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
         
         if selected_aspirante_name:
@@ -335,7 +365,6 @@ with tab_ops:
             
             st.markdown("---")
             st.markdown("<div class='mass-ops-box'>### 💣 BOMBARDEO MASIVO</div>", unsafe_allow_html=True)
-            # El selector de escuadrón también respeta el filtro global
             target_squad = st.selectbox("Escuadrón Objetivo:", df_filtered["Escuadrón"].unique(), key="sq_mass")
             
             c1, c2, c3 = st.columns(3)
@@ -345,7 +374,6 @@ with tab_ops:
             if st.button("🚀 EJECUTAR OPERACIÓN", use_container_width=True):
                 if not reason: st.error("Falta motivo.")
                 else:
-                    # Aplicamos solo a los filtrados que pertenezcan al escuadrón
                     targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
                     if targets.empty:
                         st.warning("No hay aspirantes en este escuadrón con los filtros actuales.")
