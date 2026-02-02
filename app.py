@@ -1812,8 +1812,56 @@ else:
                     st.markdown(card_html, unsafe_allow_html=True)
     
     with tab_mercado:
+        # --- CSS TÁCTICO MERCADO (RESPONSIVE + INVENTORY) ---
+        st.markdown("""
+        <style>
+            /* ESTILO BASE (ESCRITORIO) */
+            .market-card-responsive {
+                display: flex; align-items: stretch; min-height: 100px;
+                background: linear-gradient(90deg, #0f1520 0%, #050810 100%);
+                border: 1px solid #333; border-radius: 12px;
+                margin-bottom: 15px; overflow: hidden; transition: 0.3s;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            }
+            .market-icon-col { 
+                width: 100px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; 
+                background: rgba(0,0,0,0.2); font-size: 2.5em; border-right: 1px solid #333;
+            }
+            .market-info-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
+            .market-cost-col { 
+                width: 120px; flex-shrink: 0; display: flex; flex-direction: column; 
+                align-items: center; justify-content: center; border-left: 1px solid #333;
+                background: rgba(0,0,0,0.2);
+            }
+            
+            /* INVENTARIO */
+            .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 20px; }
+            .inventory-item { background: #0a1018; border: 1px solid #333; border-radius: 8px; padding: 10px; text-align: center; position: relative; }
+            .inventory-item:hover { border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.2); }
+            .inv-icon { font-size: 2em; margin-bottom: 5px; }
+            .inv-name { font-family: 'Orbitron'; font-size: 0.8em; color: #fff; line-height: 1.2; }
+            .inv-date { font-size: 0.6em; color: #666; margin-top: 5px; }
+
+            /* --- MODO MÓVIL --- */
+            @media (max-width: 768px) {
+                .market-card-responsive { flex-direction: column; height: auto; }
+                .market-icon-col { 
+                    width: 100%; height: 80px; border-right: none; border-bottom: 1px solid #333; 
+                    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 100%);
+                }
+                .market-info-col { width: 100%; padding: 15px; }
+                .market-cost-col { 
+                    width: 100%; border-left: none; border-top: 1px solid #333; 
+                    flex-direction: row; justify-content: space-between; padding: 10px 20px;
+                    min-height: 50px; background: rgba(0,0,0,0.4);
+                }
+                .market-cost-col::before { content: "VALOR:"; color: #aaa; font-size: 0.8em; letter-spacing: 2px; }
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
         st.markdown("### 🛒 EL BAZAR CLANDESTINO")
-        st.caption("Intercambia tus AngioPoints por ventajas tácticas. Tus solicitudes serán enviadas a Valerius para aprobación.")
+        st.caption("Intercambia recursos por ventajas tácticas. Aprobación del Comando requerida.")
         
         # Panel de Energía (AP)
         core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ENERGÍA<br>DISPONIBLE</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
@@ -1825,81 +1873,141 @@ else:
             if not DB_MERCADO_ID: st.warning("⚠️ Base de datos de Mercado no configurada.")
             else: st.info("El mercado está vacío.")
         else:
-            # Bucle Principal de Mercado
+            # --- SECCIÓN 1: VITRINA ---
             for item in market_items:
-                
-                # 1. Datos del Item (Detectamos si es dinero real)
                 is_real_money = item.get("es_dinero_real", False)
-                
-                # 2. Lógica de Visibilidad (Alumni vs Activos)
                 is_exclusive = "[EX]" in item['nombre'] or "[ALUMNI]" in item['nombre']
-                puede_ver_boton = True
-                texto_boton_cerrado = ""
-
+                
+                # Filtrado de visualización
+                mostrar_item = True
+                texto_bloqueo = ""
+                
                 if is_alumni:
-                    # Alumni ve exclusivos O dinero real
                     if not is_exclusive and not is_real_money:
-                        puede_ver_boton = False
-                        texto_boton_cerrado = "⛔ CICLO CERRADO"
+                        mostrar_item = True # Mostramos pero bloqueamos botón
+                        texto_bloqueo = "⛔ CICLO CERRADO"
                 else:
-                    # Activos no ven exclusivos (pero sí pueden ver dinero real si quieres)
-                    if is_exclusive:
-                        puede_ver_boton = False
-                        texto_boton_cerrado = "🔒 SOLO VETERANOS"
-
-                # 3. Renderizado de Tarjeta
-                with st.container():
-                    # Lógica de Precio y Color
+                    if is_exclusive: mostrar_item = False # Activos no ven items exclusivos de veteranos
+                
+                if mostrar_item:
+                    # Estilos según tipo de moneda
                     if is_real_money:
-                        # Si es dinero real, siempre "puede comprar" (no depende de AP)
-                        puede_comprar = True
-                        price_color = "#00ff00" # Verde para Dinero
-                        costo_display = f"${item['costo']:,}" # Formato dinero (ej: $15,000)
-                        moneda_label = "CLP" # O la moneda que prefieras
+                        border_color = "#FFD700" # Dorado
+                        price_color = "#FFD700"
+                        costo_display = f"${item['costo']:,}"
+                        moneda_label = "CLP"
+                        puede_comprar = True # Siempre puedes intentar comprar con dinero real
+                        glow_style = f"box-shadow: 0 0 10px {border_color}20;"
+                        badge_type = "👑 PREMIUM"
                     else:
-                        # Lógica AP normal
-                        puede_comprar = ap >= item['costo']
-                        price_color = "#00e5ff" if puede_comprar else "#ff4444"
+                        border_color = "#00e5ff" # Cian
+                        price_color = "#00e5ff"
                         costo_display = str(item['costo'])
                         moneda_label = "AP"
+                        puede_comprar = ap >= item['costo']
+                        if not puede_comprar: price_color = "#ff4444"
+                        glow_style = ""
+                        badge_type = "🔹 ESTÁNDAR"
+
+                    # Renderizado Tarjeta Responsiva
+                    card_html = f"""
+                    <div class="market-card-responsive" style="border-left: 4px solid {border_color}; {glow_style}">
+                        <div class="market-icon-col" style="color: {border_color}; text-shadow: 0 0 10px {border_color};">
+                            {item['icon']}
+                        </div>
+                        <div class="market-info-col">
+                            <div style="font-family: 'Orbitron'; font-size: 1.1em; color: #fff; margin-bottom: 5px; display: flex; justify-content: space-between;">
+                                <span>{item['nombre']}</span>
+                                <span style="font-size: 0.6em; background: {border_color}20; color: {border_color}; padding: 2px 6px; border-radius: 4px; border: 1px solid {border_color}40;">{badge_type}</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: #aaa; line-height: 1.3;">{item['desc']}</div>
+                        </div>
+                        <div class="market-cost-col">
+                            <div style="font-family: 'Orbitron'; font-weight: bold; font-size: 1.4em; color: {price_color}; text-shadow: 0 0 5px {price_color};">{costo_display}</div>
+                            <div style="font-size: 0.7em; color: #888;">{moneda_label}</div>
+                        </div>
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # HTML de la Tarjeta
-                    market_html = f"""<div class="market-card"><div class="market-icon">{item['icon']}</div><div class="market-info"><div class="market-title">{item['nombre']}</div><div class="market-desc">{item['desc']}</div></div><div class="market-cost" style="color: {price_color}; text-shadow: 0 0 10px {price_color};">{costo_display}<span>{moneda_label}</span></div></div>"""
-                    st.markdown(market_html, unsafe_allow_html=True)
-                    
-                    c1, c2 = st.columns([3, 1])
+                    # Botonera
+                    c1, c2 = st.columns([2, 1])
                     with c2:
-                        if puede_ver_boton:
-                            if puede_comprar:
-                                # Usamos un Popover para la confirmación de seguridad
-                                with st.popover(f"ADQUIRIR", use_container_width=True):
-                                    st.markdown(f"""
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 3em;">{item['icon']}</div>
-                                        <h3 style="margin: 0; color: #00e5ff;">{item['nombre']}</h3>
-                                        <p style="color: #aaa; font-size: 0.9em;">¿Iniciar proceso de compra?</p>
-                                        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin: 10px 0;">
-                                            Valor: <strong style="color: {price_color};">{costo_display} {moneda_label}</strong>
-                                        </div>
+                        if texto_bloqueo:
+                            st.button(texto_bloqueo, disabled=True, key=f"block_{item['id']}", use_container_width=True)
+                        elif puede_comprar:
+                            with st.popover(f"ADQUIRIR", use_container_width=True):
+                                st.markdown(f"""
+                                <div style="text-align: center;">
+                                    <div style="font-size: 3em; margin-bottom: 10px;">{item['icon']}</div>
+                                    <h3 style="margin: 0; color: {border_color};">{item['nombre']}</h3>
+                                    <p style="color: #ccc; font-size: 0.9em; margin: 10px 0;">¿Iniciar protocolo de adquisición?</p>
+                                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; border: 1px solid #333;">
+                                        Inversión: <strong style="color: {price_color};">{costo_display} {moneda_label}</strong>
                                     </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    if st.button("🚀 CONFIRMAR SOLICITUD", key=f"confirm_{item['id']}", type="primary", use_container_width=True):
-                                        with st.spinner("Contactando proveedor..."):
-                                            # Pasamos el flag de dinero real a la función
-                                            exito, msg = procesar_compra_mercado(item['nombre'], item['costo'], is_real_money)
-                                            if exito:
-                                                st.success("✅ ¡Solicitud Enviada!")
-                                                time.sleep(2)
-                                                actualizar_datos_sesion()
-                                            else:
-                                                st.error(msg)
-                            else:
-                                # Botón deshabilitado si no hay dinero AP
-                                st.button(f"💸 FALTA AP", disabled=True, key=f"no_money_{item['id']}", use_container_width=True)
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                if st.button("🚀 CONFIRMAR COMPRA", key=f"buy_{item['id']}", type="primary", use_container_width=True):
+                                    with st.spinner("Procesando transacción..."):
+                                        exito, msg = procesar_compra_mercado(item['nombre'], item['costo'], is_real_money)
+                                        if exito:
+                                            st.toast("SOLICITUD ENVIADA", icon="✅")
+                                            time.sleep(1.5)
+                                            actualizar_datos_sesion()
+                                        else:
+                                            st.error(msg)
                         else:
-                            # Botón de bloqueo (Alumni/Veteranos)
-                            st.button(texto_boton_cerrado, disabled=True, key=f"closed_{item['id']}", use_container_width=True)
+                            st.button(f"💸 FALTA SALDO", disabled=True, key=f"no_fund_{item['id']}", use_container_width=True)
+
+            # --- SECCIÓN 2: INVENTARIO (NUEVO) ---
+            st.markdown("---")
+            st.markdown("### 🎒 MI INVENTARIO")
+            
+            # Lógica para obtener inventario (reutilizando historial de solicitudes)
+            historial = obtener_mis_solicitudes(st.session_state.nombre)
+            
+            # Filtramos: Que sea de Mercado y que esté Aprobado
+            # Nota: Asumimos que el "Mensaje" de la solicitud contiene el nombre del item
+            # O que podemos inferirlo. Generalmente el mensaje es "Compra Mercado: NOMBRE_ITEM"
+            items_inventario = []
+            
+            if historial:
+                for h in historial:
+                    if h['status'] == "Aprobado" and ("Mercado" in h['mensaje'] or "Compra" in h['mensaje']):
+                        # Intentamos limpiar el nombre
+                        # Ej: "Solicitud de compra: Beca Congreso" -> "Beca Congreso"
+                        raw_name = h['mensaje']
+                        clean_name = raw_name.replace("Solicitud de compra:", "").replace("Compra Mercado:", "").strip()
+                        
+                        # Buscamos un icono aproximado en el mercado actual
+                        icon_display = "📦"
+                        for m_item in market_items:
+                            if m_item['nombre'] in clean_name:
+                                icon_display = m_item['icon']
+                                break
+                        
+                        items_inventario.append({
+                            "nombre": clean_name,
+                            "fecha": parsear_fecha_chile(h['fecha']),
+                            "icon": icon_display
+                        })
+
+            if not items_inventario:
+                st.info("Tu inventario está vacío. Adquiere ítems para verlos aquí.")
+            else:
+                # Render Grid de Inventario
+                inv_html = '<div class="inventory-grid">'
+                for inv in items_inventario:
+                    inv_html += f"""
+                    <div class="inventory-item">
+                        <div class="inv-icon">{inv['icon']}</div>
+                        <div class="inv-name">{inv['nombre']}</div>
+                        <div class="inv-date">ADQUIRIDO: {inv['fecha']}</div>
+                    </div>
+                    """
+                inv_html += '</div>'
+                st.markdown(inv_html, unsafe_allow_html=True)
 
     with tab_trivia:
         st.markdown("### 🔮 EL ORÁCULO DE VALERIUS")
