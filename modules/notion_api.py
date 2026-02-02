@@ -525,42 +525,57 @@ def obtener_miembros_escuadron(nombre_escuadron, uni, ano):
 
 # --- EN modules/notion_api.py ---
 
-@st.cache_data(ttl=60)
+# --- AGREGAR AL FINAL DE modules/notion_api.py ---
+
+@st.cache_data(ttl=10)
 def cargar_todas_misiones_admin():
     """
     Trae TODAS las misiones (Activas y Cerradas) para el panel de Admin.
-    Retorna una lista de diccionarios con nombre e ID.
     """
-    if not DB_MISIONES_ID: return []
+    # Verifica que el ID esté configurado
+    if 'DB_MISIONES_ID' not in globals() or not DB_MISIONES_ID:
+        print("⚠️ Error: DB_MISIONES_ID no configurado.")
+        return []
     
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
     
-    # Sin filtro de 'Activa'. Solo ordenamos por fecha de creación descendente.
+    # Traemos todo, ordenado por fecha de creación (lo más nuevo primero)
     payload = {
         "sorts": [{"timestamp": "created_time", "direction": "descending"}]
     }
     
     try:
-        # Usamos notion_fetch_all para traer todo si hay muchas paginas
+        # Usamos fetch_all para asegurar que traemos todo
         raw_results = notion_fetch_all(url, payload)
         misiones = []
         
         for r in raw_results:
             p = r["properties"]
-            # Intentamos obtener el nombre
-            nombre = "Sin Nombre"
-            if "Nombre" in p and p["Nombre"]["title"]:
-                nombre = p["Nombre"]["title"][0]["text"]["content"]
             
-            # Opcional: Podríamos traer recompensas pre-definidas aquí si las tienes en Notion
-            # reward_gold_mp = get_notion_number(p, "Premio Oro MP") ... etc
+            # --- EXTRACCIÓN ROBUSTA DEL TÍTULO ---
+            nombre = "Actividad Sin Nombre"
+            try:
+                if "Nombre" in p:
+                    # Intento 1: Como Título estándar
+                    if p["Nombre"]["type"] == "title" and p["Nombre"]["title"]:
+                        nombre = p["Nombre"]["title"][0]["text"]["content"]
+            except: 
+                nombre = "Error de Formato"
             
+            # Extraemos el tipo para mostrarlo en el selector (Ej: [Misión] El Eco...)
+            tipo = "General"
+            try:
+                if "Tipo" in p and p["Tipo"]["select"]:
+                    tipo = p["Tipo"]["select"]["name"]
+            except: pass
+
             misiones.append({
                 "id": r["id"],
-                "nombre": nombre
+                "nombre": f"[{tipo}] {nombre}" 
             })
             
         return misiones
+        
     except Exception as e:
         print(f"Error cargando misiones admin: {e}")
         return []
