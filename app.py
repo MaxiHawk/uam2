@@ -44,20 +44,53 @@ THEME = THEME_DEFAULT # Valor inicial
 
 st.set_page_config(page_title="Praxis Primoris", page_icon="💠", layout="centered")
 
-# --- 🛡️ MODO MANTENIMIENTO (KILL SWITCH) ---
-if verificar_modo_mantenimiento():
-    # (Mantén tu código de mantenimiento aquí, no cambies nada dentro del if)
+# --- 🛡️ MODO MANTENIMIENTO (KILL SWITCH CON BACKDOOR) ---
+# Inicializamos el estado de bypass si no existe
+if "maintenance_bypass" not in st.session_state:
+    st.session_state.maintenance_bypass = False
+
+# Verificamos si hay mantenimiento Y si NO tenemos permiso especial
+if verificar_modo_mantenimiento() and not st.session_state.maintenance_bypass:
+    
+    # Recuperamos la clave de admin desde secrets para validar la puerta trasera
+    try:
+        ADMIN_PASS = st.secrets["ADMIN_PASSWORD"]
+    except:
+        ADMIN_PASS = "admin123" # Fallback por seguridad
+
     st.markdown("""
         <style>
             .stApp { background-color: #1a0505; color: #ff4444; }
-            .maintenance-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; text-align: center; font-family: 'Courier New', monospace; border: 2px solid #ff4444; padding: 40px; border-radius: 10px; background: rgba(255, 0, 0, 0.05); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2); }
+            .maintenance-container { 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                height: 70vh; text-align: center; font-family: 'Courier New', monospace; 
+                border: 2px solid #ff4444; padding: 40px; border-radius: 10px; 
+                background: rgba(255, 0, 0, 0.05); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2); 
+            }
             .blink { animation: blinker 1.5s linear infinite; font-size: 3em; margin-bottom: 20px; }
             @keyframes blinker { 50% { opacity: 0; } }
         </style>
-        <div class="maintenance-container"><div class="blink">⛔</div><h1 style="color: #ff4444;">SISTEMAS OFFLINE</h1><p>Mantenimiento en curso.</p></div>
+        <div class="maintenance-container">
+            <div class="blink">⛔</div>
+            <h1 style="color: #ff4444;">SISTEMAS OFFLINE</h1>
+            <p>Protocolo de Mantenimiento Activo.<br>La red Praxis se reiniciará en breve.</p>
+        </div>
     """, unsafe_allow_html=True)
-    st.stop()
 
+    # --- 🕵️‍♂️ PUERTA TRASERA (BACKDOOR) ---
+    with st.expander("🔐 ACCESO DE EMERGENCIA (ADMIN)"):
+        pass_input = st.text_input("Credencial de Mando:", type="password", key="maint_pass")
+        if st.button("FORZAR ENTRADA"):
+            if pass_input == ADMIN_PASS:
+                st.session_state.maintenance_bypass = True
+                st.toast("ACCESO DE EMERGENCIA CONCEDIDO", icon="🔓")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("DENEGADO")
+    
+    # Detenemos la ejecución para el resto de los mortales
+    st.stop()
 # --- MAPA DE INSIGNIAS (ACTUALIZADO V2) ---
 BADGE_MAP = {}
 for i in range(1, 10): BADGE_MAP[f"Misión {i}"] = f"assets/insignias/mision_{i}.png"
