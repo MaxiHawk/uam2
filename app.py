@@ -1421,7 +1421,7 @@ else:
         import re
         import os
 
-        # --- CSS TÁCTICO (V7.2: LOGS FIX) ---
+        # --- CSS TÁCTICO (V7.3: FINAL STABLE + CACHE FIX) ---
         primary_sync_color = "#e040fb" 
         
         st.markdown(f"""
@@ -1483,6 +1483,7 @@ else:
             st.caption("Calendario de despliegue de Operaciones.")
             misiones = cargar_misiones_activas()
             
+            # Carga inteligente de miembros
             mi_escuadron_lista = []
             if any(m['tipo'] == "Misión" for m in misiones):
                 mi_escuadron_lista = obtener_miembros_escuadron(
@@ -1626,12 +1627,9 @@ else:
                                     else:
                                         if st.button("🫡 CONFIRMAR ORDEN", key=f"sync_{m['id']}", type="primary", use_container_width=True):
                                             with st.spinner("Sincronizando..."):
-                                                # Pasamos el nombre real m['nombre']
                                                 if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("ENLACE ESTABLECIDO", icon="🧬")
-                                                    
-                                                    cargar_misiones_activas.clear()
-                                                    
+                                                    cargar_misiones_activas.clear() # 🔥 CACHÉ CLEAR
                                                     time.sleep(1)
                                                     st.rerun()
                                                 else: st.error("Error.")
@@ -1639,9 +1637,23 @@ else:
                                     st.button("✅ LISTO", disabled=True, key=f"rdy_sync_{m['id']}", use_container_width=True)
 
                         else:
-                            # === ZONA INDIVIDUAL (HAZAÑA/EXPEDICIÓN) ===
-                            # ... (Código visual anterior) ...
-                            
+                            # LÓGICA INDIVIDUAL
+                            c1, c2 = st.columns([2, 1])
+                            with c1:
+                                if esta_inscrito:
+                                    mision_lanzada = now_chile >= dt_lanzamiento
+                                    if mision_lanzada:
+                                        st.success("🟢 **OPERACIÓN EN CURSO**")
+                                        with st.expander("📂 ACCEDER A DATOS DE ACTIVIDAD", expanded=True):
+                                            st.markdown(f"**🔑 CLAVE:** `{m['password']}`")
+                                            st.markdown(f"**🌐 ENLACE:** [INICIAR]({m['link']})")
+                                    else:
+                                        st.info(f"✅ **INSCRITO** | Esperando fecha de lanzamiento...")
+                                elif estado_fase == "PRE":
+                                    st.warning(f"⏳ Inscripciones: {dt_apertura.strftime('%d/%m %H:%M')}")
+                                elif estado_fase == "CLOSED":
+                                    st.error("Inscripciones Cerradas")
+
                             with c2:
                                 if estado_fase == "OPEN" and not esta_inscrito:
                                     with st.popover("📝 INSCRIBIRME", use_container_width=True):
@@ -1651,13 +1663,9 @@ else:
                                         st.caption("Al confirmar, aceptas las condiciones y penalizaciones por abandono.")
                                         if st.button("🚀 ACEPTO EL RIESGO", key=f"join_{m['id']}", type="primary", use_container_width=True):
                                             with st.spinner("Firmando contrato..."):
-                                                # Pasamos el nombre real m['nombre']
                                                 if inscribir_jugador_mision(m['id'], m['inscritos'], st.session_state.nombre, m['nombre']):
                                                     st.toast("CONTRATO VINCULANTE ACEPTADO", icon="✅")
-                                                    
-                                                    # 🔥 NUEVO: AQUÍ TAMBIÉN BORRAMOS CACHÉ
-                                                    cargar_misiones_activas.clear()
-                                                    
+                                                    cargar_misiones_activas.clear() # 🔥 CACHÉ CLEAR
                                                     time.sleep(1.5)
                                                     st.rerun()
                                                 else: st.error("Error.")
