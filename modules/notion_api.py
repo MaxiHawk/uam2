@@ -528,54 +528,57 @@ def obtener_miembros_escuadron(nombre_escuadron, uni, ano):
 # --- AGREGAR AL FINAL DE modules/notion_api.py ---
 
 @st.cache_data(ttl=10)
-def cargar_todas_misiones_admin():
+def cargar_todas_misiones_admin(filtro_universidad="Todas"):
     """
-    Trae TODAS las misiones (Activas y Cerradas) para el panel de Admin.
+    Trae misiones filtradas por Universidad y carga recompensas pre-definidas.
     """
-    # Verifica que el ID esté configurado
-    if 'DB_MISIONES_ID' not in globals() or not DB_MISIONES_ID:
-        print("⚠️ Error: DB_MISIONES_ID no configurado.")
-        return []
+    if 'DB_MISIONES_ID' not in globals() or not DB_MISIONES_ID: return []
     
     url = f"https://api.notion.com/v1/databases/{DB_MISIONES_ID}/query"
-    
-    # Traemos todo, ordenado por fecha de creación (lo más nuevo primero)
-    payload = {
-        "sorts": [{"timestamp": "created_time", "direction": "descending"}]
-    }
+    payload = {"sorts": [{"timestamp": "created_time", "direction": "descending"}]}
     
     try:
-        # Usamos fetch_all para asegurar que traemos todo
         raw_results = notion_fetch_all(url, payload)
         misiones = []
         
         for r in raw_results:
             p = r["properties"]
             
-            # --- EXTRACCIÓN ROBUSTA DEL TÍTULO ---
-            nombre = "Actividad Sin Nombre"
-            try:
-                if "Nombre" in p:
-                    # Intento 1: Como Título estándar
-                    if p["Nombre"]["type"] == "title" and p["Nombre"]["title"]:
-                        nombre = p["Nombre"]["title"][0]["text"]["content"]
-            except: 
-                nombre = "Error de Formato"
+            # 1. FILTRADO POR UNIVERSIDAD
+            # Obtenemos las unis asignadas a la misión
+            unis_mision = get_notion_multi_select(p, "Universidad") # Retorna lista ej: ['Universidad de Prueba']
             
-            # Extraemos el tipo para mostrarlo en el selector (Ej: [Misión] El Eco...)
-            tipo = "General"
-            try:
-                if "Tipo" in p and p["Tipo"]["select"]:
-                    tipo = p["Tipo"]["select"]["name"]
-            except: pass
+            # Lógica: Si el admin ve "Todas", mostramos todo.
+            # Si el admin ve "Valpo", mostramos si la misión es para "Valpo" O para "Todas".
+            if filtro_universidad != "Todas":
+                if "Todas" not in unis_mision and filtro_universidad not in unis_mision:
+                    continue # Saltamos esta misión si no corresponde a la uni
+            
+            # 2. NOMBRE LIMPIO
+            nombre = get_notion_text(p, "Nombre", "Sin Nombre")
+            tipo = get_notion_select(p, "Tipo", "General")
+            
+            # Evitar redundancia "[Misión] Misión 1..."
+            # Si el nombre ya contiene el tipo, no agregamos el prefijo.
+            display_name = nombre
+            if tipo.lower() not in nombre.lower():
+                display_name = f"[{tipo}] {nombre}"
+
+            # 3. EXTRACCIÓN DE RECOMPENSAS (PRE-CARGA)
+            rewards_data = {
+                "gold":   {"mp": get_notion_number(p, "Oro MP") or 0,   "ap": get_notion_number(p, "Oro AP") or 0},
+                "silver": {"mp": get_notion_number(p, "Plata MP") or 0, "ap": get_notion_number(p, "Plata AP") or 0},
+                "bronze": {"mp": get_notion_number(p, "Bronce MP") or 0,"ap": get_notion_number(p, "Bronce AP") or 0}
+            }
 
             misiones.append({
                 "id": r["id"],
-                "nombre": f"[{tipo}] {nombre}" 
+                "nombre": display_name,
+                "raw_name": nombre, # Nombre limpio para los logs
+                "rewards": rewards_data
             })
             
         return misiones
-        
     except Exception as e:
         print(f"Error cargando misiones admin: {e}")
         return []
