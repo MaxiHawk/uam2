@@ -317,20 +317,89 @@ with tab_req:
 with tab_ops:
     if df_filtered.empty: st.warning("Sin datos visibles con los filtros actuales.")
     else:
-        # --- GESTIÓN INDIVIDUAL ---
-        st.markdown("### ⚡ GESTIÓN INDIVIDUAL")
-        selected_aspirante_name = st.selectbox("Aspirante:", df_filtered["Aspirante"].tolist())
-        if selected_aspirante_name:
-            p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.metric("MP", p_data['MP'])
-                if st.button("➕ MP", key="mp"): update_stat(p_data["id"], "MP", p_data['MP']+10); st.toast("OK"); time.sleep(0.5); st.rerun()
-            with c2:
-                st.metric("AP", p_data['AP'])
-                if st.button("➕ AP", key="ap"): update_stat(p_data["id"], "AP", p_data['AP']+5); st.toast("OK"); time.sleep(0.5); st.rerun()
+        # --- GESTIÓN INDIVIDUAL (EXPEDIENTE TÁCTICO) ---
+        st.markdown("""
+        <div style="background: rgba(0, 229, 255, 0.05); border-left: 5px solid #00e5ff; padding: 15px; border-radius: 0 10px 10px 0; margin-bottom: 20px;">
+            <h3 style="margin:0; color:#fff; font-family:'Orbitron';">⚡ EXPEDIENTE TÁCTICO INDIVIDUAL</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
+        selected_aspirante_name = st.selectbox("Seleccionar Agente:", df_filtered["Aspirante"].tolist())
         
-        st.markdown("---")
+        if selected_aspirante_name:
+            # Recuperamos datos frescos
+            p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
+            
+            # Tarjeta de Info Rápida
+            st.info(f"📂 **DATOS:** Escuadrón: **{p_data['Escuadrón']}** | Universidad: **{p_data['Universidad']}** | Gen: **{p_data['Generación']}**")
+            
+            # Panel de Control de 3 Columnas
+            c1, c2, c3 = st.columns(3)
+            
+            # --- MP (MASTER POINTS) ---
+            with c1:
+                st.markdown(f"<h2 style='text-align:center; color:#d500f9;'>{p_data['MP']}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; font-weight:bold;'>MASTER POINTS (XP)</p>", unsafe_allow_html=True)
+                delta_mp = st.number_input("Modificar MP", value=0, step=10, key="d_mp", help="Positivo para sumar, Negativo para restar")
+
+            # --- AP (ANGIO POINTS) ---
+            with c2:
+                st.markdown(f"<h2 style='text-align:center; color:#00e5ff;'>{p_data['AP']}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; font-weight:bold;'>ANGIO POINTS (ORO)</p>", unsafe_allow_html=True)
+                delta_ap = st.number_input("Modificar AP", value=0, step=10, key="d_ap", help="Positivo para bonos, Negativo para compras/multas")
+
+            # --- VP (VITA POINTS) ---
+            with c3:
+                color_vp = "#00e676" if p_data['VP'] > 50 else "#ff1744"
+                st.markdown(f"<h2 style='text-align:center; color:{color_vp};'>{p_data['VP']}%</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; font-weight:bold;'>VITA POINTS (HP)</p>", unsafe_allow_html=True)
+                delta_vp = st.number_input("Modificar VP", value=0, step=10, key="d_vp", help="Positivo para curar, Negativo para daño")
+
+            # Motivo y Ejecución
+            reason_indiv = st.text_input("📝 Motivo del ajuste (Obligatorio para registro):", placeholder="Ej: Participación brillante en debate...")
+            
+            if st.button("💾 ACTUALIZAR EXPEDIENTE", type="primary", use_container_width=True):
+                if delta_mp == 0 and delta_ap == 0 and delta_vp == 0:
+                    st.warning("⚠️ No has realizado ningún cambio numérico.")
+                elif not reason_indiv:
+                    st.error("⚠️ Debes escribir un motivo para el registro histórico.")
+                else:
+                    # Preparamos el paquete de actualización
+                    updates = {}
+                    log_details = []
+                    
+                    if delta_mp != 0:
+                        new_mp = max(0, p_data['MP'] + delta_mp)
+                        updates["MP"] = new_mp
+                        log_details.append(f"{'+' if delta_mp > 0 else ''}{delta_mp} MP")
+                    
+                    if delta_ap != 0:
+                        new_ap = max(0, p_data['AP'] + delta_ap)
+                        updates["AP"] = new_ap
+                        log_details.append(f"{'+' if delta_ap > 0 else ''}{delta_ap} AP")
+                        
+                    if delta_vp != 0:
+                        new_vp = max(0, min(100, p_data['VP'] + delta_vp)) # Tope 0-100 para vida
+                        updates["VP"] = new_vp
+                        log_details.append(f"{'+' if delta_vp > 0 else ''}{delta_vp} VP")
+                    
+                    # Ejecutamos actualización
+                    update_stat_batch(p_data["id"], updates)
+                    
+                    # Guardamos Log
+                    full_log = f"{reason_indiv} | Cambios: {', '.join(log_details)}"
+                    registrar_log_admin(
+                        p_data['Aspirante'], 
+                        "Ajuste Manual", 
+                        full_log, 
+                        p_data['Universidad'], 
+                        p_data['Generación'],
+                        "Sistema"
+                    )
+                    
+                    st.success("✅ Expediente actualizado correctamente.")
+                    time.sleep(1.5)
+                    st.rerun()
         
         # --- WAR ROOM: OPERACIONES MASIVAS V5.0 (PRECARGA FIX + LOG ESPAÑOL) ---
         st.markdown("""
