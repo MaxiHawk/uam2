@@ -348,7 +348,7 @@ with tab_ops:
         
         st.markdown("---")
         
-        # --- WAR ROOM: OPERACIONES MASIVAS V3.0 ---
+        # --- WAR ROOM: OPERACIONES MASIVAS V4.0 (AUTO-LOAD) ---
         st.markdown("""
         <div class="war-room-header">
             <h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3>
@@ -369,52 +369,76 @@ with tab_ops:
         if "AIRDROP" in mode_op:
             st.caption("📦 Despliegue de suministros tácticos por cumplimiento de misión.")
             
-            # --- SELECTOR DE MISIÓN REAL (CAMBIO TÁCTICO) ---
-            # Usamos la nueva función que trae TODO el historial
-            lista_misiones_data = cargar_todas_misiones_admin()
+            # --- SELECTOR DE MISIÓN REAL (FILTRADO) ---
+            # Pasamos la universidad seleccionada en el sidebar para filtrar
+            misiones_data = cargar_todas_misiones_admin(sel_uni)
             
-            if not lista_misiones_data:
-                st.warning("⚠️ No se encontraron misiones en la Base de Datos.")
+            if not misiones_data:
+                st.warning(f"⚠️ No hay misiones registradas para {sel_uni}.")
+                mission_map = {}
                 lista_nombres = ["Misión Genérica"]
             else:
-                lista_nombres = [m['nombre'] for m in lista_misiones_data]
+                # Creamos un mapa para buscar datos rápidos por nombre
+                mission_map = {m['nombre']: m for m in misiones_data}
+                lista_nombres = list(mission_map.keys())
             
             c_mis, c_custom = st.columns([2, 1])
             with c_mis:
-                mision_seleccionada = st.selectbox("📜 Misión / Actividad:", lista_nombres)
+                mision_seleccionada_nombre = st.selectbox("📜 Misión / Actividad:", lista_nombres)
             
-            # ... (el resto del código sigue igual) ...
-            
+            # Recuperamos datos de la misión seleccionada
+            current_mission_data = mission_map.get(mision_seleccionada_nombre, {})
+            current_rewards = current_mission_data.get("rewards", {})
+            real_mission_name = current_mission_data.get("raw_name", mision_seleccionada_nombre) # Nombre limpio para logs
+
             # --- BOTONES ÉPICOS DE RANGO ---
             st.markdown("##### 🏅 SELECCIONA EL RANGO DE VICTORIA")
             cols_rank = st.columns(4)
             
+            # Valores por defecto (Fallback) si Notion está vacío
+            defaults = {
+                "gold":   [150, 100],
+                "silver": [100, 75],
+                "bronze": [70, 50],
+                "part":   [30, 30]
+            }
+
             # Estado para guardar los valores
             if "mass_mp_val" not in st.session_state: st.session_state.mass_mp_val = 0
             if "mass_ap_val" not in st.session_state: st.session_state.mass_ap_val = 0
             if "mass_reason" not in st.session_state: st.session_state.mass_reason = ""
+            if "mass_badge" not in st.session_state: st.session_state.mass_badge = "" # Para log visual
 
-            # Definición de Botones
+            def set_rewards(rank_key, label_log, emoji):
+                # 1. Buscamos en Notion
+                notion_r = current_rewards.get(rank_key, {})
+                r_mp = notion_r.get("mp", 0)
+                r_ap = notion_r.get("ap", 0)
+                
+                # 2. Si Notion tiene 0, usamos default
+                if r_mp == 0 and r_ap == 0:
+                    r_mp, r_ap = defaults.get(rank_key, [0,0])
+                
+                st.session_state.mass_mp_val = int(r_mp)
+                st.session_state.mass_ap_val = int(r_ap)
+                # LOG LIMPIO: "🥇 1er Lugar: El Eco del Juramento..."
+                st.session_state.mass_reason = f"{emoji} {label_log}: {real_mission_name}"
+                st.session_state.mass_badge = label_log
+
+            # Botones
             with cols_rank[0]:
                 if st.button("🥇 1er LUGAR", use_container_width=True):
-                    st.session_state.mass_mp_val = 150
-                    st.session_state.mass_ap_val = 100
-                    st.session_state.mass_reason = f"🥇 1er Lugar: {mision_seleccionada}"
+                    set_rewards("gold", "1er Lugar", "🥇")
             with cols_rank[1]:
                 if st.button("🥈 2do LUGAR", use_container_width=True):
-                    st.session_state.mass_mp_val = 100
-                    st.session_state.mass_ap_val = 75
-                    st.session_state.mass_reason = f"🥈 2do Lugar: {mision_seleccionada}"
+                    set_rewards("silver", "2do Lugar", "🥈")
             with cols_rank[2]:
                 if st.button("🥉 3er LUGAR", use_container_width=True):
-                    st.session_state.mass_mp_val = 70
-                    st.session_state.mass_ap_val = 50
-                    st.session_state.mass_reason = f"🥉 3er Lugar: {mision_seleccionada}"
+                    set_rewards("bronze", "3er Lugar", "🥉")
             with cols_rank[3]:
                 if st.button("🎖️ PARTICIPACIÓN", use_container_width=True):
-                    st.session_state.mass_mp_val = 30
-                    st.session_state.mass_ap_val = 30
-                    st.session_state.mass_reason = f"🎖️ Participación: {mision_seleccionada}"
+                    # Participación suele no estar en Notion, usamos default o custom
+                    set_rewards("part", "Participación", "🎖️")
 
             # --- PANEL DE CONFIRMACIÓN EDITABLE ---
             st.markdown(f"""
@@ -432,15 +456,18 @@ with tab_ops:
                 st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                 if st.button("🚀 EJECUTAR AIRDROP MASIVO", type="primary", use_container_width=True):
                     if not st.session_state.mass_reason:
-                        st.error("Selecciona un rango o escribe un motivo.")
+                        st.error("Selecciona un rango primero.")
                     else:
                         targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
                         if targets.empty:
-                            st.warning("No hay agentes activos en este escuadrón.")
+                            st.warning("No hay aspirantes activos en este escuadrón.")
                         else:
                             prog_text = "Desplegando suministros..."
                             bar = st.progress(0, text=prog_text)
                             total = len(targets)
+                            
+                            # Log detallado para Notion: Título + Recompensa exacta
+                            log_detail_full = f"{st.session_state.mass_reason} | Recompensa: +{val_mp} MP, +{val_ap} AP"
                             
                             for i, (_, s) in enumerate(targets.iterrows()):
                                 ups = {}
@@ -451,13 +478,13 @@ with tab_ops:
                                     update_stat_batch(s["id"], ups)
                                     registrar_log_admin(
                                         s["Aspirante"], "Airdrop Squad", 
-                                        st.session_state.mass_reason, 
+                                        log_detail_full, # Log en español y completo
                                         s["Universidad"], s["Generación"]
                                     )
                                 bar.progress((i + 1) / total)
                                 time.sleep(0.1)
                             
-                            st.success(f"✅ ¡Operación Exitosa! {total} agentes recompensados.")
+                            st.success(f"✅ ¡Operación Exitosa! {total} aspirantes recompensados.")
                             time.sleep(2); st.rerun()
 
         # 3. MODO BOMBARDEO (CASTIGOS)
@@ -475,19 +502,24 @@ with tab_ops:
                 if not reason_bomb: st.error("Falta motivo.")
                 else:
                     targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
-                    bar = st.progress(0, text="Iniciando ataque...")
-                    total = len(targets)
-                    for i, (_, s) in enumerate(targets.iterrows()):
-                        ups = {}
-                        if pen_mp > 0: ups["MP"] = max(0, s["MP"] - pen_mp)
-                        if dmg_vp > 0: ups["VP"] = max(0, s["VP"] - dmg_vp)
-                        if ups:
-                            update_stat_batch(s["id"], ups)
-                            registrar_log_admin(s["Aspirante"], "Sanción Squad", f"BOMBARDEO: {reason_bomb}", s["Universidad"], s["Generación"])
-                        bar.progress((i + 1) / total)
-                        time.sleep(0.1)
-                    st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥")
-                    time.sleep(2); st.rerun()
+                    if targets.empty:
+                        st.warning("No hay objetivos válidos.")
+                    else:
+                        bar = st.progress(0, text="Iniciando ataque...")
+                        total = len(targets)
+                        log_bomb_detail = f"BOMBARDEO: {reason_bomb} | Sanción: -{pen_mp} MP, -{dmg_vp} VP"
+                        
+                        for i, (_, s) in enumerate(targets.iterrows()):
+                            ups = {}
+                            if pen_mp > 0: ups["MP"] = max(0, s["MP"] - pen_mp)
+                            if dmg_vp > 0: ups["VP"] = max(0, s["VP"] - dmg_vp)
+                            if ups:
+                                update_stat_batch(s["id"], ups)
+                                registrar_log_admin(s["Aspirante"], "Sanción Squad", log_bomb_detail, s["Universidad"], s["Generación"])
+                            bar.progress((i + 1) / total)
+                            time.sleep(0.1)
+                        st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥")
+                        time.sleep(2); st.rerun()
 
 with tab_list:
     st.markdown("### 👥 NÓMINA FILTRADA (SOLO ACTIVOS)")
