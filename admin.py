@@ -11,7 +11,6 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-# IMPORTANTE: Añadimos cargar_misiones_activas para leer las misiones reales
 from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin
 
 try:
@@ -23,34 +22,24 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V7 - WAR ROOM) ---
+# --- ESTILOS CSS ÉPICOS (V7.1 - FIXED) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         .stApp { background-color: #050810; color: #e0f7fa; }
         
-        /* HEADER DE SECCIÓN ÉPICO */
         .war-room-header {
             background: linear-gradient(90deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 100%);
-            border-left: 5px solid #00e5ff;
-            padding: 15px;
-            border-radius: 0 10px 10px 0;
-            margin-bottom: 20px;
+            border-left: 5px solid #00e5ff; padding: 15px;
+            border-radius: 0 10px 10px 0; margin-bottom: 20px;
         }
         .war-room-title { font-family: 'Orbitron'; font-size: 1.5em; color: #fff; font-weight: bold; margin: 0; }
         .war-room-sub { color: #00e5ff; font-size: 0.8em; letter-spacing: 2px; text-transform: uppercase; }
 
-        /* BOTONES DE RANGO (ORO/PLATA/BRONCE) */
         .rank-btn-gold { border: 1px solid #FFD700 !important; color: #FFD700 !important; background: rgba(255, 215, 0, 0.1) !important; }
-        .rank-btn-gold:hover { background: #FFD700 !important; color: #000 !important; box-shadow: 0 0 15px #FFD700; }
-        
         .rank-btn-silver { border: 1px solid #C0C0C0 !important; color: #C0C0C0 !important; background: rgba(192, 192, 192, 0.1) !important; }
-        .rank-btn-silver:hover { background: #C0C0C0 !important; color: #000 !important; box-shadow: 0 0 15px #C0C0C0; }
-        
         .rank-btn-bronze { border: 1px solid #cd7f32 !important; color: #cd7f32 !important; background: rgba(205, 127, 50, 0.1) !important; }
-        .rank-btn-bronze:hover { background: #cd7f32 !important; color: #000 !important; box-shadow: 0 0 15px #cd7f32; }
 
-        /* TARJETAS DE SOLICITUD */
         .req-card-epic {
             background: linear-gradient(135deg, #0f1520 0%, #050810 100%);
             border: 1px solid #1c2e3e; border-radius: 12px; padding: 20px;
@@ -66,7 +55,6 @@ st.markdown("""
         .req-body { font-size: 1.0em; color: #b0bec5; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; }
         
         div[data-testid="column"] button { font-family: 'Orbitron'; font-size: 0.8em; text-transform: uppercase; }
-        
         .farm-box { border: 2px solid #00e5ff; background: rgba(0, 229, 255, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
@@ -99,16 +87,17 @@ def actualizar_config(page_id, nuevo_estado, nuevo_filtro=None):
         props["Filtro"] = {"rich_text": [{"text": {"content": nuevo_filtro}}]}
     requests.patch(url, headers=headers, json={"properties": props})
 
-def registrar_log_admin(usuario_afectado, tipo_evento, detalle, universidad="Admin", año="Admin"):
+# --- LOG MEJORADO: Ahora acepta "tipo_categoria" ---
+def registrar_log_admin(usuario_afectado, titulo_evento, detalle, universidad="Admin", año="Admin", tipo_categoria="Sistema"):
     if not DB_LOGS_ID: return
     url = "https://api.notion.com/v1/pages"
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     payload = {
         "parent": {"database_id": DB_LOGS_ID},
         "properties": {
-            "Evento": {"title": [{"text": {"content": tipo_evento}}]},
+            "Evento": {"title": [{"text": {"content": titulo_evento}}]},
             "Jugador": {"rich_text": [{"text": {"content": usuario_afectado}}]},
-            "Tipo": {"select": {"name": "Sistema"}},
+            "Tipo": {"select": {"name": tipo_categoria}},
             "Detalle": {"rich_text": [{"text": {"content": detalle}}]},
             "Fecha": {"date": {"start": now_iso}},
             "Universidad": {"select": {"name": str(universidad)}},
@@ -132,7 +121,6 @@ def get_players():
                     name = props["Jugador"]["title"][0]["text"]["content"]
                     uni = props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar")
                     gen = props.get("Año", {}).get("select", {}).get("name", "Sin Año")
-                    # NUEVO: Recuperamos estado para filtrar activos
                     estado = props.get("Estado UAM", {}).get("select", {}).get("name", "Desconocido")
                     
                     players.append({
@@ -197,12 +185,10 @@ with st.sidebar:
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # Lógica de Filtrado (AHORA INCLUYE ESTADO != FINALIZADO)
+    # Filtro: Solo activos
     df_filtered = df_players.copy()
     if not df_players.empty:
-        # Filtro de Seguridad: Solo activos
         df_filtered = df_filtered[df_filtered["Estado"] != "Finalizado"]
-        
         if sel_uni != "Todas": df_filtered = df_filtered[df_filtered["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_filtered = df_filtered[df_filtered["Generación"] == sel_gen]
     
@@ -211,7 +197,6 @@ with st.sidebar:
     # --- SISTEMAS DE CONTROL ---
     st.markdown("### 🚨 SISTEMA")
     
-    # 1. MANTENIMIENTO
     mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
     if mant_id:
         nuevo_mant = st.toggle("MODO MANTENIMIENTO", value=mant_estado)
@@ -222,7 +207,6 @@ with st.sidebar:
 
     st.divider()
 
-    # 2. DROPS
     st.markdown("### 📦 FARMEO DIARIO")
     drop_id, drop_estado, drop_filtro_actual = buscar_config_id("DROP_SUMINISTROS")
     
@@ -348,7 +332,7 @@ with tab_ops:
         
         st.markdown("---")
         
-        # --- WAR ROOM: OPERACIONES MASIVAS V4.0 (AUTO-LOAD) ---
+        # --- WAR ROOM: OPERACIONES MASIVAS V5.0 (PRECARGA FIX + LOG ESPAÑOL) ---
         st.markdown("""
         <div class="war-room-header">
             <h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3>
@@ -356,29 +340,23 @@ with tab_ops:
         </div>
         """, unsafe_allow_html=True)
         
-        # 1. SELECCIÓN DE OBJETIVO
         c_squad, c_mode = st.columns([2, 1])
         with c_squad:
             squads_disponibles = df_filtered["Escuadrón"].unique()
             target_squad = st.selectbox("🎯 Escuadrón Objetivo:", squads_disponibles, key="sq_mass")
-        
         with c_mode:
             mode_op = st.radio("Protocolo:", ["🎁 AIRDROP (Premio)", "💣 BOMBARDEO (Castigo)"], horizontal=True, label_visibility="collapsed")
 
-        # 2. MODO AIRDROP (PREMIOS)
+        # MODO AIRDROP
         if "AIRDROP" in mode_op:
             st.caption("📦 Despliegue de suministros tácticos por cumplimiento de misión.")
             
-            # --- SELECTOR DE MISIÓN REAL (FILTRADO) ---
-            # Pasamos la universidad seleccionada en el sidebar para filtrar
+            # Cargar misiones
             misiones_data = cargar_todas_misiones_admin(sel_uni)
-            
             if not misiones_data:
-                st.warning(f"⚠️ No hay misiones registradas para {sel_uni}.")
                 mission_map = {}
                 lista_nombres = ["Misión Genérica"]
             else:
-                # Creamos un mapa para buscar datos rápidos por nombre
                 mission_map = {m['nombre']: m for m in misiones_data}
                 lista_nombres = list(mission_map.keys())
             
@@ -386,61 +364,54 @@ with tab_ops:
             with c_mis:
                 mision_seleccionada_nombre = st.selectbox("📜 Misión / Actividad:", lista_nombres)
             
-            # Recuperamos datos de la misión seleccionada
             current_mission_data = mission_map.get(mision_seleccionada_nombre, {})
             current_rewards = current_mission_data.get("rewards", {})
-            real_mission_name = current_mission_data.get("raw_name", mision_seleccionada_nombre) # Nombre limpio para logs
+            real_mission_name = current_mission_data.get("raw_name", mision_seleccionada_nombre)
 
-            # --- BOTONES ÉPICOS DE RANGO ---
-            st.markdown("##### 🏅 SELECCIONA EL RANGO DE VICTORIA")
-            cols_rank = st.columns(4)
-            
-            # Valores por defecto (Fallback) si Notion está vacío
-            defaults = {
-                "gold":   [150, 100],
-                "silver": [100, 75],
-                "bronze": [70, 50],
-                "part":   [30, 30]
-            }
-
-            # Estado para guardar los valores
+            # Inicializamos Session State para los INPUTS
             if "mass_mp_val" not in st.session_state: st.session_state.mass_mp_val = 0
             if "mass_ap_val" not in st.session_state: st.session_state.mass_ap_val = 0
+            # Variables adicionales para lógica interna
             if "mass_reason" not in st.session_state: st.session_state.mass_reason = ""
-            if "mass_badge" not in st.session_state: st.session_state.mass_badge = "" # Para log visual
+            if "mass_title" not in st.session_state: st.session_state.mass_title = ""
 
+            defaults = {"gold": [150, 100], "silver": [100, 75], "bronze": [70, 50], "part": [30, 30]}
+
+            # Función que FUERZA la actualización de los Inputs
             def set_rewards(rank_key, label_log, emoji):
-                # 1. Buscamos en Notion
                 notion_r = current_rewards.get(rank_key, {})
                 r_mp = notion_r.get("mp", 0)
                 r_ap = notion_r.get("ap", 0)
                 
-                # 2. Si Notion tiene 0, usamos default
+                # Si Notion está vacío (0), usamos defaults
                 if r_mp == 0 and r_ap == 0:
                     r_mp, r_ap = defaults.get(rank_key, [0,0])
                 
+                # ACTUALIZAMOS LAS LLAVES DEL WIDGET DIRECTAMENTE
+                st.session_state.in_mp = int(r_mp)
+                st.session_state.in_ap = int(r_ap)
+                
+                # Actualizamos variables internas
                 st.session_state.mass_mp_val = int(r_mp)
                 st.session_state.mass_ap_val = int(r_ap)
-                # LOG LIMPIO: "🥇 1er Lugar: El Eco del Juramento..."
+                
+                # LOG ESPAÑOL Y LIMPIO
+                # Log Detalle: "🥇 1er Lugar: El Eco..."
                 st.session_state.mass_reason = f"{emoji} {label_log}: {real_mission_name}"
-                st.session_state.mass_badge = label_log
+                # Log Título: "🏆 Recompensa: Misión"
+                st.session_state.mass_title = f"🏆 Recompensa: {real_mission_name}"
 
-            # Botones
-            with cols_rank[0]:
-                if st.button("🥇 1er LUGAR", use_container_width=True):
-                    set_rewards("gold", "1er Lugar", "🥇")
-            with cols_rank[1]:
-                if st.button("🥈 2do LUGAR", use_container_width=True):
-                    set_rewards("silver", "2do Lugar", "🥈")
-            with cols_rank[2]:
-                if st.button("🥉 3er LUGAR", use_container_width=True):
-                    set_rewards("bronze", "3er Lugar", "🥉")
-            with cols_rank[3]:
-                if st.button("🎖️ PARTICIPACIÓN", use_container_width=True):
-                    # Participación suele no estar en Notion, usamos default o custom
-                    set_rewards("part", "Participación", "🎖️")
+            st.markdown("##### 🏅 SELECCIONA EL RANGO DE VICTORIA")
+            cols_rank = st.columns(4)
+            with cols_rank[0]: 
+                if st.button("🥇 1er LUGAR", use_container_width=True): set_rewards("gold", "1er Lugar", "🥇")
+            with cols_rank[1]: 
+                if st.button("🥈 2do LUGAR", use_container_width=True): set_rewards("silver", "2do Lugar", "🥈")
+            with cols_rank[2]: 
+                if st.button("🥉 3er LUGAR", use_container_width=True): set_rewards("bronze", "3er Lugar", "🥉")
+            with cols_rank[3]: 
+                if st.button("🎖️ PARTICIPACIÓN", use_container_width=True): set_rewards("part", "Participación", "🎖️")
 
-            # --- PANEL DE CONFIRMACIÓN EDITABLE ---
             st.markdown(f"""
             <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid #333; margin-top:10px;">
                 <div style="font-size:0.8em; color:#aaa;">CONFIGURACIÓN DEL ENVÍO:</div>
@@ -448,6 +419,7 @@ with tab_ops:
             </div>
             """, unsafe_allow_html=True)
             
+            # INPUTS CON KEYS ESPECÍFICAS
             c_val1, c_val2, c_go = st.columns([1, 1, 2])
             val_mp = c_val1.number_input("MP a enviar:", value=st.session_state.mass_mp_val, key="in_mp")
             val_ap = c_val2.number_input("AP a enviar:", value=st.session_state.mass_ap_val, key="in_ap")
@@ -466,8 +438,9 @@ with tab_ops:
                             bar = st.progress(0, text=prog_text)
                             total = len(targets)
                             
-                            # Log detallado para Notion: Título + Recompensa exacta
-                            log_detail_full = f"{st.session_state.mass_reason} | Recompensa: +{val_mp} MP, +{val_ap} AP"
+                            # Log Final
+                            log_title = st.session_state.mass_title
+                            log_detail = f"{st.session_state.mass_reason} | Recompensa: +{val_mp} MP, +{val_ap} AP"
                             
                             for i, (_, s) in enumerate(targets.iterrows()):
                                 ups = {}
@@ -476,38 +449,37 @@ with tab_ops:
                                 
                                 if ups:
                                     update_stat_batch(s["id"], ups)
+                                    # REGISTRO CON CATEGORÍA "Misión" Y TÍTULO LIMPIO
                                     registrar_log_admin(
-                                        s["Aspirante"], "Airdrop Squad", 
-                                        log_detail_full, # Log en español y completo
-                                        s["Universidad"], s["Generación"]
+                                        s["Aspirante"], 
+                                        log_title, 
+                                        log_detail,
+                                        s["Universidad"], s["Generación"],
+                                        tipo_categoria="Misión" # Categoría correcta
                                     )
                                 bar.progress((i + 1) / total)
                                 time.sleep(0.1)
-                            
-                            st.success(f"✅ ¡Operación Exitosa! {total} aspirantes recompensados.")
-                            time.sleep(2); st.rerun()
+                            st.success(f"✅ ¡Operación Exitosa! {total} aspirantes recompensados."); time.sleep(2); st.rerun()
 
-        # 3. MODO BOMBARDEO (CASTIGOS)
+        # MODO BOMBARDEO
         else:
-            st.error("⚠️ ZONA DE PELIGRO: Estas acciones reducirán los recursos del escuadrón.")
-            
+            st.error("⚠️ ZONA DE PELIGRO: Acciones punitivas.")
             c1, c2 = st.columns(2)
-            dmg_vp = c1.number_input("Daño a VP (VitaPoints)", value=0, min_value=0, help="Cantidad a RESTAR")
-            pen_mp = c2.number_input("Penalización MP", value=0, min_value=0, help="Cantidad a RESTAR")
-            
-            reason_bomb = st.text_input("Motivo del Castigo:", placeholder="Ej: Incumplimiento de Misión")
+            dmg_vp = c1.number_input("Daño a VP", value=0, min_value=0)
+            pen_mp = c2.number_input("Penalización MP", value=0, min_value=0)
+            reason_bomb = st.text_input("Motivo del Castigo:")
             confirm = st.checkbox("Confirmar orden de fuego", key="nuke_confirm")
             
             if st.button("💣 EJECUTAR BOMBARDEO", type="secondary", disabled=not confirm, use_container_width=True):
                 if not reason_bomb: st.error("Falta motivo.")
                 else:
                     targets = df_filtered[df_filtered["Escuadrón"] == target_squad]
-                    if targets.empty:
-                        st.warning("No hay objetivos válidos.")
+                    if targets.empty: st.warning("Sin objetivos.")
                     else:
                         bar = st.progress(0, text="Iniciando ataque...")
                         total = len(targets)
-                        log_bomb_detail = f"BOMBARDEO: {reason_bomb} | Sanción: -{pen_mp} MP, -{dmg_vp} VP"
+                        log_bomb_title = f"💀 Sanción: {reason_bomb}"
+                        log_bomb_detail = f"BOMBARDEO: {reason_bomb} | -{pen_mp} MP, -{dmg_vp} VP"
                         
                         for i, (_, s) in enumerate(targets.iterrows()):
                             ups = {}
@@ -515,11 +487,13 @@ with tab_ops:
                             if dmg_vp > 0: ups["VP"] = max(0, s["VP"] - dmg_vp)
                             if ups:
                                 update_stat_batch(s["id"], ups)
-                                registrar_log_admin(s["Aspirante"], "Sanción Squad", log_bomb_detail, s["Universidad"], s["Generación"])
+                                registrar_log_admin(
+                                    s["Aspirante"], log_bomb_title, log_bomb_detail, 
+                                    s["Universidad"], s["Generación"], "Sanción"
+                                )
                             bar.progress((i + 1) / total)
                             time.sleep(0.1)
-                        st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥")
-                        time.sleep(2); st.rerun()
+                        st.toast("💥 BOMBARDEO COMPLETADO", icon="🔥"); time.sleep(2); st.rerun()
 
 with tab_list:
     st.markdown("### 👥 NÓMINA FILTRADA (SOLO ACTIVOS)")
