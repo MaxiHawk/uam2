@@ -341,35 +341,28 @@ with tab_ops:
             else:
                 status_color = "#00e676"  # Verde Neón
                 status_icon = "🛡️"        # Escudo (Operativo)
-                # Mantenemos el texto original (ej: "EN CURSO") o forzamos "ACTIVO"
                 status_label = estado_real.upper() 
 
+            # NOTA: El HTML está pegado a la izquierda para evitar que se detecte como código
             st.markdown(f"""
-            <div style="
-                background: linear-gradient(90deg, #0a1018 0%, #1c2e3e 100%);
-                border: 1px solid #333; border-radius: 10px; padding: 20px; margin-bottom: 20px;
-                display: flex; align-items: center; justify-content: space-between;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                
-                <div>
-                    <div style="font-family:'Orbitron'; font-size:1.5em; color:#fff; font-weight:bold; letter-spacing:1px;">
-                        {p_data['Aspirante']}
-                    </div>
-                    <div style="color:#aaa; font-size:0.9em; margin-top:5px;">
-                        ESCUADRÓN: <span style="color:#00e5ff;">{p_data['Escuadrón']}</span> | 
-                        GENERACIÓN: <span style="color:#fff;">{p_data['Generación']}</span>
-                    </div>
-                </div>
-                
-                <div style="text-align:right;">
-                    <div style="background:{status_color}20; color:{status_color}; border:1px solid {status_color}; 
-                                padding:5px 15px; border-radius:20px; font-size:0.8em; font-weight:bold; display:inline-block;">
-                        {status_label}
-                    </div>
-                    <div style="margin-top:5px; font-size:2em;">{status_icon}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+<div style="background: linear-gradient(90deg, #0a1018 0%, #1c2e3e 100%); border: 1px solid #333; border-radius: 10px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+    <div>
+        <div style="font-family:'Orbitron'; font-size:1.5em; color:#fff; font-weight:bold; letter-spacing:1px;">
+            {p_data['Aspirante']}
+        </div>
+        <div style="color:#aaa; font-size:0.9em; margin-top:5px;">
+            ESCUADRÓN: <span style="color:#00e5ff;">{p_data['Escuadrón']}</span> | 
+            GENERACIÓN: <span style="color:#fff;">{p_data['Generación']}</span>
+        </div>
+    </div>
+    <div style="text-align:right;">
+        <div style="background:{status_color}20; color:{status_color}; border:1px solid {status_color}; padding:5px 15px; border-radius:20px; font-size:0.8em; font-weight:bold; display:inline-block;">
+            {status_label}
+        </div>
+        <div style="margin-top:5px; font-size:2em;">{status_icon}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
             
             # --- 🎛️ PANEL DE CONTROL ---
             c1, c2, c3 = st.columns(3)
