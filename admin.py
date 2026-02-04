@@ -29,18 +29,11 @@ st.markdown("""
         .stApp { background-color: #050810; color: #e0f7fa; }
         
         div[data-testid="stMetricValue"] { 
-            font-family: 'Orbitron', sans-serif; 
-            color: #00e5ff !important; 
-            font-size: 2.2em !important; 
-            font-weight: 900 !important; 
+            font-family: 'Orbitron', sans-serif; color: #00e5ff !important; 
+            font-size: 2.2em !important; font-weight: 900 !important; 
             text-shadow: 0 0 15px rgba(0, 229, 255, 0.4); 
         }
-        div[data-testid="stMetricLabel"] { 
-            color: #aaa !important; 
-            font-size: 0.9em !important; 
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
+        div[data-testid="stMetricLabel"] { color: #aaa !important; font-size: 0.9em !important; font-weight: bold; letter-spacing: 1px; }
 
         .war-room-header {
             background: linear-gradient(90deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 100%);
@@ -143,12 +136,11 @@ def update_stat_batch(player_id, updates_dict):
     props = {k: {"number": v} for k, v in updates_dict.items()}
     requests.patch(url, headers=headers, json={"properties": props})
 
-# --- CORRECCIÓN: FINALIZE AHORA RECIBE UNI, AÑO Y TIPO ---
+# --- MEJORA: LOGS EXPLÍCITOS EN EL CIERRE DE TICKET ---
 def finalize_request(page_id, status_label, observation_text="", remitente="Anónimo", uni="Desconocido", ano="Desconocido", tipo="Sistema"):
     url = f"https://api.notion.com/v1/pages/{page_id}"
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     
-    # 1. Actualizar Solicitud
     data = {
         "properties": {
             "Procesado": {"checkbox": True},
@@ -159,10 +151,14 @@ def finalize_request(page_id, status_label, observation_text="", remitente="Anó
     }
     requests.patch(url, headers=headers, json=data)
 
-    # 2. AUDITORÍA: Registrar en Log con DATOS REALES
-    log_titulo = f"Solicitud {status_label}"
-    log_detalle = f"Respuesta: {observation_text}"
-    # Usamos los parámetros pasados en lugar de "Admin"
+    # Lógica de Descripción Clara para el Log
+    prefix = "✅" if status_label in ["Aprobado", "Respondido"] else "⛔"
+    desc_status = "APROBADO/RESPONDIDO" if status_label in ["Aprobado", "Respondido"] else "RECHAZADO"
+    
+    log_titulo = f"{prefix} Solicitud: {status_label}"
+    # AQUÍ ESTÁ EL CAMBIO: Texto explícito en el detalle
+    log_detalle = f"{desc_status}: {observation_text}"
+    
     registrar_log_admin(remitente, log_titulo, log_detalle, uni, ano, tipo)
 
 @st.cache_data(ttl=60)
@@ -276,9 +272,12 @@ with tab_req:
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 tipo = props.get("Tipo", {}).get("select", {}).get("name", "Mensaje")
                 
-                # --- CORRECCIÓN: EXTRAER UNI Y AÑO DE LA SOLICITUD ---
-                uni_req = props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar")
-                gen_req = props.get("Año", {}).get("select", {}).get("name", "Sin Año")
+                # Extracción ROBUSTA de Uni y Año
+                uni_req = props.get("Universidad", {}).get("select", {})
+                uni_req = uni_req.get("name", "Desconocido") if uni_req else "Desconocido"
+                
+                gen_req = props.get("Año", {}).get("select", {})
+                gen_req = gen_req.get("name", "Desconocido") if gen_req else "Desconocido"
 
                 raw_date = item["created_time"]
                 try: 
@@ -287,11 +286,10 @@ with tab_req:
                 except: fecha_str = "Fecha desc."
                 status = props.get("Status", {}).get("select", {}).get("name", "Pendiente")
                 
-                # Guardamos uni y ano en el diccionario
                 solicitudes.append({
                     "id": item["id"], "remitente": remitente, "mensaje": mensaje, 
                     "fecha": fecha_str, "status": status, "tipo": tipo,
-                    "uni": uni_req, "ano": gen_req # <--- DATOS CLAVE
+                    "uni": uni_req, "ano": gen_req # Datos pasados al cierre
                 })
     except: pass
     
@@ -335,25 +333,32 @@ with tab_req:
                         if es_habilidad:
                             if st.button("⚡ APROBAR", key=f"ok_{r['id']}", type="primary"):
                                 exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
-                                if exito: st.success(msg); time.sleep(1); st.rerun()
+                                if exito: 
+                                    st.success(msg)
+                                    # LOG MANUAL PARA ASEGURAR DATOS
+                                    registrar_log_admin(r['remitente'], "⚡ Poder Aprobado", f"✅ APROBADO: {msg}", r['uni'], r['ano'], "Sistema")
+                                    time.sleep(1); st.rerun()
                                 else: st.error(msg)
                         elif es_compra:
                             if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
                                 with st.spinner("Procesando cobro..."):
                                     exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
-                                    if exito: st.success(msg); time.sleep(1); st.rerun()
+                                    if exito: 
+                                        st.success(msg)
+                                        # LOG MANUAL PARA ASEGURAR DATOS
+                                        registrar_log_admin(r['remitente'], "🛒 Compra Aprobada", f"✅ APROBADO: {msg}", r['uni'], r['ano'], "Mercado")
+                                        time.sleep(1); st.rerun()
                                     else: st.error(msg)
                         else: 
                             if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
-                                # PASAMOS LOS DATOS REALES (Uni, Año, Tipo)
                                 finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'], r['uni'], r['ano'], r['tipo'])
                                 st.success("Listo"); time.sleep(1); st.rerun()
                     with c_no:
                         if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
-                            # PASAMOS LOS DATOS REALES
                             finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'], r['uni'], r['ano'], r['tipo'])
                             st.rerun()
 
+# --- TAB 2: OPERACIONES (WAR ROOM) ---
 with tab_ops:
     if df_global.empty: st.warning("Sin datos visibles.")
     else:
