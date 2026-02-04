@@ -317,93 +317,133 @@ with tab_req:
 with tab_ops:
     if df_filtered.empty: st.warning("Sin datos visibles con los filtros actuales.")
     else:
-        # --- GESTIÓN INDIVIDUAL (EXPEDIENTE TÁCTICO) ---
+        # --- GESTIÓN INDIVIDUAL (EXPEDIENTE TÁCTICO V3.0) ---
         st.markdown("""
         <div style="background: rgba(0, 229, 255, 0.05); border-left: 5px solid #00e5ff; padding: 15px; border-radius: 0 10px 10px 0; margin-bottom: 20px;">
             <h3 style="margin:0; color:#fff; font-family:'Orbitron';">⚡ EXPEDIENTE TÁCTICO INDIVIDUAL</h3>
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. Cambio de etiqueta: Agente -> Aspirante
         selected_aspirante_name = st.selectbox("Seleccionar Aspirante:", df_filtered["Aspirante"].tolist())
         
         if selected_aspirante_name:
-            # Recuperamos datos frescos
+            # 1. Recuperamos datos frescos
             p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
             
-            # Tarjeta de Info Rápida
-            st.info(f"📂 **DATOS:** Escuadrón: **{p_data['Escuadrón']}** | Universidad: **{p_data['Universidad']}** | Gen: **{p_data['Generación']}**")
+            # --- 🆔 ID CARD HOLOGRÁFICA ---
+            # Definimos color según estado
+            status_color = "#00e676" if p_data['Estado'] == "Activo" else "#ff1744"
             
-            # Panel de Control de 3 Columnas
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(90deg, #0a1018 0%, #1c2e3e 100%);
+                border: 1px solid #333; border-radius: 10px; padding: 20px; margin-bottom: 20px;
+                display: flex; align-items: center; justify-content: space-between;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                
+                <div>
+                    <div style="font-family:'Orbitron'; font-size:1.5em; color:#fff; font-weight:bold; letter-spacing:1px;">
+                        {p_data['Aspirante']}
+                    </div>
+                    <div style="color:#aaa; font-size:0.9em; margin-top:5px;">
+                        ESCUADRÓN: <span style="color:#00e5ff;">{p_data['Escuadrón']}</span> | 
+                        GENERACIÓN: <span style="color:#fff;">{p_data['Generación']}</span>
+                    </div>
+                </div>
+                
+                <div style="text-align:right;">
+                    <div style="background:{status_color}20; color:{status_color}; border:1px solid {status_color}; 
+                                padding:5px 15px; border-radius:20px; font-size:0.8em; font-weight:bold; display:inline-block;">
+                        {p_data['Estado'].upper()}
+                    </div>
+                    <div style="margin-top:5px; font-size:2em;">🎓</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # --- 🎛️ PANEL DE CONTROL ---
             c1, c2, c3 = st.columns(3)
             
-            # --- MP (MASTER POINTS) - AMARILLO ---
+            # MP (Amarillo)
             with c1:
-                st.markdown(f"<h2 style='text-align:center; color:#FFD700;'>{p_data['MP']}</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center; font-weight:bold; color:#FFD700;'>MASTER POINTS (MP)</p>", unsafe_allow_html=True)
-                delta_mp = st.number_input("Modificar MP", value=0, step=10, key="d_mp", help="Positivo para sumar, Negativo para restar")
+                st.markdown(f"<div style='background:rgba(255, 215, 0, 0.05); padding:10px; border-radius:8px; border:1px solid #FFD70030; text-align:center;'><h2 style='color:#FFD700; margin:0;'>{p_data['MP']}</h2><div style='color:#FFD700; font-size:0.8em; font-weight:bold;'>MASTER POINTS (MP)</div></div>", unsafe_allow_html=True)
+                delta_mp = st.number_input("Ajustar MP", value=0, step=10, key="d_mp")
 
-            # --- AP (ANGIO POINTS) - AZUL ---
+            # AP (Azul)
             with c2:
-                st.markdown(f"<h2 style='text-align:center; color:#00e5ff;'>{p_data['AP']}</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center; font-weight:bold; color:#00e5ff;'>ANGIO POINTS (AP)</p>", unsafe_allow_html=True)
-                delta_ap = st.number_input("Modificar AP", value=0, step=10, key="d_ap", help="Positivo para bonos, Negativo para compras/multas")
+                st.markdown(f"<div style='background:rgba(0, 229, 255, 0.05); padding:10px; border-radius:8px; border:1px solid #00e5ff30; text-align:center;'><h2 style='color:#00e5ff; margin:0;'>{p_data['AP']}</h2><div style='color:#00e5ff; font-size:0.8em; font-weight:bold;'>ANGIO POINTS (AP)</div></div>", unsafe_allow_html=True)
+                delta_ap = st.number_input("Ajustar AP", value=0, step=10, key="d_ap")
 
-            # --- VP (VITA POINTS) - ROJO ---
+            # VP (Rojo)
             with c3:
-                st.markdown(f"<h2 style='text-align:center; color:#ff1744;'>{p_data['VP']}%</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center; font-weight:bold; color:#ff1744;'>VITA POINTS (VP)</p>", unsafe_allow_html=True)
-                delta_vp = st.number_input("Modificar VP", value=0, step=10, key="d_vp", help="Positivo para curar, Negativo para daño")
+                st.markdown(f"<div style='background:rgba(255, 23, 68, 0.05); padding:10px; border-radius:8px; border:1px solid #ff174430; text-align:center;'><h2 style='color:#ff1744; margin:0;'>{p_data['VP']}%</h2><div style='color:#ff1744; font-size:0.8em; font-weight:bold;'>VITA POINTS (VP)</div></div>", unsafe_allow_html=True)
+                delta_vp = st.number_input("Ajustar VP", value=0, step=10, key="d_vp")
 
-            # Motivo y Ejecución
-            reason_indiv = st.text_input("📝 Motivo del ajuste (Obligatorio para registro):", placeholder="Ej: Participación brillante en debate...")
+            # Motivo y Acción
+            st.markdown("<br>", unsafe_allow_html=True)
+            reason_indiv = st.text_input("📝 Motivo del ajuste (Requerido):", placeholder="Ej: Bonificación por excelencia en simulacro...")
             
             if st.button("💾 ACTUALIZAR EXPEDIENTE", type="primary", use_container_width=True):
                 if delta_mp == 0 and delta_ap == 0 and delta_vp == 0:
-                    st.warning("⚠️ No has realizado ningún cambio numérico.")
+                    st.warning("⚠️ Sin cambios numéricos.")
                 elif not reason_indiv:
-                    st.error("⚠️ Debes escribir un motivo para el registro histórico.")
+                    st.error("⚠️ El motivo es obligatorio.")
                 else:
-                    # Preparamos el paquete de actualización
-                    updates = {}
-                    log_details = []
-                    
+                    updates, log_details = {}, []
                     if delta_mp != 0:
-                        # FIX: Forzamos int() para evitar error de Numpy/JSON
-                        new_mp = int(max(0, p_data['MP'] + delta_mp))
-                        updates["MP"] = new_mp
+                        updates["MP"] = int(max(0, p_data['MP'] + delta_mp))
                         log_details.append(f"{'+' if delta_mp > 0 else ''}{delta_mp} MP")
-                    
                     if delta_ap != 0:
-                        # FIX: Forzamos int()
-                        new_ap = int(max(0, p_data['AP'] + delta_ap))
-                        updates["AP"] = new_ap
+                        updates["AP"] = int(max(0, p_data['AP'] + delta_ap))
                         log_details.append(f"{'+' if delta_ap > 0 else ''}{delta_ap} AP")
-                        
                     if delta_vp != 0:
-                        # FIX: Forzamos int()
-                        new_vp = int(max(0, min(100, p_data['VP'] + delta_vp))) # Tope 0-100 para vida
-                        updates["VP"] = new_vp
+                        updates["VP"] = int(max(0, min(100, p_data['VP'] + delta_vp)))
                         log_details.append(f"{'+' if delta_vp > 0 else ''}{delta_vp} VP")
                     
-                    # Ejecutamos actualización
                     if updates:
                         update_stat_batch(p_data["id"], updates)
-                        
-                        # Guardamos Log
-                        full_log = f"{reason_indiv} | Cambios: {', '.join(log_details)}"
-                        registrar_log_admin(
-                            p_data['Aspirante'], 
-                            "Ajuste Manual", 
-                            full_log, 
-                            p_data['Universidad'], 
-                            p_data['Generación'],
-                            "Sistema"
-                        )
-                        
-                        st.success("✅ Expediente actualizado correctamente.")
+                        full_log = f"{reason_indiv} | {', '.join(log_details)}"
+                        registrar_log_admin(p_data['Aspirante'], "Ajuste Manual", full_log, p_data['Universidad'], p_data['Generación'], "Sistema")
+                        st.success("✅ Datos actualizados.")
                         time.sleep(1.5)
                         st.rerun()
+
+            # --- 📜 HISTORIAL TÁCTICO RECIENTE (INTELIGENCIA) ---
+            st.markdown("---")
+            with st.expander("📜 HISTORIAL OPERATIVO RECIENTE (Últimos 5 Eventos)", expanded=False):
+                # Mini función local para no recargar notion_api.py
+                def get_local_history(name_target):
+                    if not DB_LOGS_ID: return []
+                    u = f"https://api.notion.com/v1/databases/{DB_LOGS_ID}/query"
+                    p = {
+                        "filter": {"property": "Jugador", "rich_text": {"contains": name_target}},
+                        "sorts": [{"property": "Fecha", "direction": "descending"}],
+                        "page_size": 5
+                    }
+                    try:
+                        r = requests.post(u, headers=headers, json=p, timeout=5)
+                        history = []
+                        if r.status_code == 200:
+                            for i in r.json()["results"]:
+                                pr = i["properties"]
+                                evt = pr["Evento"]["title"][0]["text"]["content"] if pr["Evento"]["title"] else "-"
+                                det = pr["Detalle"]["rich_text"][0]["text"]["content"] if pr["Detalle"]["rich_text"] else "-"
+                                raw_d = pr["Fecha"]["date"]["start"] if pr["Fecha"]["date"] else ""
+                                # Formato fecha corto
+                                try: 
+                                    dt = datetime.fromisoformat(raw_d.replace('Z', '+00:00'))
+                                    date_str = dt.strftime("%d/%m %H:%M")
+                                except: date_str = raw_d
+                                history.append({"FECHA": date_str, "EVENTO": evt, "DETALLE": det})
+                        return history
+                    except: return []
+
+                # Renderizar Tabla
+                historial = get_local_history(p_data['Aspirante'])
+                if historial:
+                    st.table(pd.DataFrame(historial))
+                else:
+                    st.info("Sin registros recientes.")
         
         # --- WAR ROOM: OPERACIONES MASIVAS V5.0 (PRECARGA FIX + LOG ESPAÑOL) ---
         st.markdown("""
