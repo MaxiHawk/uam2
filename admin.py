@@ -22,7 +22,7 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V11 - TITAN NUMBERS) ---
+# --- ESTILOS CSS ÉPICOS (V12 - GLOBAL INTELLIGENCE) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -32,9 +32,9 @@ st.markdown("""
         div[data-testid="stMetricValue"] { 
             font-family: 'Orbitron', sans-serif; 
             color: #00e5ff !important; 
-            font-size: 2.2em !important; /* MÁS GRANDE */
-            font-weight: 900 !important; /* MÁS GRUESO */
-            text-shadow: 0 0 15px rgba(0, 229, 255, 0.4); /* EFECTO NEÓN */
+            font-size: 2.2em !important; 
+            font-weight: 900 !important; 
+            text-shadow: 0 0 15px rgba(0, 229, 255, 0.4); 
         }
         div[data-testid="stMetricLabel"] { 
             color: #aaa !important; 
@@ -166,7 +166,6 @@ def finalize_request(page_id, status_label, observation_text=""):
     }
     requests.patch(url, headers=headers, json=data)
 
-# --- NUEVO: OBTENER NOMBRES PENDIENTES (PARA FILTRADO) ---
 @st.cache_data(ttl=60)
 def get_pending_names():
     if not DB_SOLICITUDES_ID: return []
@@ -178,7 +177,6 @@ def get_pending_names():
         if res.status_code == 200:
             for item in res.json()["results"]:
                 try:
-                    # Extraer Remitente
                     props = item["properties"]
                     remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "")
                     if remitente: nombres_pendientes.append(remitente)
@@ -212,45 +210,45 @@ with st.sidebar:
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # 2. PROCESAMIENTO DE DATOS
+    # 2. PROCESAMIENTO DE DATOS GLOBAL (AQUI ESTÁ LA CLAVE: INCLUYE FINALIZADOS)
     df_global = df_players.copy()
     if not df_players.empty:
         if sel_uni != "Todas": df_global = df_global[df_global["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_global = df_global[df_global["Generación"] == sel_gen]
     
+    # 3. PROCESAMIENTO DE ACTIVOS (Solo para War Room)
     df_active = df_global[df_global["Estado"] != "Finalizado"]
 
     st.divider()
 
-    # --- 3. SITREP TITÁNICO (FILTRADO) ---
+    # --- 4. SITREP TITÁNICO (BASADO EN df_global PARA VER TODO) ---
     st.markdown("### 📊 SITREP")
     
-    val_aspirantes = len(df_active)
-    val_mp = df_active["MP"].sum()
-    val_ap = df_active["AP"].sum()
+    # CORRECCIÓN: Usamos df_global para sumar TODO (Activos + Finalizados)
+    val_aspirantes = len(df_global) 
+    val_mp = df_global["MP"].sum()
+    val_ap = df_global["AP"].sum()
     
-    # Lógica de Pendientes Filtrados:
-    # 1. Obtenemos TODOS los nombres que tienen pendientes.
-    # 2. Filtramos solo los que están en la lista actual filtrada (df_active).
+    # Lógica de Pendientes (Busca en df_global)
     all_pending_names = get_pending_names()
-    pendientes_filtrados = [p for p in all_pending_names if p in df_active["Aspirante"].values]
+    pendientes_filtrados = [p for p in all_pending_names if p in df_global["Aspirante"].values]
     val_pendientes = len(pendientes_filtrados)
 
-    # Formateo (1.000)
+    # Formateo
     fmt_mp = f"{val_mp:,.0f}".replace(",", ".")
     fmt_ap = f"{val_ap:,.0f}".replace(",", ".")
     
     c_s1, c_s2 = st.columns(2)
-    c_s1.metric("Aspirantes", val_aspirantes, help="Aspirantes Activos (Filtro)")
-    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes de Aspirantes Filtrados")
+    c_s1.metric("Aspirantes", val_aspirantes, help="Total Aspirantes (Incluye Alumni)")
+    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes Filtradas")
     
     c_s3, c_s4 = st.columns(2)
-    c_s3.metric("Total MP", fmt_mp, help="Suma Total MasterPoints")
-    c_s4.metric("Total AP", fmt_ap, help="Suma Total AngioPoints")
+    c_s3.metric("Total MP", fmt_mp, help="Suma Histórica de MP")
+    c_s4.metric("Total AP", fmt_ap, help="Suma Histórica de AP")
     
     st.divider()
     
-    # 4. SISTEMA
+    # 5. SISTEMA
     st.markdown("### 🚨 SISTEMA")
     mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
     if mant_id:
@@ -259,7 +257,7 @@ with st.sidebar:
             actualizar_config(mant_id, nuevo_mant); st.toast("Actualizado"); time.sleep(1); st.rerun()
     else: st.error("Error Config Mantenimiento")
 
-    # 5. FARMEO
+    # 6. FARMEO
     st.divider()
     st.markdown("### 📦 FARMEO DIARIO")
     drop_id, drop_estado, drop_filtro_actual = buscar_config_id("DROP_SUMINISTROS")
@@ -279,7 +277,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES (CON FIX DE COBRO + MAYÚSCULAS) ---
+# --- TAB 1: SOLICITUDES ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES ENTRANTES")
@@ -314,7 +312,6 @@ with tab_req:
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
-            # FIX: COMPARACIÓN INSENSIBLE A MAYÚSCULAS
             tipo_upper = str(r['tipo']).upper()
             es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
             es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
@@ -337,7 +334,6 @@ with tab_req:
                 c_obs, c_acts = st.columns([3, 2])
                 with c_obs: 
                     obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
-                    # CAJA DE COBRO
                     costo_final = 0
                     if es_compra:
                         import re
@@ -373,7 +369,7 @@ with tab_req:
 with tab_ops:
     if df_global.empty: st.warning("Sin datos visibles.")
     else:
-        # --- GESTIÓN INDIVIDUAL (TODOS) ---
+        # GESTIÓN INDIVIDUAL (TODOS)
         st.markdown("""<div style="background: rgba(0, 229, 255, 0.05); border-left: 5px solid #00e5ff; padding: 15px; border-radius: 0 10px 10px 0; margin-bottom: 20px;"><h3 style="margin:0; color:#fff; font-family:'Orbitron';">⚡ EXPEDIENTE TÁCTICO INDIVIDUAL</h3></div>""", unsafe_allow_html=True)
 
         selected_aspirante_name = st.selectbox("Seleccionar Aspirante:", df_global["Aspirante"].tolist())
@@ -455,7 +451,7 @@ with tab_ops:
         
         st.markdown("---")
         
-        # --- WAR ROOM (SOLO ACTIVOS) ---
+        # --- WAR ROOM (SOLO ACTIVOS - PROTEGIDO) ---
         if df_active.empty: st.info("No hay escuadrones activos para operaciones masivas.")
         else:
             st.markdown("""<div class="war-room-header"><h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3><div class="war-room-sub">PROTOCOLOS DE RECOMPENSA Y SANCIÓN MASIVA</div></div>""", unsafe_allow_html=True)
