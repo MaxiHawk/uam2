@@ -582,3 +582,50 @@ def cargar_todas_misiones_admin(filtro_universidad="Todas"):
     except Exception as e:
         print(f"Error cargando misiones admin: {e}")
         return []
+
+# --- AGREGAR EN modules/notion_api.py ---
+
+def aprobar_solicitud_mercado(request_id, nombre_jugador, costo_ap, detalles_texto="Compra aprobada"):
+    """
+    Aprueba una compra, descuenta los AP (si aplica) y cierra la solicitud.
+    """
+    # 1. Buscar al Jugador
+    player_page_id = buscar_page_id_por_nombre(nombre_jugador)
+    if not player_page_id: return False, "Jugador no encontrado."
+    
+    # 2. Verificar Saldo y Cobrar (Solo si el costo > 0)
+    if costo_ap > 0:
+        try:
+            url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
+            res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
+            props = res_get.json()["properties"]
+            current_ap = get_notion_number(props, "AP")
+            
+            if current_ap < costo_ap: 
+                return False, f"Saldo insuficiente. Tiene {current_ap} AP, costo {costo_ap} AP."
+            
+            # Descuento
+            requests.patch(url_player, headers=headers, json={"properties": {"AP": {"number": current_ap - costo_ap}}}, timeout=API_TIMEOUT)
+        except Exception as e:
+            return False, f"Error al procesar cobro: {e}"
+
+    # 3. Cerrar Solicitud
+    now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
+    try:
+        url_req = f"https://api.notion.com/v1/pages/{request_id}"
+        payload_req = {
+            "properties": {
+                "Status": {"select": {"name": "Aprobado"}},
+                "Procesado": {"checkbox": True}, 
+                "Fecha respuesta": {"date": {"start": now_iso}}, 
+                "Observaciones": {"rich_text": [{"text": {"content": detalles_texto}}]}
+            }
+        }
+        requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
+        
+        # 4. Log del Sistema
+        log_msg = f"Compra Aprobada | Item: {detalles_texto} | Costo: -{costo_ap} AP"
+        registrar_evento_sistema(nombre_jugador, "Mercado", log_msg, "Mercado")
+        
+        return True, "✅ Compra procesada y cobrada."
+    except: return False, "Error cerrando solicitud en Notion."
