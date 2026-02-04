@@ -11,6 +11,7 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
+# IMPORTANTE: Incluimos aprobar_solicitud_mercado
 from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin, aprobar_solicitud_mercado
 
 try:
@@ -22,12 +23,16 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V8 - FINAL) ---
+# --- ESTILOS CSS ÉPICOS (V9 - SITREP) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         .stApp { background-color: #050810; color: #e0f7fa; }
         
+        /* SITREP METRICS */
+        div[data-testid="stMetricValue"] { font-family: 'Orbitron'; color: #00e5ff !important; }
+        div[data-testid="stMetricLabel"] { color: #888 !important; font-size: 0.8em !important; }
+
         .war-room-header {
             background: linear-gradient(90deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 100%);
             border-left: 5px solid #00e5ff; padding: 15px;
@@ -116,7 +121,6 @@ def get_players():
                     name = props["Jugador"]["title"][0]["text"]["content"]
                     uni = props.get("Universidad", {}).get("select", {}).get("name", "Sin Asignar")
                     gen = props.get("Año", {}).get("select", {}).get("name", "Sin Año")
-                    # FIX: .strip() para evitar errores de espacios invisibles
                     estado = props.get("Estado UAM", {}).get("select", {}).get("name", "Desconocido").strip()
                     
                     players.append({
@@ -152,6 +156,20 @@ def finalize_request(page_id, status_label, observation_text=""):
     }
     requests.patch(url, headers=headers, json=data)
 
+# --- NUEVO: FUNCIÓN PARA SITREP ---
+@st.cache_data(ttl=60)
+def get_pending_count():
+    if not DB_SOLICITUDES_ID: return 0
+    url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
+    payload = {"filter": {"property": "Status", "select": {"equals": "Pendiente"}}, "page_size": 100}
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=3)
+        if res.status_code == 200:
+            c = len(res.json()["results"])
+            return f"{c}+" if res.json()["has_more"] else c
+    except: pass
+    return 0
+
 # --- LOGIN ---
 if "admin_logged_in" not in st.session_state: st.session_state.admin_logged_in = False
 if not st.session_state.admin_logged_in:
@@ -171,26 +189,43 @@ df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
     
+    # --- 📊 SITREP (REPORTE DE SITUACIÓN) ---
+    st.markdown("### 📊 SITREP")
+    
+    # 1. Cálculos de Inteligencia (Solo Activos)
+    active_players = df_players[df_players["Estado"] != "Finalizado"]
+    
+    val_agentes = len(active_players)
+    val_pendientes = get_pending_count()
+    # Formato Chileno (15.000)
+    total_ap = active_players["AP"].sum()
+    val_economia = f"{total_ap:,.0f}".replace(",", ".")
+    
+    c_s1, c_s2, c_s3 = st.columns(3)
+    c_s1.metric("Agentes", val_agentes, help="Aspirantes Activos")
+    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes por revisar")
+    c_s3.metric("Economía", val_economia, help="Total AP en circulación")
+    
+    st.divider()
+    # ----------------------------------------
+    
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # 1. FILTRO GLOBAL (Universidad y Año)
+    # Filtros
     df_global = df_players.copy()
     if not df_players.empty:
         if sel_uni != "Todas": df_global = df_global[df_global["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_global = df_global[df_global["Generación"] == sel_gen]
     
-    # 2. FILTRO DE ACTIVOS (Para Mass Ops y Nómina)
-    # NOTA: df_global incluye a TODOS (para gestión individual).
-    # df_active solo incluye NO Finalizados (para masivos).
+    # Filtro Activos (Para Mass Ops)
     df_active = df_global[df_global["Estado"] != "Finalizado"]
     
     st.divider()
     
-    # --- SISTEMAS DE CONTROL ---
     st.markdown("### 🚨 SISTEMA")
     mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
     if mant_id:
@@ -218,7 +253,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES ---
+# --- TAB 1: SOLICITUDES (CON FIX COMPRA) ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES ENTRANTES")
@@ -226,7 +261,6 @@ with tab_req:
         if st.button("🔄 REFRESCAR"): st.rerun()
 
     filtro_estado = st.radio("Estado:", ["Pendiente", "Respondido", "Rechazado", "Aprobado"], horizontal=True, index=0)
-    
     url_req = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
     payload_req = {
         "filter": {"property": "Status", "select": {"equals": filtro_estado}},
@@ -241,10 +275,7 @@ with tab_req:
                 props = item["properties"]
                 remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "Anónimo")
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
-                # Corrección: Extraer nombre del select con seguridad
-                tipo_obj = props.get("Tipo", {}).get("select")
-                tipo = tipo_obj["name"] if tipo_obj else "Mensaje"
-                
+                tipo = props.get("Tipo", {}).get("select", {}).get("name", "Mensaje")
                 raw_date = item["created_time"]
                 try: 
                     utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
@@ -257,11 +288,11 @@ with tab_req:
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
-            # --- FIX: COMPARACIÓN INSENSIBLE A MAYÚSCULAS ---
+            # FIX: MAYÚSCULAS/MINÚSCULAS
             tipo_upper = str(r['tipo']).upper()
             es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
             es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
-            
+
             if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
             elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
             else: border_color, icon_type = "#00e5ff", "💬 MENSAJE"
@@ -280,8 +311,7 @@ with tab_req:
                 c_obs, c_acts = st.columns([3, 2])
                 with c_obs: 
                     obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
-                    
-                    # --- LÓGICA DE COBRO AUTOMÁTICO ---
+                    # CAJA DE COBRO PARA MERCADO
                     costo_final = 0
                     if es_compra:
                         import re
@@ -299,9 +329,7 @@ with tab_req:
                                 exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                 if exito: st.success(msg); time.sleep(1); st.rerun()
                                 else: st.error(msg)
-                        
                         elif es_compra:
-                            # BOTÓN DE MERCADO
                             if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
                                 with st.spinner("Procesando cobro..."):
                                     exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
@@ -319,52 +347,33 @@ with tab_req:
 with tab_ops:
     if df_global.empty: st.warning("Sin datos visibles.")
     else:
-        # --- GESTIÓN INDIVIDUAL (MUESTRA TODOS: ACTIVOS Y FINALIZADOS) ---
-        st.markdown("""
-        <div style="background: rgba(0, 229, 255, 0.05); border-left: 5px solid #00e5ff; padding: 15px; border-radius: 0 10px 10px 0; margin-bottom: 20px;">
-            <h3 style="margin:0; color:#fff; font-family:'Orbitron';">⚡ EXPEDIENTE TÁCTICO INDIVIDUAL</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # --- GESTIÓN INDIVIDUAL (TODOS) ---
+        st.markdown("""<div style="background: rgba(0, 229, 255, 0.05); border-left: 5px solid #00e5ff; padding: 15px; border-radius: 0 10px 10px 0; margin-bottom: 20px;"><h3 style="margin:0; color:#fff; font-family:'Orbitron';">⚡ EXPEDIENTE TÁCTICO INDIVIDUAL</h3></div>""", unsafe_allow_html=True)
 
-        # USA df_global (Todos) para que puedas ver y corregir Alumnis
         selected_aspirante_name = st.selectbox("Seleccionar Aspirante:", df_global["Aspirante"].tolist())
         
         if selected_aspirante_name:
             p_data = df_global[df_global["Aspirante"] == selected_aspirante_name].iloc[0]
             
-            # --- 🆔 ID CARD HOLOGRÁFICA ---
             estado_real = p_data['Estado']
             if estado_real == "Finalizado":
-                status_color = "#ff1744"
-                status_icon = "🎓"
-                status_label = "FINALIZADO"
+                status_color, status_icon, status_label = "#ff1744", "🎓", "FINALIZADO"
             else:
-                status_color = "#00e676"
-                status_icon = "🛡️"
-                status_label = estado_real.upper()
+                status_color, status_icon, status_label = "#00e676", "🛡️", estado_real.upper()
 
-            # HTML PEGADO A LA IZQUIERDA PARA EVITAR BUG DE CÓDIGO
             st.markdown(f"""
 <div style="background: linear-gradient(90deg, #0a1018 0%, #1c2e3e 100%); border: 1px solid #333; border-radius: 10px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
     <div>
-        <div style="font-family:'Orbitron'; font-size:1.5em; color:#fff; font-weight:bold; letter-spacing:1px;">
-            {p_data['Aspirante']}
-        </div>
-        <div style="color:#aaa; font-size:0.9em; margin-top:5px;">
-            ESCUADRÓN: <span style="color:#00e5ff;">{p_data['Escuadrón']}</span> | 
-            GENERACIÓN: <span style="color:#fff;">{p_data['Generación']}</span>
-        </div>
+        <div style="font-family:'Orbitron'; font-size:1.5em; color:#fff; font-weight:bold; letter-spacing:1px;">{p_data['Aspirante']}</div>
+        <div style="color:#aaa; font-size:0.9em; margin-top:5px;">ESCUADRÓN: <span style="color:#00e5ff;">{p_data['Escuadrón']}</span> | GENERACIÓN: <span style="color:#fff;">{p_data['Generación']}</span></div>
     </div>
     <div style="text-align:right;">
-        <div style="background:{status_color}20; color:{status_color}; border:1px solid {status_color}; padding:5px 15px; border-radius:20px; font-size:0.8em; font-weight:bold; display:inline-block;">
-            {status_label}
-        </div>
+        <div style="background:{status_color}20; color:{status_color}; border:1px solid {status_color}; padding:5px 15px; border-radius:20px; font-size:0.8em; font-weight:bold; display:inline-block;">{status_label}</div>
         <div style="margin-top:5px; font-size:2em;">{status_icon}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
             
-            # PANEL DE CONTROL
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.markdown(f"<div style='background:rgba(255, 215, 0, 0.05); padding:10px; border-radius:8px; border:1px solid #FFD70030; text-align:center;'><h2 style='color:#FFD700; margin:0;'>{p_data['MP']}</h2><div style='color:#FFD700; font-size:0.8em; font-weight:bold;'>MASTER POINTS (MP)</div></div>", unsafe_allow_html=True)
@@ -380,21 +389,13 @@ with tab_ops:
             reason_indiv = st.text_input("📝 Motivo del ajuste (Requerido):", placeholder="Ej: Bonificación por excelencia...")
             
             if st.button("💾 ACTUALIZAR EXPEDIENTE", type="primary", use_container_width=True):
-                if delta_mp == 0 and delta_ap == 0 and delta_vp == 0:
-                    st.warning("⚠️ Sin cambios.")
-                elif not reason_indiv:
-                    st.error("⚠️ Motivo obligatorio.")
+                if delta_mp == 0 and delta_ap == 0 and delta_vp == 0: st.warning("⚠️ Sin cambios.")
+                elif not reason_indiv: st.error("⚠️ Motivo obligatorio.")
                 else:
                     updates, log_details = {}, []
-                    if delta_mp != 0:
-                        updates["MP"] = int(max(0, p_data['MP'] + delta_mp))
-                        log_details.append(f"{'+' if delta_mp > 0 else ''}{delta_mp} MP")
-                    if delta_ap != 0:
-                        updates["AP"] = int(max(0, p_data['AP'] + delta_ap))
-                        log_details.append(f"{'+' if delta_ap > 0 else ''}{delta_ap} AP")
-                    if delta_vp != 0:
-                        updates["VP"] = int(max(0, min(100, p_data['VP'] + delta_vp)))
-                        log_details.append(f"{'+' if delta_vp > 0 else ''}{delta_vp} VP")
+                    if delta_mp != 0: updates["MP"] = int(max(0, p_data['MP'] + delta_mp)); log_details.append(f"{'+' if delta_mp > 0 else ''}{delta_mp} MP")
+                    if delta_ap != 0: updates["AP"] = int(max(0, p_data['AP'] + delta_ap)); log_details.append(f"{'+' if delta_ap > 0 else ''}{delta_ap} AP")
+                    if delta_vp != 0: updates["VP"] = int(max(0, min(100, p_data['VP'] + delta_vp))); log_details.append(f"{'+' if delta_vp > 0 else ''}{delta_vp} VP")
                     if updates:
                         update_stat_batch(p_data["id"], updates)
                         full_log = f"{reason_indiv} | {', '.join(log_details)}"
@@ -428,17 +429,10 @@ with tab_ops:
         
         st.markdown("---")
         
-        # --- WAR ROOM: OPERACIONES MASIVAS (SOLO ACTIVOS) ---
-        # USA df_active (Solo Activos) para no bombardear a Alumnis
-        if df_active.empty:
-            st.info("No hay escuadrones activos para operaciones masivas.")
+        # --- WAR ROOM (SOLO ACTIVOS) ---
+        if df_active.empty: st.info("No hay escuadrones activos para operaciones masivas.")
         else:
-            st.markdown("""
-            <div class="war-room-header">
-                <h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3>
-                <div class="war-room-sub">PROTOCOLOS DE RECOMPENSA Y SANCIÓN MASIVA</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("""<div class="war-room-header"><h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3><div class="war-room-sub">PROTOCOLOS DE RECOMPENSA Y SANCIÓN MASIVA</div></div>""", unsafe_allow_html=True)
             
             c_squad, c_mode = st.columns([2, 1])
             with c_squad:
