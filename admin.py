@@ -369,37 +369,41 @@ with tab_ops:
                     log_details = []
                     
                     if delta_mp != 0:
-                        new_mp = max(0, p_data['MP'] + delta_mp)
+                        # FIX: Forzamos int() para evitar error de Numpy/JSON
+                        new_mp = int(max(0, p_data['MP'] + delta_mp))
                         updates["MP"] = new_mp
                         log_details.append(f"{'+' if delta_mp > 0 else ''}{delta_mp} MP")
                     
                     if delta_ap != 0:
-                        new_ap = max(0, p_data['AP'] + delta_ap)
+                        # FIX: Forzamos int()
+                        new_ap = int(max(0, p_data['AP'] + delta_ap))
                         updates["AP"] = new_ap
                         log_details.append(f"{'+' if delta_ap > 0 else ''}{delta_ap} AP")
                         
                     if delta_vp != 0:
-                        new_vp = max(0, min(100, p_data['VP'] + delta_vp)) # Tope 0-100 para vida
+                        # FIX: Forzamos int()
+                        new_vp = int(max(0, min(100, p_data['VP'] + delta_vp))) # Tope 0-100 para vida
                         updates["VP"] = new_vp
                         log_details.append(f"{'+' if delta_vp > 0 else ''}{delta_vp} VP")
                     
                     # Ejecutamos actualización
-                    update_stat_batch(p_data["id"], updates)
-                    
-                    # Guardamos Log
-                    full_log = f"{reason_indiv} | Cambios: {', '.join(log_details)}"
-                    registrar_log_admin(
-                        p_data['Aspirante'], 
-                        "Ajuste Manual", 
-                        full_log, 
-                        p_data['Universidad'], 
-                        p_data['Generación'],
-                        "Sistema"
-                    )
-                    
-                    st.success("✅ Expediente actualizado correctamente.")
-                    time.sleep(1.5)
-                    st.rerun()
+                    if updates:
+                        update_stat_batch(p_data["id"], updates)
+                        
+                        # Guardamos Log
+                        full_log = f"{reason_indiv} | Cambios: {', '.join(log_details)}"
+                        registrar_log_admin(
+                            p_data['Aspirante'], 
+                            "Ajuste Manual", 
+                            full_log, 
+                            p_data['Universidad'], 
+                            p_data['Generación'],
+                            "Sistema"
+                        )
+                        
+                        st.success("✅ Expediente actualizado correctamente.")
+                        time.sleep(1.5)
+                        st.rerun()
         
         # --- WAR ROOM: OPERACIONES MASIVAS V5.0 (PRECARGA FIX + LOG ESPAÑOL) ---
         st.markdown("""
