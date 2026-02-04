@@ -462,26 +462,40 @@ def buscar_page_id_por_nombre(nombre_jugador):
     except: pass
     return None
 
-def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
-    costo_ap = 0
-    try:
-        match_ap = re.search(r'Costo:.*?(\d+)\s*AP', detalles_texto, re.IGNORECASE)
-        if match_ap: costo_ap = int(match_ap.group(1))
-    except: return False, "Error leyendo costos."
-    if costo_ap == 0: return False, "No se encontró costo AP."
-
+def aprobar_solicitud_habilidad(request_id, nombre_jugador, habilidad_msg):
+    """
+    Aprueba la solicitud de habilidad y descuenta MP si es necesario.
+    NOTA: NO genera Log (eso lo maneja admin.py con más detalles).
+    """
+    # 1. Buscar al Jugador
     player_page_id = buscar_page_id_por_nombre(nombre_jugador)
     if not player_page_id: return False, "Jugador no encontrado."
     
-    try:
-        url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
-        res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
-        props = res_get.json()["properties"]
-        current_ap = get_notion_number(props, "AP")
-        if current_ap < costo_ap: return False, f"Saldo insuficiente ({current_ap} AP)."
-        requests.patch(url_player, headers=headers, json={"properties": {"AP": {"number": current_ap - costo_ap}}}, timeout=API_TIMEOUT)
-    except: return False, "Error cobrando."
+    # 2. Extraer costo del mensaje (Si existe "Costo: X")
+    costo_mp = 0
+    import re
+    match = re.search(r'Costo:\s*(\d+)', habilidad_msg)
+    if match:
+        costo_mp = int(match.group(1))
+    
+    # 3. Descontar MP (si aplica)
+    if costo_mp > 0:
+        try:
+            url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
+            # Obtenemos MP actual
+            res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
+            if res_get.status_code == 200:
+                props = res_get.json()["properties"]
+                current_mp = get_notion_number(props, "MP")
+                if current_mp < costo_mp:
+                    return False, f"MP Insuficiente ({current_mp}/{costo_mp})"
+                
+                # Update
+                requests.patch(url_player, headers=headers, json={"properties": {"MP": {"number": current_mp - costo_mp}}}, timeout=API_TIMEOUT)
+        except Exception as e:
+            return False, f"Error descontando MP: {e}"
 
+    # 4. Cerrar Solicitud
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     try:
         url_req = f"https://api.notion.com/v1/pages/{request_id}"
@@ -490,13 +504,16 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, detalles_texto):
                 "Status": {"select": {"name": "Aprobado"}},
                 "Procesado": {"checkbox": True}, 
                 "Fecha respuesta": {"date": {"start": now_iso}}, 
-                "Observaciones": {"rich_text": [{"text": {"content": "✅ Solicitud procesada y saldo descontado."}}]}
+                "Observaciones": {"rich_text": [{"text": {"content": "Habilidad Activada"}}]}
             }
         }
         requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
-        registrar_evento_sistema(nombre_jugador, "Solicitud Aprobada", f"Aprobado (-{costo_ap} AP)", "Habilidad")
-        return True, "✅ Cobro realizado."
-    except: return False, "Error cerrando solicitud."
+        
+        # SILENCIADO: registrar_evento_sistema(...) <- ELIMINADO PARA EVITAR DUPLICADOS VACÍOS
+        
+        return True, "Habilidad activada y procesada."
+    except Exception as e:
+        return False, f"Error Notion: {e}"
 
 def obtener_miembros_escuadron(nombre_escuadron, uni, ano):
     if not nombre_escuadron or not uni or not ano: return []
@@ -587,13 +604,14 @@ def cargar_todas_misiones_admin(filtro_universidad="Todas"):
 
 def aprobar_solicitud_mercado(request_id, nombre_jugador, costo_ap, detalles_texto="Compra aprobada"):
     """
-    Aprueba una compra, descuenta los AP (si aplica) y cierra la solicitud.
+    Aprueba una compra, descuenta los AP y cierra la solicitud.
+    NOTA: NO genera Log (eso lo maneja admin.py con más detalles).
     """
     # 1. Buscar al Jugador
     player_page_id = buscar_page_id_por_nombre(nombre_jugador)
     if not player_page_id: return False, "Jugador no encontrado."
     
-    # 2. Verificar Saldo y Cobrar (Solo si el costo > 0)
+    # 2. Verificar Saldo y Cobrar
     if costo_ap > 0:
         try:
             url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
@@ -623,9 +641,7 @@ def aprobar_solicitud_mercado(request_id, nombre_jugador, costo_ap, detalles_tex
         }
         requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
         
-        # 4. Log del Sistema
-        log_msg = f"Compra Aprobada | Item: {detalles_texto} | Costo: -{costo_ap} AP"
-        registrar_evento_sistema(nombre_jugador, "Mercado", log_msg, "Mercado")
+        # SILENCIADO: registrar_evento_sistema(...) <- ELIMINADO
         
         return True, "✅ Compra procesada y cobrada."
     except: return False, "Error cerrando solicitud en Notion."
