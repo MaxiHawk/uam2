@@ -252,12 +252,6 @@ with tab_req:
     
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
-        # --- EN admin.py (Dentro de tab_req) ---
-    
-    # ... (código anterior de filtros y carga de solicitudes se mantiene igual) ...
-
-    if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
-    else:
         for r in solicitudes:
             es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
             es_compra = "Compra" in r['tipo'] or "Mercado" in r['tipo']
