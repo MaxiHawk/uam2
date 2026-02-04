@@ -324,7 +324,8 @@ with tab_ops:
         </div>
         """, unsafe_allow_html=True)
 
-        selected_aspirante_name = st.selectbox("Seleccionar Agente:", df_filtered["Aspirante"].tolist())
+        # 1. Cambio de etiqueta: Agente -> Aspirante
+        selected_aspirante_name = st.selectbox("Seleccionar Aspirante:", df_filtered["Aspirante"].tolist())
         
         if selected_aspirante_name:
             # Recuperamos datos frescos
@@ -336,23 +337,22 @@ with tab_ops:
             # Panel de Control de 3 Columnas
             c1, c2, c3 = st.columns(3)
             
-            # --- MP (MASTER POINTS) ---
+            # --- MP (MASTER POINTS) - AMARILLO ---
             with c1:
-                st.markdown(f"<h2 style='text-align:center; color:#d500f9;'>{p_data['MP']}</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center; font-weight:bold;'>MASTER POINTS (XP)</p>", unsafe_allow_html=True)
+                st.markdown(f"<h2 style='text-align:center; color:#FFD700;'>{p_data['MP']}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; font-weight:bold; color:#FFD700;'>MASTER POINTS (MP)</p>", unsafe_allow_html=True)
                 delta_mp = st.number_input("Modificar MP", value=0, step=10, key="d_mp", help="Positivo para sumar, Negativo para restar")
 
-            # --- AP (ANGIO POINTS) ---
+            # --- AP (ANGIO POINTS) - AZUL ---
             with c2:
                 st.markdown(f"<h2 style='text-align:center; color:#00e5ff;'>{p_data['AP']}</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center; font-weight:bold;'>ANGIO POINTS (ORO)</p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; font-weight:bold; color:#00e5ff;'>ANGIO POINTS (AP)</p>", unsafe_allow_html=True)
                 delta_ap = st.number_input("Modificar AP", value=0, step=10, key="d_ap", help="Positivo para bonos, Negativo para compras/multas")
 
-            # --- VP (VITA POINTS) ---
+            # --- VP (VITA POINTS) - ROJO ---
             with c3:
-                color_vp = "#00e676" if p_data['VP'] > 50 else "#ff1744"
-                st.markdown(f"<h2 style='text-align:center; color:{color_vp};'>{p_data['VP']}%</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center; font-weight:bold;'>VITA POINTS (HP)</p>", unsafe_allow_html=True)
+                st.markdown(f"<h2 style='text-align:center; color:#ff1744;'>{p_data['VP']}%</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; font-weight:bold; color:#ff1744;'>VITA POINTS (VP)</p>", unsafe_allow_html=True)
                 delta_vp = st.number_input("Modificar VP", value=0, step=10, key="d_vp", help="Positivo para curar, Negativo para daño")
 
             # Motivo y Ejecución
