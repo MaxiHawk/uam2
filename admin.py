@@ -330,10 +330,20 @@ with tab_ops:
             # 1. Recuperamos datos frescos
             p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
             
-            # --- 🆔 ID CARD HOLOGRÁFICA ---
-            # CORRECCIÓN: Si no es 'Finalizado', asumimos que está operativo (Verde)
-            status_color = "#ff1744" if p_data['Estado'] == "Finalizado" else "#00e676"
+            # --- 🆔 ID CARD HOLOGRÁFICA V2 (ICONOS DINÁMICOS) ---
+            estado_real = p_data['Estado']
             
+            # Lógica de Estado
+            if estado_real == "Finalizado":
+                status_color = "#ff1744"  # Rojo
+                status_icon = "🎓"        # Birrete (Alumni)
+                status_label = "FINALIZADO"
+            else:
+                status_color = "#00e676"  # Verde Neón
+                status_icon = "🛡️"        # Escudo (Operativo)
+                # Mantenemos el texto original (ej: "EN CURSO") o forzamos "ACTIVO"
+                status_label = estado_real.upper() 
+
             st.markdown(f"""
             <div style="
                 background: linear-gradient(90deg, #0a1018 0%, #1c2e3e 100%);
@@ -354,9 +364,9 @@ with tab_ops:
                 <div style="text-align:right;">
                     <div style="background:{status_color}20; color:{status_color}; border:1px solid {status_color}; 
                                 padding:5px 15px; border-radius:20px; font-size:0.8em; font-weight:bold; display:inline-block;">
-                        {p_data['Estado'].upper()}
+                        {status_label}
                     </div>
-                    <div style="margin-top:5px; font-size:2em;">🎓</div>
+                    <div style="margin-top:5px; font-size:2em;">{status_icon}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
