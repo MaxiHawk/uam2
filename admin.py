@@ -257,8 +257,10 @@ with tab_req:
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
-            es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
-            es_compra = "Compra" in r['tipo'] or "Mercado" in r['tipo']
+            # --- FIX: COMPARACIÓN INSENSIBLE A MAYÚSCULAS ---
+            tipo_upper = str(r['tipo']).upper()
+            es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
+            es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
             
             if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
             elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
@@ -279,7 +281,7 @@ with tab_req:
                 with c_obs: 
                     obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
                     
-                    # --- LÓGICA DE COBRO AUTOMÁTICO (NUEVO) ---
+                    # --- LÓGICA DE COBRO AUTOMÁTICO ---
                     costo_final = 0
                     if es_compra:
                         import re
@@ -299,7 +301,7 @@ with tab_req:
                                 else: st.error(msg)
                         
                         elif es_compra:
-                            # --- BOTÓN CONECTADO A LA NUEVA FUNCIÓN ---
+                            # BOTÓN DE MERCADO
                             if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
                                 with st.spinner("Procesando cobro..."):
                                     exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
