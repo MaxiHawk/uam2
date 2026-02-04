@@ -331,8 +331,8 @@ with tab_ops:
             p_data = df_filtered[df_filtered["Aspirante"] == selected_aspirante_name].iloc[0]
             
             # --- 🆔 ID CARD HOLOGRÁFICA ---
-            # Definimos color según estado
-            status_color = "#00e676" if p_data['Estado'] == "Activo" else "#ff1744"
+            # CORRECCIÓN: Si no es 'Finalizado', asumimos que está operativo (Verde)
+            status_color = "#ff1744" if p_data['Estado'] == "Finalizado" else "#00e676"
             
             st.markdown(f"""
             <div style="
