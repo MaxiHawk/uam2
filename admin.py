@@ -22,7 +22,7 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V12 - GLOBAL INTELLIGENCE) ---
+# --- ESTILOS CSS ÉPICOS (V13 - AUDIT READY) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -153,9 +153,12 @@ def update_stat_batch(player_id, updates_dict):
     props = {k: {"number": v} for k, v in updates_dict.items()}
     requests.patch(url, headers=headers, json={"properties": props})
 
-def finalize_request(page_id, status_label, observation_text=""):
+# --- NUEVO: FINALIZE CON AUDITORÍA ---
+def finalize_request(page_id, status_label, observation_text="", remitente="Anónimo"):
     url = f"https://api.notion.com/v1/pages/{page_id}"
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
+    
+    # 1. Actualizar Estado
     data = {
         "properties": {
             "Procesado": {"checkbox": True},
@@ -165,6 +168,11 @@ def finalize_request(page_id, status_label, observation_text=""):
         }
     }
     requests.patch(url, headers=headers, json=data)
+
+    # 2. AUDITORÍA: Registrar en Log
+    log_titulo = f"Solicitud {status_label}"
+    log_detalle = f"Respuesta: {observation_text}"
+    registrar_log_admin(remitente, log_titulo, log_detalle, "Admin", "Admin", "Sistema")
 
 @st.cache_data(ttl=60)
 def get_pending_names():
@@ -210,31 +218,27 @@ with st.sidebar:
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # 2. PROCESAMIENTO DE DATOS GLOBAL (AQUI ESTÁ LA CLAVE: INCLUYE FINALIZADOS)
+    # 2. PROCESAMIENTO
     df_global = df_players.copy()
     if not df_players.empty:
         if sel_uni != "Todas": df_global = df_global[df_global["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_global = df_global[df_global["Generación"] == sel_gen]
     
-    # 3. PROCESAMIENTO DE ACTIVOS (Solo para War Room)
     df_active = df_global[df_global["Estado"] != "Finalizado"]
 
     st.divider()
 
-    # --- 4. SITREP TITÁNICO (BASADO EN df_global PARA VER TODO) ---
+    # --- 3. SITREP TITÁNICO ---
     st.markdown("### 📊 SITREP")
     
-    # CORRECCIÓN: Usamos df_global para sumar TODO (Activos + Finalizados)
     val_aspirantes = len(df_global) 
     val_mp = df_global["MP"].sum()
     val_ap = df_global["AP"].sum()
     
-    # Lógica de Pendientes (Busca en df_global)
     all_pending_names = get_pending_names()
     pendientes_filtrados = [p for p in all_pending_names if p in df_global["Aspirante"].values]
     val_pendientes = len(pendientes_filtrados)
 
-    # Formateo
     fmt_mp = f"{val_mp:,.0f}".replace(",", ".")
     fmt_ap = f"{val_ap:,.0f}".replace(",", ".")
     
@@ -359,17 +363,20 @@ with tab_req:
                                     else: st.error(msg)
                         else: 
                             if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
-                                finalize_request(r['id'], "Respondido", obs_text or "Leído")
+                                # AUDITORÍA: Pasamos remitente
+                                finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'])
                                 st.success("Listo"); time.sleep(1); st.rerun()
                     with c_no:
                         if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
-                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado"); st.rerun()
+                            # AUDITORÍA: Pasamos remitente
+                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'])
+                            st.rerun()
 
 # --- TAB 2: OPERACIONES (WAR ROOM) ---
 with tab_ops:
     if df_global.empty: st.warning("Sin datos visibles.")
     else:
-        # GESTIÓN INDIVIDUAL (TODOS)
+        # GESTIÓN INDIVIDUAL
         st.markdown("""<div style="background: rgba(0, 229, 255, 0.05); border-left: 5px solid #00e5ff; padding: 15px; border-radius: 0 10px 10px 0; margin-bottom: 20px;"><h3 style="margin:0; color:#fff; font-family:'Orbitron';">⚡ EXPEDIENTE TÁCTICO INDIVIDUAL</h3></div>""", unsafe_allow_html=True)
 
         selected_aspirante_name = st.selectbox("Seleccionar Aspirante:", df_global["Aspirante"].tolist())
@@ -451,7 +458,7 @@ with tab_ops:
         
         st.markdown("---")
         
-        # --- WAR ROOM (SOLO ACTIVOS - PROTEGIDO) ---
+        # WAR ROOM (SOLO ACTIVOS)
         if df_active.empty: st.info("No hay escuadrones activos para operaciones masivas.")
         else:
             st.markdown("""<div class="war-room-header"><h3 class="war-room-title">🛰️ WAR ROOM: OPERACIONES DE ESCUADRÓN</h3><div class="war-room-sub">PROTOCOLOS DE RECOMPENSA Y SANCIÓN MASIVA</div></div>""", unsafe_allow_html=True)
