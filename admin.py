@@ -136,8 +136,8 @@ def update_stat_batch(player_id, updates_dict):
     props = {k: {"number": v} for k, v in updates_dict.items()}
     requests.patch(url, headers=headers, json={"properties": props})
 
-# --- MEJORA: LOGS EXPLÍCITOS EN EL CIERRE DE TICKET ---
-def finalize_request(page_id, status_label, observation_text="", remitente="Anónimo", uni="Desconocido", ano="Desconocido", tipo="Sistema"):
+# --- MEJORA: DETALLE EXTENDIDO Y TIPO DINÁMICO ---
+def finalize_request(page_id, status_label, observation_text="", remitente="Anónimo", uni="Desconocido", ano="Desconocido", tipo_log="Sistema", detalle_item=""):
     url = f"https://api.notion.com/v1/pages/{page_id}"
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
     
@@ -151,15 +151,16 @@ def finalize_request(page_id, status_label, observation_text="", remitente="Anó
     }
     requests.patch(url, headers=headers, json=data)
 
-    # Lógica de Descripción Clara para el Log
+    # Prefix Visual para Log
     prefix = "✅" if status_label in ["Aprobado", "Respondido"] else "⛔"
     desc_status = "APROBADO/RESPONDIDO" if status_label in ["Aprobado", "Respondido"] else "RECHAZADO"
     
+    # Detalle Rico: Respuesta + Item de referencia
     log_titulo = f"{prefix} Solicitud: {status_label}"
-    # AQUÍ ESTÁ EL CAMBIO: Texto explícito en el detalle
-    log_detalle = f"{desc_status}: {observation_text}"
+    log_detalle = f"{desc_status}: {observation_text} | Ref: {detalle_item}"
     
-    registrar_log_admin(remitente, log_titulo, log_detalle, uni, ano, tipo)
+    # Registramos con el TIPO correcto (Habilidad, Mercado, etc.)
+    registrar_log_admin(remitente, log_titulo, log_detalle, uni, ano, tipo_log)
 
 @st.cache_data(ttl=60)
 def get_pending_names():
@@ -272,10 +273,9 @@ with tab_req:
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 tipo = props.get("Tipo", {}).get("select", {}).get("name", "Mensaje")
                 
-                # Extracción ROBUSTA de Uni y Año
+                # Datos Extra
                 uni_req = props.get("Universidad", {}).get("select", {})
                 uni_req = uni_req.get("name", "Desconocido") if uni_req else "Desconocido"
-                
                 gen_req = props.get("Año", {}).get("select", {})
                 gen_req = gen_req.get("name", "Desconocido") if gen_req else "Desconocido"
 
@@ -289,7 +289,7 @@ with tab_req:
                 solicitudes.append({
                     "id": item["id"], "remitente": remitente, "mensaje": mensaje, 
                     "fecha": fecha_str, "status": status, "tipo": tipo,
-                    "uni": uni_req, "ano": gen_req # Datos pasados al cierre
+                    "uni": uni_req, "ano": gen_req
                 })
     except: pass
     
@@ -299,6 +299,11 @@ with tab_req:
             tipo_upper = str(r['tipo']).upper()
             es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
             es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
+            
+            # --- DEFINIMOS TIPO DE LOG ---
+            if es_habilidad: tipo_para_log = "Habilidad"
+            elif es_compra: tipo_para_log = "Mercado"
+            else: tipo_para_log = "Sistema"
 
             if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
             elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
@@ -335,8 +340,9 @@ with tab_req:
                                 exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                 if exito: 
                                     st.success(msg)
-                                    # LOG MANUAL PARA ASEGURAR DATOS
-                                    registrar_log_admin(r['remitente'], "⚡ Poder Aprobado", f"✅ APROBADO: {msg}", r['uni'], r['ano'], "Sistema")
+                                    # LOG MANUAL CORREGIDO
+                                    detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
+                                    registrar_log_admin(r['remitente'], "⚡ Poder Aprobado", detalle_completo, r['uni'], r['ano'], "Habilidad")
                                     time.sleep(1); st.rerun()
                                 else: st.error(msg)
                         elif es_compra:
@@ -345,20 +351,20 @@ with tab_req:
                                     exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
                                     if exito: 
                                         st.success(msg)
-                                        # LOG MANUAL PARA ASEGURAR DATOS
-                                        registrar_log_admin(r['remitente'], "🛒 Compra Aprobada", f"✅ APROBADO: {msg}", r['uni'], r['ano'], "Mercado")
+                                        # LOG MANUAL CORREGIDO
+                                        detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
+                                        registrar_log_admin(r['remitente'], "🛒 Compra Aprobada", detalle_completo, r['uni'], r['ano'], "Mercado")
                                         time.sleep(1); st.rerun()
                                     else: st.error(msg)
                         else: 
                             if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
-                                finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'], r['uni'], r['ano'], r['tipo'])
+                                finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
                                 st.success("Listo"); time.sleep(1); st.rerun()
                     with c_no:
                         if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
-                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'], r['uni'], r['ano'], r['tipo'])
+                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
                             st.rerun()
 
-# --- TAB 2: OPERACIONES (WAR ROOM) ---
 with tab_ops:
     if df_global.empty: st.warning("Sin datos visibles.")
     else:
