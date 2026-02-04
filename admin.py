@@ -11,7 +11,7 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-# IMPORTANTE: Incluimos aprobar_solicitud_mercado
+# Incluimos todas las herramientas nuevas (Mercado, Misiones, etc.)
 from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin, aprobar_solicitud_mercado
 
 try:
@@ -23,14 +23,14 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V9 - SITREP) ---
+# --- ESTILOS CSS ÉPICOS (V10 - SITREP ADAPTATIVO) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         .stApp { background-color: #050810; color: #e0f7fa; }
         
         /* SITREP METRICS */
-        div[data-testid="stMetricValue"] { font-family: 'Orbitron'; color: #00e5ff !important; }
+        div[data-testid="stMetricValue"] { font-family: 'Orbitron'; color: #00e5ff !important; font-size: 1.2rem !important; }
         div[data-testid="stMetricLabel"] { color: #888 !important; font-size: 0.8em !important; }
 
         .war-room-header {
@@ -156,7 +156,6 @@ def finalize_request(page_id, status_label, observation_text=""):
     }
     requests.patch(url, headers=headers, json=data)
 
-# --- NUEVO: FUNCIÓN PARA SITREP ---
 @st.cache_data(ttl=60)
 def get_pending_count():
     if not DB_SOLICITUDES_ID: return 0
@@ -189,43 +188,48 @@ df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
     
-    # --- 📊 SITREP (REPORTE DE SITUACIÓN) ---
-    st.markdown("### 📊 SITREP")
-    
-    # 1. Cálculos de Inteligencia (Solo Activos)
-    active_players = df_players[df_players["Estado"] != "Finalizado"]
-    
-    val_agentes = len(active_players)
-    val_pendientes = get_pending_count()
-    # Formato Chileno (15.000)
-    total_ap = active_players["AP"].sum()
-    val_economia = f"{total_ap:,.0f}".replace(",", ".")
-    
-    c_s1, c_s2, c_s3 = st.columns(3)
-    c_s1.metric("Agentes", val_agentes, help="Aspirantes Activos")
-    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes por revisar")
-    c_s3.metric("Economía", val_economia, help="Total AP en circulación")
-    
-    st.divider()
-    # ----------------------------------------
-    
+    # --- 1. FILTROS TÁCTICOS (AHORA ARRIBA) ---
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # Filtros
+    # Lógica de Filtrado Centralizado
     df_global = df_players.copy()
     if not df_players.empty:
         if sel_uni != "Todas": df_global = df_global[df_global["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_global = df_global[df_global["Generación"] == sel_gen]
     
-    # Filtro Activos (Para Mass Ops)
+    # Filtro Activos (Para SITREP y Operaciones)
     df_active = df_global[df_global["Estado"] != "Finalizado"]
+
+    st.divider()
+
+    # --- 2. SITREP ADAPTATIVO ---
+    st.markdown("### 📊 SITREP")
+    
+    # Métricas basadas en los FILTROS ACTUALES
+    val_aspirantes = len(df_active)
+    val_mp = df_active["MP"].sum()
+    val_ap = df_active["AP"].sum()
+    val_pendientes = get_pending_count() # Se mantiene global por rendimiento
+
+    # Formateo (1.000)
+    fmt_mp = f"{val_mp:,.0f}".replace(",", ".")
+    fmt_ap = f"{val_ap:,.0f}".replace(",", ".")
+    
+    c_s1, c_s2 = st.columns(2)
+    c_s1.metric("Aspirantes", val_aspirantes, help="Aspirantes Activos (Según filtros)")
+    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes Pendientes (Global)")
+    
+    c_s3, c_s4 = st.columns(2)
+    c_s3.metric("Total MP", fmt_mp, help="Suma de MasterPoints filtrados")
+    c_s4.metric("Total AP", fmt_ap, help="Suma de AngioPoints filtrados")
     
     st.divider()
     
+    # --- 3. SISTEMAS DE MANTENIMIENTO ---
     st.markdown("### 🚨 SISTEMA")
     mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
     if mant_id:
@@ -234,6 +238,7 @@ with st.sidebar:
             actualizar_config(mant_id, nuevo_mant); st.toast("Actualizado"); time.sleep(1); st.rerun()
     else: st.error("Error Config Mantenimiento")
 
+    # --- 4. FARMEO ---
     st.divider()
     st.markdown("### 📦 FARMEO DIARIO")
     drop_id, drop_estado, drop_filtro_actual = buscar_config_id("DROP_SUMINISTROS")
@@ -253,7 +258,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES (CON FIX COMPRA) ---
+# --- TAB 1: SOLICITUDES (CON FIX DE COBRO) ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES ENTRANTES")
@@ -288,7 +293,7 @@ with tab_req:
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
         for r in solicitudes:
-            # FIX: MAYÚSCULAS/MINÚSCULAS
+            # FIX: COMPARACIÓN INSENSIBLE A MAYÚSCULAS
             tipo_upper = str(r['tipo']).upper()
             es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
             es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
@@ -311,7 +316,7 @@ with tab_req:
                 c_obs, c_acts = st.columns([3, 2])
                 with c_obs: 
                     obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
-                    # CAJA DE COBRO PARA MERCADO
+                    # CAJA DE COBRO
                     costo_final = 0
                     if es_compra:
                         import re
