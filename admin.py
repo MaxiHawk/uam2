@@ -11,7 +11,7 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin
+from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin, aprobar_solicitud_mercado
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -252,12 +252,22 @@ with tab_req:
     
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
+        # --- EN admin.py (Dentro de tab_req) ---
+    
+    # ... (código anterior de filtros y carga de solicitudes se mantiene igual) ...
+
+    if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
+    else:
         for r in solicitudes:
-            es_habilidad, es_compra = ("Habilidad" in r['tipo'] or "Poder" in r['tipo']), ("Compra" in r['tipo'] or "Mercado" in r['tipo'])
+            es_habilidad = "Habilidad" in r['tipo'] or "Poder" in r['tipo']
+            es_compra = "Compra" in r['tipo'] or "Mercado" in r['tipo']
+            
+            # Estilos Visuales
             if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
             elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
             else: border_color, icon_type = "#00e5ff", "💬 MENSAJE"
 
+            # Renderizar Tarjeta
             st.markdown(f"""
             <div class="req-card-epic" style="border-left: 4px solid {border_color};">
                 <div class="req-header">
@@ -268,29 +278,54 @@ with tab_req:
             </div>
             """, unsafe_allow_html=True)
             
+            # ACCIONES (Solo si está pendiente)
             if filtro_estado == "Pendiente":
                 c_obs, c_acts = st.columns([3, 2])
-                with c_obs: obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
+                
+                with c_obs: 
+                    # Input de Respuesta
+                    obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
+                    
+                    # --- LÓGICA DE COBRO AUTOMÁTICO PARA MERCADO ---
+                    costo_detectado = 0
+                    if es_compra:
+                        # Intentamos leer "Costo: 500" del mensaje original
+                        import re
+                        match = re.search(r'Costo:\s*(\d+)', r['mensaje'])
+                        if match: costo_detectado = int(match.group(1))
+                        
+                        st.markdown(f"<div style='font-size:0.8em; color:#FFD700; margin-bottom:5px;'>💰 Confirmar Cobro (AP):</div>", unsafe_allow_html=True)
+                        costo_final = st.number_input("Monto a descontar:", value=costo_detectado, step=50, key=f"cost_{r['id']}", label_visibility="collapsed")
+
                 with c_acts:
                     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                     c_ok, c_no = st.columns(2)
+                    
                     with c_ok:
                         if es_habilidad:
                             if st.button("⚡ APROBAR", key=f"ok_{r['id']}", type="primary"):
                                 exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                 if exito: st.success(msg); time.sleep(1); st.rerun()
                                 else: st.error(msg)
+                        
                         elif es_compra:
+                            # BOTÓN DE MERCADO MEJORADO
                             if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
-                                finalize_request(r['id'], "Aprobado", obs_text or "Entrega autorizada.")
-                                st.success("Entregado"); time.sleep(1); st.rerun()
+                                with st.spinner("Procesando transacción..."):
+                                    exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
+                                    if exito: st.success(msg); time.sleep(1); st.rerun()
+                                    else: st.error(msg)
+                        
                         else: 
+                            # Mensajes normales
                             if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
                                 finalize_request(r['id'], "Respondido", obs_text or "Leído")
                                 st.success("Listo"); time.sleep(1); st.rerun()
+                                
                     with c_no:
                         if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
-                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado"); st.rerun()
+                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado")
+                            st.rerun()
 
 # --- TAB 2: OPERACIONES (WAR ROOM) ---
 with tab_ops:
