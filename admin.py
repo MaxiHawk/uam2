@@ -340,29 +340,41 @@ with tab_req:
                                 exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                 if exito: 
                                     st.success(msg)
-                                    # LOG MANUAL CORREGIDO
+                                    # LOG MANUAL
                                     detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
                                     registrar_log_admin(r['remitente'], "⚡ Poder Aprobado", detalle_completo, r['uni'], r['ano'], "Habilidad")
+                                    # LIMPIEZA DE CACHÉ PARA ACTUALIZAR SITREP
+                                    st.cache_data.clear()
                                     time.sleep(1); st.rerun()
                                 else: st.error(msg)
+                        
                         elif es_compra:
                             if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
                                 with st.spinner("Procesando cobro..."):
                                     exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
                                     if exito: 
                                         st.success(msg)
-                                        # LOG MANUAL CORREGIDO
+                                        # LOG MANUAL
                                         detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
                                         registrar_log_admin(r['remitente'], "🛒 Compra Aprobada", detalle_completo, r['uni'], r['ano'], "Mercado")
+                                        # LIMPIEZA DE CACHÉ PARA ACTUALIZAR SITREP
+                                        st.cache_data.clear()
                                         time.sleep(1); st.rerun()
                                     else: st.error(msg)
+                        
                         else: 
                             if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
                                 finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
-                                st.success("Listo"); time.sleep(1); st.rerun()
+                                st.success("Listo")
+                                # LIMPIEZA DE CACHÉ
+                                st.cache_data.clear()
+                                time.sleep(1); st.rerun()
+                    
                     with c_no:
                         if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
                             finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
+                            # LIMPIEZA DE CACHÉ
+                            st.cache_data.clear()
                             st.rerun()
 
 with tab_ops:
