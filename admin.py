@@ -11,7 +11,6 @@ from config import (
     NOTION_TOKEN, HEADERS, DB_JUGADORES_ID, DB_SOLICITUDES_ID,
     DB_LOGS_ID, DB_CONFIG_ID
 )
-# Incluimos todas las herramientas nuevas (Mercado, Misiones, etc.)
 from modules.notion_api import aprobar_solicitud_habilidad, cargar_todas_misiones_admin, aprobar_solicitud_mercado
 
 try:
@@ -23,15 +22,26 @@ except FileNotFoundError:
 st.set_page_config(page_title="Centro de Mando | Praxis", page_icon="🎛️", layout="wide")
 headers = HEADERS
 
-# --- ESTILOS CSS ÉPICOS (V10 - SITREP ADAPTATIVO) ---
+# --- ESTILOS CSS ÉPICOS (V11 - TITAN NUMBERS) ---
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         .stApp { background-color: #050810; color: #e0f7fa; }
         
-        /* SITREP METRICS */
-        div[data-testid="stMetricValue"] { font-family: 'Orbitron'; color: #00e5ff !important; font-size: 1.2rem !important; }
-        div[data-testid="stMetricLabel"] { color: #888 !important; font-size: 0.8em !important; }
+        /* METRICAS ÉPICAS */
+        div[data-testid="stMetricValue"] { 
+            font-family: 'Orbitron', sans-serif; 
+            color: #00e5ff !important; 
+            font-size: 2.2em !important; /* MÁS GRANDE */
+            font-weight: 900 !important; /* MÁS GRUESO */
+            text-shadow: 0 0 15px rgba(0, 229, 255, 0.4); /* EFECTO NEÓN */
+        }
+        div[data-testid="stMetricLabel"] { 
+            color: #aaa !important; 
+            font-size: 0.9em !important; 
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
 
         .war-room-header {
             background: linear-gradient(90deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 100%);
@@ -156,18 +166,25 @@ def finalize_request(page_id, status_label, observation_text=""):
     }
     requests.patch(url, headers=headers, json=data)
 
+# --- NUEVO: OBTENER NOMBRES PENDIENTES (PARA FILTRADO) ---
 @st.cache_data(ttl=60)
-def get_pending_count():
-    if not DB_SOLICITUDES_ID: return 0
+def get_pending_names():
+    if not DB_SOLICITUDES_ID: return []
     url = f"https://api.notion.com/v1/databases/{DB_SOLICITUDES_ID}/query"
     payload = {"filter": {"property": "Status", "select": {"equals": "Pendiente"}}, "page_size": 100}
+    nombres_pendientes = []
     try:
         res = requests.post(url, headers=headers, json=payload, timeout=3)
         if res.status_code == 200:
-            c = len(res.json()["results"])
-            return f"{c}+" if res.json()["has_more"] else c
+            for item in res.json()["results"]:
+                try:
+                    # Extraer Remitente
+                    props = item["properties"]
+                    remitente = props.get("Remitente", {}).get("title", [{}])[0].get("text", {}).get("content", "")
+                    if remitente: nombres_pendientes.append(remitente)
+                except: pass
     except: pass
-    return 0
+    return nombres_pendientes
 
 # --- LOGIN ---
 if "admin_logged_in" not in st.session_state: st.session_state.admin_logged_in = False
@@ -188,48 +205,52 @@ df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
     
-    # --- 1. FILTROS TÁCTICOS (AHORA ARRIBA) ---
+    # 1. FILTROS TÁCTICOS
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
     sel_gen = st.selectbox("📅 Generación (Año):", gen_opts)
     
-    # Lógica de Filtrado Centralizado
+    # 2. PROCESAMIENTO DE DATOS
     df_global = df_players.copy()
     if not df_players.empty:
         if sel_uni != "Todas": df_global = df_global[df_global["Universidad"] == sel_uni]
         if sel_gen != "Todas": df_global = df_global[df_global["Generación"] == sel_gen]
     
-    # Filtro Activos (Para SITREP y Operaciones)
     df_active = df_global[df_global["Estado"] != "Finalizado"]
 
     st.divider()
 
-    # --- 2. SITREP ADAPTATIVO ---
+    # --- 3. SITREP TITÁNICO (FILTRADO) ---
     st.markdown("### 📊 SITREP")
     
-    # Métricas basadas en los FILTROS ACTUALES
     val_aspirantes = len(df_active)
     val_mp = df_active["MP"].sum()
     val_ap = df_active["AP"].sum()
-    val_pendientes = get_pending_count() # Se mantiene global por rendimiento
+    
+    # Lógica de Pendientes Filtrados:
+    # 1. Obtenemos TODOS los nombres que tienen pendientes.
+    # 2. Filtramos solo los que están en la lista actual filtrada (df_active).
+    all_pending_names = get_pending_names()
+    pendientes_filtrados = [p for p in all_pending_names if p in df_active["Aspirante"].values]
+    val_pendientes = len(pendientes_filtrados)
 
     # Formateo (1.000)
     fmt_mp = f"{val_mp:,.0f}".replace(",", ".")
     fmt_ap = f"{val_ap:,.0f}".replace(",", ".")
     
     c_s1, c_s2 = st.columns(2)
-    c_s1.metric("Aspirantes", val_aspirantes, help="Aspirantes Activos (Según filtros)")
-    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes Pendientes (Global)")
+    c_s1.metric("Aspirantes", val_aspirantes, help="Aspirantes Activos (Filtro)")
+    c_s2.metric("Pendientes", val_pendientes, help="Solicitudes de Aspirantes Filtrados")
     
     c_s3, c_s4 = st.columns(2)
-    c_s3.metric("Total MP", fmt_mp, help="Suma de MasterPoints filtrados")
-    c_s4.metric("Total AP", fmt_ap, help="Suma de AngioPoints filtrados")
+    c_s3.metric("Total MP", fmt_mp, help="Suma Total MasterPoints")
+    c_s4.metric("Total AP", fmt_ap, help="Suma Total AngioPoints")
     
     st.divider()
     
-    # --- 3. SISTEMAS DE MANTENIMIENTO ---
+    # 4. SISTEMA
     st.markdown("### 🚨 SISTEMA")
     mant_id, mant_estado, _ = buscar_config_id("MODO_MANTENIMIENTO")
     if mant_id:
@@ -238,7 +259,7 @@ with st.sidebar:
             actualizar_config(mant_id, nuevo_mant); st.toast("Actualizado"); time.sleep(1); st.rerun()
     else: st.error("Error Config Mantenimiento")
 
-    # --- 4. FARMEO ---
+    # 5. FARMEO
     st.divider()
     st.markdown("### 📦 FARMEO DIARIO")
     drop_id, drop_estado, drop_filtro_actual = buscar_config_id("DROP_SUMINISTROS")
@@ -258,7 +279,7 @@ with st.sidebar:
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
-# --- TAB 1: SOLICITUDES (CON FIX DE COBRO) ---
+# --- TAB 1: SOLICITUDES (CON FIX DE COBRO + MAYÚSCULAS) ---
 with tab_req:
     c_title, c_refresh = st.columns([4, 1])
     with c_title: st.markdown("### 📡 TRANSMISIONES ENTRANTES")
