@@ -464,7 +464,7 @@ def buscar_page_id_por_nombre(nombre_jugador):
 
 def aprobar_solicitud_habilidad(request_id, nombre_jugador, habilidad_msg):
     """
-    Aprueba la solicitud de habilidad y descuenta MP si es necesario.
+    Aprueba la solicitud de habilidad y descuenta AP (AngioPoints).
     NOTA: NO genera Log (eso lo maneja admin.py con más detalles).
     """
     # 1. Buscar al Jugador
@@ -472,28 +472,48 @@ def aprobar_solicitud_habilidad(request_id, nombre_jugador, habilidad_msg):
     if not player_page_id: return False, "Jugador no encontrado."
     
     # 2. Extraer costo del mensaje (Si existe "Costo: X")
-    costo_mp = 0
+    costo_ap = 0  # CAMBIO: Variable renombrada a costo_ap
     import re
     match = re.search(r'Costo:\s*(\d+)', habilidad_msg)
     if match:
-        costo_mp = int(match.group(1))
+        costo_ap = int(match.group(1))
     
-    # 3. Descontar MP (si aplica)
-    if costo_mp > 0:
+    # 3. Descontar AP (AngioPoints)
+    if costo_ap > 0:
         try:
             url_player = f"https://api.notion.com/v1/pages/{player_page_id}"
-            # Obtenemos MP actual
+            # Obtenemos AP actual
             res_get = requests.get(url_player, headers=headers, timeout=API_TIMEOUT)
             if res_get.status_code == 200:
                 props = res_get.json()["properties"]
-                current_mp = get_notion_number(props, "MP")
-                if current_mp < costo_mp:
-                    return False, f"MP Insuficiente ({current_mp}/{costo_mp})"
+                # CAMBIO CRÍTICO: Leemos AP, no MP
+                current_ap = get_notion_number(props, "AP") 
                 
-                # Update
-                requests.patch(url_player, headers=headers, json={"properties": {"MP": {"number": current_mp - costo_mp}}}, timeout=API_TIMEOUT)
+                if current_ap < costo_ap:
+                    return False, f"AP Insuficiente ({current_ap}/{costo_ap})"
+                
+                # CAMBIO CRÍTICO: Descontamos de AP
+                requests.patch(url_player, headers=headers, json={"properties": {"AP": {"number": current_ap - costo_ap}}}, timeout=API_TIMEOUT)
         except Exception as e:
-            return False, f"Error descontando MP: {e}"
+            return False, f"Error descontando AP: {e}"
+
+    # 4. Cerrar Solicitud
+    now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
+    try:
+        url_req = f"https://api.notion.com/v1/pages/{request_id}"
+        payload_req = {
+            "properties": {
+                "Status": {"select": {"name": "Aprobado"}},
+                "Procesado": {"checkbox": True}, 
+                "Fecha respuesta": {"date": {"start": now_iso}}, 
+                "Observaciones": {"rich_text": [{"text": {"content": "Habilidad Activada"}}]}
+            }
+        }
+        requests.patch(url_req, headers=headers, json=payload_req, timeout=API_TIMEOUT)
+        
+        return True, "Habilidad activada y AP descontados."
+    except Exception as e:
+        return False, f"Error Notion: {e}"
 
     # 4. Cerrar Solicitud
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
