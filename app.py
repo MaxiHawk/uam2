@@ -2379,17 +2379,17 @@ else:
                     </div>
                     """
                     st.markdown(log_html, unsafe_allow_html=True)
-# --- ZONA DE CONTROL INFERIOR (RESTAURADA) ---
-st.markdown("---")
-c_refresh, c_logout = st.columns([1, 1])
-
-with c_refresh:
-    if st.button("🔄 ACTUALIZAR DATOS", use_container_width=True, key="btn_refresh_bottom"):
-        actualizar_datos_sesion()
+        # --- ZONA DE CONTROL INFERIOR (RESTAURADA) ---
+        st.markdown("---")
+        c_refresh, c_logout = st.columns([1, 1])
         
-with c_logout:
-    if st.button("🚪 DESCONECTAR", type="primary", use_container_width=True, key="btn_logout_bottom"):
-        cerrar_sesion()
+        with c_refresh:
+            if st.button("🔄 ACTUALIZAR DATOS", use_container_width=True, key="btn_refresh_bottom"):
+                actualizar_datos_sesion()
+                
+        with c_logout:
+            if st.button("🚪 DESCONECTAR", type="primary", use_container_width=True, key="btn_logout_bottom"):
+                cerrar_sesion()
 # --- FOOTER UNIVERSAL (SIEMPRE VISIBLE AL FINAL) ---
 st.markdown("""
     <div class="footer">
