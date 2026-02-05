@@ -2379,13 +2379,6 @@ else:
                     </div>
                     """
                     st.markdown(log_html, unsafe_allow_html=True)
-
-# --- FOOTER UNIVERSAL (SIEMPRE VISIBLE AL FINAL) ---
-st.markdown("""
-    <div class="footer">
-        PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR VALERIUS
-    </div>
-""", unsafe_allow_html=True)
 # --- ZONA DE CONTROL INFERIOR (RESTAURADA) ---
 st.markdown("---")
 c_refresh, c_logout = st.columns([1, 1])
@@ -2397,3 +2390,9 @@ with c_refresh:
 with c_logout:
     if st.button("🚪 DESCONECTAR", type="primary", use_container_width=True, key="btn_logout_bottom"):
         cerrar_sesion()
+# --- FOOTER UNIVERSAL (SIEMPRE VISIBLE AL FINAL) ---
+st.markdown("""
+    <div class="footer">
+        PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR SUMO CARTÓGRAFO - VALERIUS
+    </div>
+""", unsafe_allow_html=True)
