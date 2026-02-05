@@ -136,7 +136,6 @@ def update_stat_batch(player_id, updates_dict):
     props = {k: {"number": v} for k, v in updates_dict.items()}
     requests.patch(url, headers=headers, json={"properties": props})
 
-# --- MEJORA: DETALLE EXTENDIDO Y TIPO DINÁMICO ---
 def finalize_request(page_id, status_label, observation_text="", remitente="Anónimo", uni="Desconocido", ano="Desconocido", tipo_log="Sistema", detalle_item=""):
     url = f"https://api.notion.com/v1/pages/{page_id}"
     now_iso = datetime.now(pytz.timezone('America/Santiago')).isoformat()
@@ -151,15 +150,11 @@ def finalize_request(page_id, status_label, observation_text="", remitente="Anó
     }
     requests.patch(url, headers=headers, json=data)
 
-    # Prefix Visual para Log
     prefix = "✅" if status_label in ["Aprobado", "Respondido"] else "⛔"
     desc_status = "APROBADO/RESPONDIDO" if status_label in ["Aprobado", "Respondido"] else "RECHAZADO"
-    
-    # Detalle Rico: Respuesta + Item de referencia
     log_titulo = f"{prefix} Solicitud: {status_label}"
     log_detalle = f"{desc_status}: {observation_text} | Ref: {detalle_item}"
     
-    # Registramos con el TIPO correcto (Habilidad, Mercado, etc.)
     registrar_log_admin(remitente, log_titulo, log_detalle, uni, ano, tipo_log)
 
 @st.cache_data(ttl=60)
@@ -198,6 +193,18 @@ if not st.session_state.admin_logged_in:
 df_players = get_players()
 with st.sidebar:
     st.title("🎛️ CONTROL")
+    
+    # --- CAMBIO UI 1: BOTONES AL INICIO ---
+    c_sys1, c_sys2 = st.columns(2)
+    with c_sys1:
+        if st.button("🔄 DATOS", help="Recargar DB", use_container_width=True): 
+            st.cache_data.clear(); st.rerun()
+    with c_sys2:
+        if st.button("🚪 SALIR", help="Cerrar Sesión", use_container_width=True):
+            st.session_state.admin_logged_in = False; st.rerun()
+    
+    st.divider()
+    
     uni_opts = ["Todas"] + (list(df_players["Universidad"].unique()) if not df_players.empty else [])
     sel_uni = st.selectbox("📍 Universidad:", uni_opts)
     gen_opts = ["Todas"] + (list(df_players["Generación"].unique()) if not df_players.empty else [])
@@ -243,9 +250,6 @@ with st.sidebar:
             nuevo_drop = st.toggle("ACTIVAR FARMEO", value=drop_estado)
             if nuevo_drop != drop_estado or (drop_estado and uni_objetivo != drop_filtro_actual):
                 if st.button("💾 APLICAR"): actualizar_config(drop_id, nuevo_drop, uni_objetivo); st.toast("Actualizado"); time.sleep(1); st.rerun()
-    st.divider()
-    if st.button("🧹 Limpiar Caché"): st.cache_data.clear(); st.rerun()
-    if st.button("Cerrar Sesión"): st.session_state.admin_logged_in = False; st.rerun()
 
 tab_req, tab_ops, tab_list = st.tabs(["📡 SOLICITUDES", "⚡ OPERACIONES", "👥 NÓMINA"])
 
@@ -273,7 +277,6 @@ with tab_req:
                 mensaje = props.get("Mensaje", {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
                 tipo = props.get("Tipo", {}).get("select", {}).get("name", "Mensaje")
                 
-                # Datos Extra
                 uni_req = props.get("Universidad", {}).get("select", {})
                 uni_req = uni_req.get("name", "Desconocido") if uni_req else "Desconocido"
                 gen_req = props.get("Año", {}).get("select", {})
@@ -295,87 +298,74 @@ with tab_req:
     
     if not solicitudes: st.info(f"📭 Bandeja vacía ({filtro_estado})")
     else:
-        for r in solicitudes:
-            tipo_upper = str(r['tipo']).upper()
-            es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
-            es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
-            
-            # --- DEFINIMOS TIPO DE LOG ---
-            if es_habilidad: tipo_para_log = "Habilidad"
-            elif es_compra: tipo_para_log = "Mercado"
-            else: tipo_para_log = "Sistema"
+        # --- CAMBIO UI 2: CONTENEDOR CON SCROLL ---
+        with st.container(height=600, border=True):
+            for r in solicitudes:
+                tipo_upper = str(r['tipo']).upper()
+                es_habilidad = "HABILIDAD" in tipo_upper or "PODER" in tipo_upper
+                es_compra = "COMPRA" in tipo_upper or "MERCADO" in tipo_upper
+                
+                if es_habilidad: tipo_para_log = "Habilidad"
+                elif es_compra: tipo_para_log = "Mercado"
+                else: tipo_para_log = "Sistema"
 
-            if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
-            elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
-            else: border_color, icon_type = "#00e5ff", "💬 MENSAJE"
+                if es_habilidad: border_color, icon_type = "#d500f9", "⚡ PODER"
+                elif es_compra: border_color, icon_type = "#FFD700", "🛒 COMPRA"
+                else: border_color, icon_type = "#00e5ff", "💬 MENSAJE"
 
-            st.markdown(f"""
-            <div class="req-card-epic" style="border-left: 4px solid {border_color};">
-                <div class="req-header">
-                    <div class="req-player-name">{r['remitente']}<span class="req-badge badge-{r['status'].lower()}">{r['status']}</span></div>
-                    <div><span class="req-type-tag">{icon_type}</span><span style="font-size:0.8em; color:#666;">{r['fecha']}</span></div>
+                st.markdown(f"""
+                <div class="req-card-epic" style="border-left: 4px solid {border_color};">
+                    <div class="req-header">
+                        <div class="req-player-name">{r['remitente']}<span class="req-badge badge-{r['status'].lower()}">{r['status']}</span></div>
+                        <div><span class="req-type-tag">{icon_type}</span><span style="font-size:0.8em; color:#666;">{r['fecha']}</span></div>
+                    </div>
+                    <div class="req-body">{r['mensaje']}</div>
                 </div>
-                <div class="req-body">{r['mensaje']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if filtro_estado == "Pendiente":
-                c_obs, c_acts = st.columns([3, 2])
-                with c_obs: 
-                    obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
-                    costo_final = 0
-                    if es_compra:
-                        import re
-                        match = re.search(r'Costo:\s*(\d+)', r['mensaje'])
-                        costo_detectado = int(match.group(1)) if match else 0
-                        st.markdown(f"<div style='font-size:0.8em; color:#FFD700; margin-bottom:5px;'>💰 Confirmar Cobro (AP):</div>", unsafe_allow_html=True)
-                        costo_final = st.number_input("Monto a descontar:", value=costo_detectado, step=50, key=f"cost_{r['id']}", label_visibility="collapsed")
+                """, unsafe_allow_html=True)
+                
+                if filtro_estado == "Pendiente":
+                    c_obs, c_acts = st.columns([3, 2])
+                    with c_obs: 
+                        obs_text = st.text_input("Respuesta / Obs:", key=f"obs_{r['id']}")
+                        costo_final = 0
+                        if es_compra:
+                            import re
+                            match = re.search(r'Costo:\s*(\d+)', r['mensaje'])
+                            costo_detectado = int(match.group(1)) if match else 0
+                            st.markdown(f"<div style='font-size:0.8em; color:#FFD700; margin-bottom:5px;'>💰 Confirmar Cobro (AP):</div>", unsafe_allow_html=True)
+                            costo_final = st.number_input("Monto a descontar:", value=costo_detectado, step=50, key=f"cost_{r['id']}", label_visibility="collapsed")
 
-                with c_acts:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                    c_ok, c_no = st.columns(2)
-                    with c_ok:
-                        if es_habilidad:
-                            if st.button("⚡ APROBAR", key=f"ok_{r['id']}", type="primary"):
-                                exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
-                                if exito: 
-                                    st.success(msg)
-                                    # LOG MANUAL
-                                    detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
-                                    registrar_log_admin(r['remitente'], "⚡ Poder Aprobado", detalle_completo, r['uni'], r['ano'], "Habilidad")
-                                    # LIMPIEZA DE CACHÉ PARA ACTUALIZAR SITREP
-                                    st.cache_data.clear()
-                                    time.sleep(1); st.rerun()
-                                else: st.error(msg)
-                        
-                        elif es_compra:
-                            if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
-                                with st.spinner("Procesando cobro..."):
-                                    exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
+                    with c_acts:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                        c_ok, c_no = st.columns(2)
+                        with c_ok:
+                            if es_habilidad:
+                                if st.button("⚡ APROBAR", key=f"ok_{r['id']}", type="primary"):
+                                    exito, msg = aprobar_solicitud_habilidad(r['id'], r['remitente'], r['mensaje'])
                                     if exito: 
                                         st.success(msg)
-                                        # LOG MANUAL
                                         detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
-                                        registrar_log_admin(r['remitente'], "🛒 Compra Aprobada", detalle_completo, r['uni'], r['ano'], "Mercado")
-                                        # LIMPIEZA DE CACHÉ PARA ACTUALIZAR SITREP
-                                        st.cache_data.clear()
-                                        time.sleep(1); st.rerun()
+                                        registrar_log_admin(r['remitente'], "⚡ Poder Aprobado", detalle_completo, r['uni'], r['ano'], "Habilidad")
+                                        st.cache_data.clear(); time.sleep(1); st.rerun()
                                     else: st.error(msg)
-                        
-                        else: 
-                            if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
-                                finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
-                                st.success("Listo")
-                                # LIMPIEZA DE CACHÉ
-                                st.cache_data.clear()
-                                time.sleep(1); st.rerun()
-                    
-                    with c_no:
-                        if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
-                            finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
-                            # LIMPIEZA DE CACHÉ
-                            st.cache_data.clear()
-                            st.rerun()
+                            elif es_compra:
+                                if st.button("🛒 APROBAR", key=f"ok_{r['id']}", type="primary"):
+                                    with st.spinner("Procesando cobro..."):
+                                        exito, msg = aprobar_solicitud_mercado(r['id'], r['remitente'], costo_final, obs_text or "Entrega autorizada.")
+                                        if exito: 
+                                            st.success(msg)
+                                            detalle_completo = f"✅ APROBADO: {msg} | Ref: {r['mensaje']}"
+                                            registrar_log_admin(r['remitente'], "🛒 Compra Aprobada", detalle_completo, r['uni'], r['ano'], "Mercado")
+                                            st.cache_data.clear(); time.sleep(1); st.rerun()
+                                        else: st.error(msg)
+                            else: 
+                                if st.button("✅ RESPONDER", key=f"ok_{r['id']}"):
+                                    finalize_request(r['id'], "Respondido", obs_text or "Leído", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
+                                    st.success("Listo"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                        with c_no:
+                            if st.button("❌ RECHAZAR", key=f"no_{r['id']}"):
+                                finalize_request(r['id'], "Rechazado", obs_text or "Rechazado", r['remitente'], r['uni'], r['ano'], tipo_para_log, r['mensaje'])
+                                st.cache_data.clear(); st.rerun()
 
 with tab_ops:
     if df_global.empty: st.warning("Sin datos visibles.")
