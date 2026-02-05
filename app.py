@@ -980,6 +980,21 @@ if not st.session_state.jugador:
 else:
     main_placeholder.empty() 
 
+    # --- CAMBIO UI 1: BARRA LATERAL DE CONTROL ---
+    with st.sidebar:
+        st.markdown("### 🎛️ PANEL DE CONTROL")
+        if st.button("🔄 ACTUALIZAR DATOS", use_container_width=True):
+            actualizar_datos_sesion()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if st.button("🚪 DESCONECTAR", type="primary", use_container_width=True):
+            cerrar_sesion()
+            
+        st.markdown("---")
+        st.caption("PRAXIS PRIMORIS v2.0")
+    # ---------------------------------------------
+
     # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
     if "notificaciones_check" not in st.session_state:
         st.session_state.notificaciones_check = False
@@ -2355,26 +2370,30 @@ else:
         mi_historial = obtener_mis_solicitudes(st.session_state.nombre)
         if not mi_historial: st.caption("No hay registros.")
         else:
-            for item in mi_historial:
-                status_color, icon = ("#999", "⏳")
-                if item["status"] == "Aprobado": status_color, icon = "#00e676", "✅"
-                elif item["status"] == "Rechazado": status_color, icon = "#ff1744", "❌"
-                elif item["status"] == "Respuesta": status_color, icon = "#00e5ff", "📩"
-                # --- LIMPIEZA NEO ---
-                fecha_str = parsear_fecha_chile(item['fecha'])
-                # --------------------
-                log_html = f"""<div class="log-card" style="border-left-color: {status_color};"><div class="log-header"><span>{fecha_str}</span><span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span></div><div class="log-body">{item['mensaje']}</div>{f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}</div>"""
-                st.markdown(log_html, unsafe_allow_html=True)
-
-    # --- BOTONES GLOBALES Y FOOTER (FUERA DE LAS TABS) ---
-    st.markdown("---")
-    c_refresh, c_logout = st.columns(2)
-    with c_refresh:
-        if st.button("ACTUALIZAR DATOS", use_container_width=True):
-            actualizar_datos_sesion()
-    with c_logout:
-        if st.button("DESCONECTAR", use_container_width=True):
-            cerrar_sesion()
+            # --- CAMBIO UI 2: CONTENEDOR CON SCROLL ---
+            # height=500 crea una ventana fija de 500px con scroll interno
+            with st.container(height=500, border=True):
+                for item in mi_historial:
+                    status_color, icon = ("#999", "⏳")
+                    if item["status"] == "Aprobado": status_color, icon = "#00e676", "✅"
+                    elif item["status"] == "Rechazado": status_color, icon = "#ff1744", "❌"
+                    elif item["status"] == "Respuesta": status_color, icon = "#00e5ff", "📩"
+                    
+                    # --- LIMPIEZA NEO ---
+                    fecha_str = parsear_fecha_chile(item['fecha'])
+                    # --------------------
+                    
+                    log_html = f"""
+                    <div class="log-card" style="border-left-color: {status_color};">
+                        <div class="log-header">
+                            <span>{fecha_str}</span>
+                            <span style="color:{status_color}; font-weight:bold;">{icon} {item['status'].upper()}</span>
+                        </div>
+                        <div class="log-body">{item['mensaje']}</div>
+                        {f'<div class="log-reply">🗣️ <strong>COMANDO:</strong> {item["obs"]}</div>' if item["obs"] else ''}
+                    </div>
+                    """
+                    st.markdown(log_html, unsafe_allow_html=True)
 
 # --- FOOTER UNIVERSAL (SIEMPRE VISIBLE AL FINAL) ---
 st.markdown("""
