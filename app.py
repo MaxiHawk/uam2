@@ -980,21 +980,6 @@ if not st.session_state.jugador:
 else:
     main_placeholder.empty() 
 
-    # --- CAMBIO UI 1: BARRA LATERAL DE CONTROL ---
-    with st.sidebar:
-        st.markdown("### 🎛️ PANEL DE CONTROL")
-        if st.button("🔄 ACTUALIZAR DATOS", use_container_width=True):
-            actualizar_datos_sesion()
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        if st.button("🚪 DESCONECTAR", type="primary", use_container_width=True):
-            cerrar_sesion()
-            
-        st.markdown("---")
-        st.caption("PRAXIS PRIMORIS v2.0")
-    # ---------------------------------------------
-
     # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
     if "notificaciones_check" not in st.session_state:
         st.session_state.notificaciones_check = False
@@ -2401,3 +2386,14 @@ st.markdown("""
         PRAXIS PRIMORIS SYSTEM v1.0 <br> OPERADO POR VALERIUS
     </div>
 """, unsafe_allow_html=True)
+# --- ZONA DE CONTROL INFERIOR (RESTAURADA) ---
+    st.markdown("---")
+    c_refresh, c_logout = st.columns([1, 1])
+    
+    with c_refresh:
+        if st.button("🔄 ACTUALIZAR DATOS", use_container_width=True, key="btn_refresh_bottom"):
+            actualizar_datos_sesion()
+            
+    with c_logout:
+        if st.button("🚪 DESCONECTAR", type="primary", use_container_width=True, key="btn_logout_bottom"):
+            cerrar_sesion()
