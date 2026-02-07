@@ -606,95 +606,111 @@ else:
     # --- USUARIO LOGUEADO -> VERIFICAR SETUP ---
     main_placeholder.empty() 
 
-    # 1. Recuperamos estado de Setup
-    props_jugador = st.session_state.jugador.get("properties", {})
+    # 🔧 CORRECCIÓN CRÍTICA: Accedemos directo, sin buscar ["properties"] extra
+    props_jugador = st.session_state.jugador 
     setup_listo = props_jugador.get("Setup_Completo", {}).get("checkbox", False)
 
     # 2. SI NO TIENE SETUP -> LABORATORIO DE GÉNESIS
     if not setup_listo:
         # Colores Tácticos
         PRAXIS_GREEN = "#00ff9d"
-        PRAXIS_BG = "rgba(0, 20, 10, 0.6)"
+        PRAXIS_BG = "rgba(0, 20, 10, 0.85)" # Fondo más oscuro para contraste
         
+        # Estilo CSS Local para esta pantalla
         st.markdown(f"""
         <style>
-            .genesis-container {{
-                border: 2px solid {PRAXIS_GREEN};
-                background-color: {PRAXIS_BG};
-                border-radius: 15px;
-                padding: 30px;
-                box-shadow: 0 0 30px {PRAXIS_GREEN}40; /* Glow Effect */
-                text-align: center;
-                margin-bottom: 20px;
+            /* Título Principal */
+            .genesis-header {{
+                text-align: center; margin-bottom: 20px;
+                animation: fadeIn 1.5s ease-in;
             }}
             .genesis-title {{
-                font-family: 'Orbitron', sans-serif;
-                font-weight: 900;
-                font-size: 2em;
-                color: {PRAXIS_GREEN};
-                text-shadow: 0 0 10px {PRAXIS_GREEN};
-                margin-bottom: 5px;
+                font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2.5em;
+                color: {PRAXIS_GREEN}; text-shadow: 0 0 20px {PRAXIS_GREEN}; margin-bottom: 0;
             }}
             .genesis-subtitle {{
-                color: #b0bec5;
-                font-size: 0.9em;
-                letter-spacing: 2px;
-                text-transform: uppercase;
+                color: #b0bec5; font-size: 0.8em; letter-spacing: 4px; text-transform: uppercase;
+                margin-top: 5px; border-bottom: 1px solid {PRAXIS_GREEN}; display: inline-block; padding-bottom: 5px;
             }}
+            
+            /* Contenedor Principal con Borde Neón (SOLICITUD CUMPLIDA) */
+            div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {{
+                border: 2px solid {PRAXIS_GREEN} !important;
+                border-radius: 15px !important;
+                box-shadow: 0 0 40px rgba(0, 255, 157, 0.15) !important;
+                padding: 20px !important;
+                background-color: {PRAXIS_BG} !important;
+            }}
+            
+            /* Inputs */
+            div[data-testid="stTextInput"] input {{
+                border: 1px solid #1c2e3e !important;
+                background-color: rgba(0,0,0,0.5) !important;
+                color: #fff !important;
+            }}
+            div[data-testid="stTextInput"] input:focus {{
+                border-color: {PRAXIS_GREEN} !important;
+                box-shadow: 0 0 10px {PRAXIS_GREEN} !important;
+            }}
+            
+            @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(-20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
         </style>
-        <div class="genesis-container">
-            <div class="genesis-title">🧬 LABORATORIO DE GÉNESIS</div>
-            <div class="genesis-subtitle">Protocolo de Asignación Biometríca</div>
-            <p style="color: #fff; margin-top: 15px;">"Aspirante, antes de ingresar al sistema Praxis, debes forjar tu identidad digital y asegurar tus credenciales."</p>
+        """, unsafe_allow_html=True)
+
+        # Header Épico
+        st.markdown(f"""
+        <div class="genesis-header">
+            <div class="genesis-title">REGISTRO DE ASPIRANTES</div>
+            <div class="genesis-subtitle">PRAXIS PRIMORIS // PROTOCOLO GÉNESIS</div>
+            <p style="color: #fff; margin-top: 20px; font-style: italic;">"Aspirante, tu viaje comienza con una elección. Define tu identidad."</p>
         </div>
         """, unsafe_allow_html=True)
 
-        with st.container(border=True):
-            c_config, c_preview = st.columns([1.5, 1])
+        # El Contenedor (Ahora estilizado por CSS arriba)
+        c_config, c_preview = st.columns([1.4, 1])
+        
+        with c_config:
+            st.markdown(f"<h4 style='color:{PRAXIS_GREEN}; font-family:Orbitron;'>1. DATOS DE ACCESO</h4>", unsafe_allow_html=True)
+            # Recuperamos nombre actual para sugerir
+            nombre_actual = st.session_state.nombre
+            nuevo_nick = st.text_input("CODENAME (Usuario):", value=nombre_actual, key="gen_nick", help="Este será tu nombre público.")
+            nueva_pass = st.text_input("CLAVE DE ACCESO:", type="password", help="Define tu contraseña personal y segura.", key="gen_pass")
             
-            with c_config:
-                st.markdown(f"<h4 style='color:{PRAXIS_GREEN};'>1. CONFIGURACIÓN DE ACCESO</h4>", unsafe_allow_html=True)
-                st.info("⚠️ Esta será tu nueva identidad. Recuérdala bien.")
-                
-                # Pre-llenamos con el nombre actual si existe
-                nombre_actual = st.session_state.nombre
-                nuevo_nick = st.text_input("Nuevo Codename (Usuario):", value=nombre_actual, key="gen_nick")
-                nueva_pass = st.text_input("Nueva Contraseña Personal:", type="password", help="Define tu clave definitiva.", key="gen_pass")
-                
-                st.markdown("---")
-                st.markdown(f"<h4 style='color:{PRAXIS_GREEN};'>2. DISEÑO DE AVATAR</h4>", unsafe_allow_html=True)
-                
-                # LISTA AMPLIADA DE ARQUETIPOS
-                opciones_avatar = [
-                    "adventurer", "adventurer-neutral", "avataaars", "big-ears", "big-ears-neutral",
-                    "big-smile", "bottts", "croodles", "croodles-neutral", "fun-emoji", "icons",
-                    "identicon", "lorelei", "micah", "miniavs", "open-peeps", "personas", 
-                    "pixel-art", "pixel-art-neutral"
-                ]
-                
-                estilo_avatar = st.selectbox("Arquetipo Visual:", opciones_avatar, index=6, format_func=lambda x: x.upper(), key="gen_style")
-                
-                st.caption("ℹ️ **Semilla Genética:** Es el código base de tu ADN digital. Cámbialo para generar variaciones aleatorias.")
-                semilla_base = nuevo_nick if nuevo_nick else "UAM2026"
-                semilla = st.text_input("Semilla Genética:", value=semilla_base, key="gen_seed")
-
-            # Generar URL
-            avatar_url = f"https://api.dicebear.com/7.x/{estilo_avatar}/svg?seed={semilla}&backgroundColor=b6e3f4,c0aede,d1d4f9"
-            
-            with c_preview:
-                st.markdown(f"<div style='text-align:center; color:{PRAXIS_GREEN}; font-weight:bold; margin-bottom:10px; font-family:Orbitron;'>VISTA PREVIA</div>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="border: 2px solid {PRAXIS_GREEN}; border-radius: 10px; padding: 20px; background: rgba(0, 0, 0, 0.3); text-align: center; box-shadow: inset 0 0 20px rgba(0,255,157,0.1);">
-                    <img src="{avatar_url}" width="200" style="border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px {PRAXIS_GREEN};">
-                    <div style="margin-top: 15px; font-family: 'Orbitron'; color: #fff; font-size: 1.2em;">{nuevo_nick if nuevo_nick else 'DESCONOCIDO'}</div>
-                    <div style="color: #aaa; font-size: 0.8em;">Rango: RECLUTA</div>
-                </div>
-                """, unsafe_allow_html=True)
-
             st.markdown("---")
-            if st.button("💾 CONFIRMAR IDENTIDAD Y REINICIAR", type="primary", use_container_width=True):
+            st.markdown(f"<h4 style='color:{PRAXIS_GREEN}; font-family:Orbitron;'>2. BIOMETRÍA DIGITAL</h4>", unsafe_allow_html=True)
+            
+            opciones_avatar = [
+                "adventurer", "adventurer-neutral", "avataaars", "big-ears", "big-ears-neutral",
+                "big-smile", "bottts", "croodles", "croodles-neutral", "fun-emoji", "icons",
+                "identicon", "lorelei", "micah", "miniavs", "open-peeps", "personas", 
+                "pixel-art", "pixel-art-neutral"
+            ]
+            estilo_avatar = st.selectbox("ESTILO VISUAL:", opciones_avatar, index=6, format_func=lambda x: x.upper(), key="gen_style")
+            
+            # Semilla inteligente
+            semilla_base = nuevo_nick if nuevo_nick else "UAM2026"
+            semilla = st.text_input("SEMILLA GENÉTICA (Variación):", value=semilla_base, key="gen_seed", help="Cambia este texto para generar caras aleatorias.")
+
+        avatar_url = f"https://api.dicebear.com/7.x/{estilo_avatar}/svg?seed={semilla}&backgroundColor=b6e3f4,c0aede,d1d4f9"
+        
+        with c_preview:
+            st.markdown(f"<div style='text-align:center; color:{PRAXIS_GREEN}; font-weight:bold; margin-bottom:10px; font-family:Orbitron; letter-spacing:2px;'>VISTA PREVIA</div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="border: 2px solid {PRAXIS_GREEN}; border-radius: 15px; padding: 20px; background: rgba(0, 0, 0, 0.6); text-align: center; box-shadow: inset 0 0 30px rgba(0,255,157,0.1); transition: 0.5s;">
+                <img src="{avatar_url}" width="220" style="border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 25px {PRAXIS_GREEN}; margin-bottom: 15px;">
+                <div style="font-family: 'Orbitron'; color: #fff; font-size: 1.4em; font-weight:bold;">{nuevo_nick if nuevo_nick else 'DESCONOCIDO'}</div>
+                <div style="color: {PRAXIS_GREEN}; font-size: 0.8em; letter-spacing: 2px;">ESTADO: NO REGISTRADO</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        
+        # Botón Épico
+        btn_cols = st.columns([1, 2, 1])
+        with btn_cols[1]:
+            if st.button("💾 INICIAR ENLACE NEURAL (GUARDAR)", type="primary", use_container_width=True):
                 if not nuevo_nick or not nueva_pass:
-                    st.error("⚠️ Error de Protocolo: Debes definir tu Usuario y Contraseña.")
+                    st.error("⚠️ ERROR DE PROTOCOLO: Faltan credenciales.")
                 else:
                     with st.spinner("💾 Escribiendo en la Matriz..."):
                         page_id = st.session_state.player_page_id
@@ -703,16 +719,14 @@ else:
                         if exito:
                             st.balloons()
                             st.success("✅ ¡IDENTIDAD FORJADA CON ÉXITO!")
-                            st.info("🔄 Reiniciando sistemas para aplicar credenciales...")
+                            st.info("🔄 Reiniciando sistemas para validación de credenciales...")
                             time.sleep(3)
-                            
-                            # --- CAMBIO CLAVE: CERRAR SESIÓN PARA OBLIGAR A USAR NUEVA PASS ---
                             st.session_state.clear()
                             st.rerun()
                         else:
-                            st.error(f"❌ Fallo en el sistema: {msg}")
+                            st.error(f"❌ Fallo crítico: {msg}")
         
-        st.stop() # 🛑 DETENER CARGA DE LA APP SI ESTÁ EN SETUP
+        st.stop() # 🛑 DETENER EJECUCIÓN
 
     if "notificaciones_check" not in st.session_state:
         st.session_state.notificaciones_check = False
