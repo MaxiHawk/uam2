@@ -1046,69 +1046,69 @@ else:
         st.stop() # <--- IMPORTANTE: ESTO DETIENE LA EJECUCIÓN SI NO HAY SETUP
         # ---------------------------------------------------------------------
 
-    # ==========================================
-    # 🏁 FIN FASE 2
-    # ==========================================
-
-    # ... A partir de aquí sigue el código original que ya tenías ...
-    # (Asegúrate de que la siguiente línea esté indentada al mismo nivel que el 'if not setup_listo')
+        # ==========================================
+        # 🏁 FIN FASE 2
+        # ==========================================
     
-    if "notificaciones_check" not in st.session_state:
-        # ...
-    # ==========================================
-    # 🏁 FIN FASE 2 - SI PASA AQUÍ, ES QUE YA TIENE SETUP
-    # ==========================================
-
-    # ... Aquí sigue tu código original (Notificaciones, Sidebar, Tabs...) ...
-    if "notificaciones_check" not in st.session_state:
-        # ...
-    # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
-    if "notificaciones_check" not in st.session_state:
-        st.session_state.notificaciones_check = False
-
-    if not st.session_state.notificaciones_check:
-        st.session_state.notificaciones_check = True 
+        # ... A partir de aquí sigue el código original que ya tenías ...
+        # (Asegúrate de que la siguiente línea esté indentada al mismo nivel que el 'if not setup_listo')
         
-        historial_reciente = obtener_mis_solicitudes(st.session_state.nombre)
-        
-        fecha_corte = None
-        if "previous_login_timestamp" in st.session_state and st.session_state.previous_login_timestamp:
-            try:
-                raw_prev = st.session_state.previous_login_timestamp
-                chile_tz = pytz.timezone('America/Santiago')
-                if "T" in raw_prev:
-                    dt_prev = datetime.fromisoformat(raw_prev.replace('Z', '+00:00'))
-                    fecha_corte = dt_prev.astimezone(chile_tz)
-                else:
-                    fecha_corte = chile_tz.localize(datetime.strptime(raw_prev, "%Y-%m-%d"))
-            except: pass
-        
-        if fecha_corte and historial_reciente:
-            for req in historial_reciente:
-                if req.get('fecha_respuesta'): 
-                    try:
-                        resp_iso = req['fecha_respuesta']
-                        if "T" in resp_iso:
-                            dt_resp = datetime.fromisoformat(resp_iso.replace('Z', '+00:00')).astimezone(pytz.timezone('America/Santiago'))
-                        else:
-                            dt_resp = pytz.timezone('America/Santiago').localize(datetime.strptime(resp_iso, "%Y-%m-%d"))
-                        
-                        if dt_resp > fecha_corte:
-                            icono = "✅" if req['status'] == "Aprobado" else "❌" if req['status'] == "Rechazado" else "📩"
-                            st.toast(f"{icono} {req['status'].upper()}: {req['mensaje']}", icon="🔔")
-                            time.sleep(0.5) 
-                    except: pass
-
-    p = st.session_state.jugador
-    mp = p.get("MP", {}).get("number", 0) or 0
-    ap = p.get("AP", {}).get("number", 0) or 0
-    nivel_num = calcular_nivel_usuario(mp)
-    nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
-    uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
-    ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
-    estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
-    is_alumni = (estado_label == "Finalizado")
-    status_color = "#ff4b4b" if is_alumni else "#00e5ff"
+        if "notificaciones_check" not in st.session_state:
+            # ...
+        # ==========================================
+        # 🏁 FIN FASE 2 - SI PASA AQUÍ, ES QUE YA TIENE SETUP
+        # ==========================================
+    
+        # ... Aquí sigue tu código original (Notificaciones, Sidebar, Tabs...) ...
+        if "notificaciones_check" not in st.session_state:
+            # ...
+        # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
+        if "notificaciones_check" not in st.session_state:
+            st.session_state.notificaciones_check = False
+    
+        if not st.session_state.notificaciones_check:
+            st.session_state.notificaciones_check = True 
+            
+            historial_reciente = obtener_mis_solicitudes(st.session_state.nombre)
+            
+            fecha_corte = None
+            if "previous_login_timestamp" in st.session_state and st.session_state.previous_login_timestamp:
+                try:
+                    raw_prev = st.session_state.previous_login_timestamp
+                    chile_tz = pytz.timezone('America/Santiago')
+                    if "T" in raw_prev:
+                        dt_prev = datetime.fromisoformat(raw_prev.replace('Z', '+00:00'))
+                        fecha_corte = dt_prev.astimezone(chile_tz)
+                    else:
+                        fecha_corte = chile_tz.localize(datetime.strptime(raw_prev, "%Y-%m-%d"))
+                except: pass
+            
+            if fecha_corte and historial_reciente:
+                for req in historial_reciente:
+                    if req.get('fecha_respuesta'): 
+                        try:
+                            resp_iso = req['fecha_respuesta']
+                            if "T" in resp_iso:
+                                dt_resp = datetime.fromisoformat(resp_iso.replace('Z', '+00:00')).astimezone(pytz.timezone('America/Santiago'))
+                            else:
+                                dt_resp = pytz.timezone('America/Santiago').localize(datetime.strptime(resp_iso, "%Y-%m-%d"))
+                            
+                            if dt_resp > fecha_corte:
+                                icono = "✅" if req['status'] == "Aprobado" else "❌" if req['status'] == "Rechazado" else "📩"
+                                st.toast(f"{icono} {req['status'].upper()}: {req['mensaje']}", icon="🔔")
+                                time.sleep(0.5) 
+                        except: pass
+    
+        p = st.session_state.jugador
+        mp = p.get("MP", {}).get("number", 0) or 0
+        ap = p.get("AP", {}).get("number", 0) or 0
+        nivel_num = calcular_nivel_usuario(mp)
+        nombre_rango = NOMBRES_NIVELES.get(nivel_num, "Desconocido")
+        uni_label = st.session_state.uni_actual if st.session_state.uni_actual else "Ubicación Desconocida"
+        ano_label = st.session_state.ano_actual if st.session_state.ano_actual else "Ciclo ?"
+        estado_label = st.session_state.estado_uam if st.session_state.estado_uam else "Desconocido"
+        is_alumni = (estado_label == "Finalizado")
+        status_color = "#ff4b4b" if is_alumni else "#00e5ff"
     if estado_label == "Sin empezar": status_color = "#FFD700"
 
     # --- POPUP ANUNCIO INTELIGENTE ---
