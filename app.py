@@ -30,7 +30,7 @@ from modules.notion_api import (
     cargar_misiones_activas, inscribir_jugador_mision, enviar_solicitud,
     procesar_codigo_canje, cargar_pregunta_aleatoria, procesar_recalibracion,
     cargar_estado_suministros, procesar_suministro,
-    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades, procesar_compra_mercado, obtener_miembros_escuadron
+    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades, procesar_compra_mercado, obtener_miembros_escuadron, registrar_setup_inicial
 )
 
 from modules.utils import (
@@ -980,6 +980,81 @@ if not st.session_state.jugador:
 else:
     main_placeholder.empty() 
 
+    # ==========================================
+    # 🧬 INICIO FASE 2: LABORATORIO DE GÉNESIS
+    # ==========================================
+    
+    # 1. Recuperamos el estado de Setup de Notion
+    props_jugador = st.session_state.jugador.get("properties", {})
+    setup_listo = props_jugador.get("Setup_Completo", {}).get("checkbox", False)
+
+    # 2. Si NO está listo, mostramos la pantalla de creación y DETENEMOS la app
+    if not setup_listo:
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #00e5ff; font-family: 'Orbitron';">🧬 LABORATORIO DE GÉNESIS</h1>
+            <p style="color: #aaa;">"Antes de entrar al Universo AngioMasters, debes forjar tu identidad."</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.container(border=True):
+            c_config, c_preview = st.columns([1.5, 1])
+            
+            with c_config:
+                st.subheader("1. Configuración Biométrica")
+                # Usamos un key único para evitar conflictos
+                nuevo_nick = st.text_input("Nombre en Clave (Nick):", placeholder="Ej: Dr. Strange", key="gen_nick")
+                nueva_pass = st.text_input("Crear Contraseña Segura:", type="password", help="Será tu llave de acceso futura.", key="gen_pass")
+                
+                st.markdown("---")
+                st.subheader("2. Diseño de Avatar")
+                estilo_avatar = st.selectbox("Arquetipo Visual:", [
+                    "bottts", "avataaars", "lorelei", "notionists", "micah", "identicon"
+                ], format_func=lambda x: x.upper(), key="gen_style")
+                
+                # Semilla por defecto es el nick o un valor base
+                semilla_base = nuevo_nick if nuevo_nick else "UAM2026"
+                semilla = st.text_input("Semilla Genética (Escribe para variar):", value=semilla_base, key="gen_seed")
+
+            # Generar URL Dinámica (DiceBear API)
+            avatar_url = f"https://api.dicebear.com/7.x/{estilo_avatar}/svg?seed={semilla}&backgroundColor=b6e3f4,c0aede,d1d4f9"
+            
+            with c_preview:
+                st.markdown("<div style='text-align:center; color:#00e5ff; font-weight:bold;'>VISTA PREVIA</div>", unsafe_allow_html=True)
+                st.image(avatar_url, width=250)
+                st.caption("👆 Así te verán tus compañeros.")
+
+            st.markdown("---")
+            if st.button("💾 FORJAR IDENTIDAD Y ENTRAR", type="primary", use_container_width=True):
+                if not nuevo_nick or not nueva_pass:
+                    st.error("⚠️ Debes definir tu Nombre y Contraseña.")
+                else:
+                    with st.spinner("Sincronizando con la Matriz..."):
+                        page_id = st.session_state.jugador["id"]
+                        # Llamamos a la función que creamos en notion_api.py
+                        exito, msg = registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_pass)
+                        
+                        if exito:
+                            st.balloons()
+                            # Actualizamos la sesión localmente para entrar de inmediato
+                            st.session_state.jugador["properties"]["Setup_Completo"] = {"checkbox": True}
+                            st.session_state.nombre = nuevo_nick 
+                            st.success("✅ ¡Identidad Forjada! Bienvenido al servicio.")
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+        
+        # 🛑 STOP CRÍTICO: Esto evita que se cargue el resto de la App (Tabs, Sidebar, etc.)
+        st.stop()
+
+    # ==========================================
+    # 🏁 FIN FASE 2 - SI PASA AQUÍ, ES QUE YA TIENE SETUP
+    # ==========================================
+
+    # ... Aquí sigue tu código original (Notificaciones, Sidebar, Tabs...) ...
+    if "notificaciones_check" not in st.session_state:
+        # ...
     # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
     if "notificaciones_check" not in st.session_state:
         st.session_state.notificaciones_check = False
