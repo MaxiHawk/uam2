@@ -671,16 +671,15 @@ def aprobar_solicitud_mercado(request_id, nombre_jugador, costo_ap, detalles_tex
 def registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_password):
     """
     Finaliza el proceso de iniciación del recluta.
-    Actualiza: Nombre (Nick), Avatar, Password y marca Setup_Completo.
+    Actualiza: Nombre (Nick), Clave (Password), Avatar y marca Setup_Completo.
     """
     url = f"https://api.notion.com/v1/pages/{page_id}"
     
     payload = {
         "properties": {
-            "Jugador": {"title": [{"text": {"content": nuevo_nick}}]}, # Cambiamos el Título (Nick)
-            "Password": {"rich_text": [{"text": {"content": nueva_password}}]}, # Guardamos la pass
-            "Setup_Completo": {"checkbox": True}, # Marcamos como listo
-            # Guardamos el Avatar como archivo externo (URL)
+            "Jugador": {"title": [{"text": {"content": nuevo_nick}}]}, 
+            "Clave": {"rich_text": [{"text": {"content": nueva_password}}]}, # <--- CORREGIDO: "Clave" en lugar de "Password"
+            "Setup_Completo": {"checkbox": True}, 
             "Avatar": {
                 "files": [
                     {
