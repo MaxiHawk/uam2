@@ -978,9 +978,104 @@ if not st.session_state.jugador:
         if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
-    main_placeholder.empty() 
+    main_placeholder.empty()
 
-    # --- CENTRO DE NOTIFICACIONES (FEEDBACK LOOP) ---
+    # ---------------------------------------------------------
+    # 🧬 FASE 2: REGISTRO DE ASPIRANTES (SETUP)
+    # ---------------------------------------------------------
+    # Leemos la propiedad directamente (Sin .get("properties"))
+    setup_listo = st.session_state.jugador.get("Setup_Completo", {}).get("checkbox", False)
+
+    if not setup_listo:
+        # --- ESTILOS VISUALES PRAXIS ---
+        PRAXIS_GREEN = "#00ff9d"
+        PRAXIS_BG = "rgba(0, 20, 10, 0.85)"
+        
+        st.markdown(f"""
+        <style>
+            .genesis-header {{ text-align: center; margin-bottom: 20px; animation: fadeIn 1.0s ease-in; }}
+            .genesis-title {{ font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2.2em; color: {PRAXIS_GREEN}; text-shadow: 0 0 15px {PRAXIS_GREEN}; margin: 0; }}
+            .genesis-subtitle {{ color: #b0bec5; font-size: 0.8em; letter-spacing: 4px; text-transform: uppercase; border-bottom: 1px solid {PRAXIS_GREEN}; display: inline-block; padding-bottom: 5px; margin-top: 5px; }}
+            
+            /* Contenedor Neón */
+            div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {{
+                border: 2px solid {PRAXIS_GREEN} !important;
+                border-radius: 15px !important;
+                box-shadow: 0 0 30px rgba(0, 255, 157, 0.1) !important;
+                background-color: {PRAXIS_BG} !important;
+                padding: 25px !important;
+            }}
+            /* Inputs */
+            div[data-testid="stTextInput"] input {{ background-color: rgba(0,0,0,0.5) !important; border: 1px solid #1c2e3e !important; color: white !important; }}
+            div[data-testid="stTextInput"] input:focus {{ border-color: {PRAXIS_GREEN} !important; box-shadow: 0 0 10px {PRAXIS_GREEN} !important; }}
+            @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(-10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+        </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="genesis-header">
+            <div class="genesis-title">REGISTRO DE ASPIRANTES</div>
+            <div class="genesis-subtitle">PRAXIS PRIMORIS // PROTOCOLO GÉNESIS</div>
+            <p style="color: #ddd; margin-top: 15px; font-style: italic;">"Aspirante, tu viaje comienza aquí. Define tu identidad en la red."</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.container(border=True):
+            c_config, c_preview = st.columns([1.4, 1])
+            
+            with c_config:
+                st.markdown(f"<h4 style='color:{PRAXIS_GREEN}; font-family:Orbitron; margin-bottom:10px;'>1. CREDENCIALES DE ACCESO</h4>", unsafe_allow_html=True)
+                nombre_actual = st.session_state.nombre
+                nuevo_nick = st.text_input("CODENAME (Usuario Público):", value=nombre_actual, key="gen_nick", help="Así te verán en el ranking.")
+                nueva_pass = st.text_input("NUEVA CLAVE DE ACCESO:", type="password", help="Crea una contraseña segura y recuérdala.", key="gen_pass")
+                
+                st.markdown("---")
+                st.markdown(f"<h4 style='color:{PRAXIS_GREEN}; font-family:Orbitron; margin-bottom:10px;'>2. BIOMETRÍA DIGITAL</h4>", unsafe_allow_html=True)
+                opciones_avatar = ["adventurer", "adventurer-neutral", "avataaars", "big-ears", "big-ears-neutral", "bottts", "fun-emoji", "icons", "identicon", "lorelei", "micah", "miniavs", "open-peeps", "personas", "pixel-art", "pixel-art-neutral"]
+                estilo_avatar = st.selectbox("ESTILO VISUAL:", opciones_avatar, index=5, format_func=lambda x: x.upper(), key="gen_style")
+                
+                semilla_base = nuevo_nick if nuevo_nick else "UAM2026"
+                semilla = st.text_input("SEMILLA GENÉTICA (Variación):", value=semilla_base, key="gen_seed", help="Cambia este texto para generar caras aleatorias.")
+
+            avatar_url = f"https://api.dicebear.com/7.x/{estilo_avatar}/svg?seed={semilla}&backgroundColor=b6e3f4,c0aede,d1d4f9"
+            
+            with c_preview:
+                st.markdown(f"<div style='text-align:center; color:{PRAXIS_GREEN}; font-weight:bold; font-family:Orbitron; margin-bottom:10px;'>VISTA PREVIA</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="border: 2px solid {PRAXIS_GREEN}; border-radius: 15px; padding: 20px; background: rgba(0,0,0,0.5); text-align: center; box-shadow: inset 0 0 20px rgba(0,255,157,0.1);">
+                    <img src="{avatar_url}" width="180" style="border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px {PRAXIS_GREEN}; margin-bottom: 15px; background: #fff;">
+                    <div style="font-family: 'Orbitron'; color: #fff; font-size: 1.2em; font-weight:bold;">{nuevo_nick if nuevo_nick else '...'}</div>
+                    <div style="color: {PRAXIS_GREEN}; font-size: 0.7em; letter-spacing: 2px; margin-top:5px;">ESTADO: NO REGISTRADO</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("---")
+            col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
+            with col_b2:
+                if st.button("💾 INICIAR ENLACE NEURAL (GUARDAR)", type="primary", use_container_width=True):
+                    if not nuevo_nick or not nueva_pass:
+                        st.error("⚠️ ERROR: Debes definir tu Usuario y tu Clave.")
+                    else:
+                        with st.spinner("🔄 Escribiendo en la Matriz..."):
+                            # Usamos la variable de ID correcta
+                            page_id = st.session_state.player_page_id
+                            exito, msg = registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_pass)
+                            
+                            if exito:
+                                st.balloons()
+                                st.success("✅ ¡IDENTIDAD FORJADA CORRECTAMENTE!")
+                                st.info("⚠️ El sistema se reiniciará para validar tus nuevas credenciales.")
+                                time.sleep(3)
+                                # Cierre de sesión forzado para probar la nueva clave
+                                st.session_state.clear()
+                                st.rerun()
+                            else:
+                                st.error(f"❌ Error crítico: {msg}")
+
+        st.stop() # 🛑 DETIENE EL RESTO DE LA APP
+
+    # ---------------------------------------------------------
+    
     if "notificaciones_check" not in st.session_state:
         st.session_state.notificaciones_check = False
 
