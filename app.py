@@ -646,7 +646,10 @@ else:
                         exito, msg = registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_pass)
                         if exito:
                             st.balloons()
-                            st.session_state.jugador["properties"]["Setup_Completo"] = {"checkbox": True}
+                            
+                            # --- CORRECCIÓN: Acceso directo, sin ["properties"] ---
+                            st.session_state.jugador["Setup_Completo"] = {"checkbox": True}
+                            
                             st.session_state.nombre = nuevo_nick 
                             st.success("✅ ¡Identidad Forjada! Bienvenido al servicio.")
                             time.sleep(2)
