@@ -285,10 +285,7 @@ def generar_tarjeta_social(badge_name, player_name, squad_name, badge_path):
     bg_color = '#010204'
     img = Image.new('RGB', (W, H), color=bg_color)
     draw = ImageDraw.Draw(img)
-    
-    # ... (Lógica de tarjeta social simplificada para no extender el código, usa la original si la tienes) ...
-    # Aquí iría toda tu función de tarjeta social
-    return io.BytesIO() # Placeholder para evitar errores si no se usa
+    return io.BytesIO() 
 
 def actualizar_ultima_conexion(page_id):
     url = f"https://api.notion.com/v1/pages/{page_id}"
@@ -638,7 +635,8 @@ else:
                     st.error("⚠️ Debes definir tu Nombre y Contraseña.")
                 else:
                     with st.spinner("Sincronizando con la Matriz..."):
-                        page_id = st.session_state.jugador["id"]
+                        # --- CORRECCIÓN AQUÍ: USAMOS player_page_id ---
+                        page_id = st.session_state.player_page_id
                         exito, msg = registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_pass)
                         if exito:
                             st.balloons()
