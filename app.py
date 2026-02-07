@@ -596,17 +596,20 @@ if not st.session_state.jugador:
 else:
     main_placeholder.empty() 
 
-    # ==========================================
-    # 🧬 FASE 2: LABORATORIO DE GÉNESIS (SETUP)
+   # ==========================================
+    # 🧬 FASE 2: REGISTRO DE ASPIRANTES (SETUP)
     # ==========================================
     props_jugador = st.session_state.jugador.get("properties", {})
     setup_listo = props_jugador.get("Setup_Completo", {}).get("checkbox", False)
 
     if not setup_listo:
-        st.markdown("""
+        # Tono Verde Esmeralda Neón para Praxis
+        PRAXIS_COLOR = "#00ff9d" 
+        
+        st.markdown(f"""
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: #00e5ff; font-family: 'Orbitron';">🧬 LABORATORIO DE GÉNESIS</h1>
-            <p style="color: #aaa;">"Antes de entrar al Universo AngioMasters, debes forjar tu identidad."</p>
+            <h1 style="color: {PRAXIS_COLOR}; font-family: 'Orbitron'; text-shadow: 0 0 15px {PRAXIS_COLOR};">🧬 REGISTRO DE ASPIRANTES<br><span style="font-size:0.6em; color:white;">PRAXIS PRIMORIS</span></h1>
+            <p style="color: #aaa;">"Antes de entrar al sistema, debes forjar tu identidad."</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -619,14 +622,17 @@ else:
                 st.markdown("---")
                 st.subheader("2. Diseño de Avatar")
                 estilo_avatar = st.selectbox("Arquetipo Visual:", ["bottts", "avataaars", "lorelei", "notionists", "micah", "identicon"], format_func=lambda x: x.upper(), key="gen_style")
+                
                 semilla_base = nuevo_nick if nuevo_nick else "UAM2026"
-                semilla = st.text_input("Semilla Genética (Escribe para variar):", value=semilla_base, key="gen_seed")
+                st.caption("ℹ️ **Semilla Genética:** Cambia este texto para generar variaciones aleatorias de tu rostro.")
+                semilla = st.text_input("Semilla Genética:", value=semilla_base, key="gen_seed")
 
             avatar_url = f"https://api.dicebear.com/7.x/{estilo_avatar}/svg?seed={semilla}&backgroundColor=b6e3f4,c0aede,d1d4f9"
             
             with c_preview:
-                st.markdown("<div style='text-align:center; color:#00e5ff; font-weight:bold;'>VISTA PREVIA</div>", unsafe_allow_html=True)
-                st.image(avatar_url, width=250)
+                st.markdown(f"<div style='text-align:center; color:{PRAXIS_COLOR}; font-weight:bold; margin-bottom:10px;'>VISTA PREVIA</div>", unsafe_allow_html=True)
+                # Marco Esmeralda para la foto
+                st.markdown(f"""<div style="border: 2px solid {PRAXIS_COLOR}; border-radius: 10px; padding: 10px; background: rgba(0, 255, 157, 0.05); text-align: center;"><img src="{avatar_url}" width="200"></div>""", unsafe_allow_html=True)
                 st.caption("👆 Así te verán tus compañeros.")
 
             st.markdown("---")
@@ -635,7 +641,7 @@ else:
                     st.error("⚠️ Debes definir tu Nombre y Contraseña.")
                 else:
                     with st.spinner("Sincronizando con la Matriz..."):
-                        # --- CORRECCIÓN AQUÍ: USAMOS player_page_id ---
+                        # CORRECCIÓN DE LA VARIABLE DE ID
                         page_id = st.session_state.player_page_id
                         exito, msg = registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_pass)
                         if exito:
