@@ -562,7 +562,12 @@ def cerrar_sesion():
 # ================= UI PRINCIPAL =================
 main_placeholder = st.empty()
 
+# ==========================================
+# 🔐 LÓGICA DE ACCESO Y SETUP (FASE 2.1)
+# ==========================================
+
 if not st.session_state.jugador:
+    # --- PANTALLA DE LOGIN ---
     with main_placeholder.container():
         if os.path.exists("assets/cover.png"): st.image("assets/cover.png", use_container_width=True)
         with st.container():
@@ -571,14 +576,17 @@ if not st.session_state.jugador:
                 if os.path.exists("assets/logo.png"): st.image("assets/logo.png", width=110)
                 else: st.markdown("🛡️")
             with c_r:
-                st.markdown("<h3 style='margin-bottom:0;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='margin-bottom:0; color:{THEME['primary']}; font-family:Orbitron;'>PRAXIS PRIMORIS</h3>", unsafe_allow_html=True)
                 st.caption("PLATAFORMA COMPUTADORA CENTRAL")
+            
             st.markdown("<br>", unsafe_allow_html=True)
+            
             with st.form("login_form"):
                 st.markdown("##### 🔐 IDENTIFICACIÓN REQUERIDA")
-                st.text_input("Nickname (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
-                st.text_input("Password:", type="password", key="input_pass")
+                st.text_input("Credencial (Usuario):", placeholder="Ingresa tu codename...", key="input_user")
+                st.text_input("Clave de Acceso:", type="password", key="input_pass")
                 st.form_submit_button("INICIAR ENLACE NEURAL", on_click=validar_login)
+            
             with st.expander("🆘 ¿Problemas de Acceso?"):
                 st.caption("Si olvidaste tu clave, solicita un reinicio al comando.")
                 with st.form("reset_form", clear_on_submit=True):
@@ -591,77 +599,120 @@ if not st.session_state.jugador:
                                 if ok: st.success("✅ Solicitud enviada.")
                                 else: st.error("Error de conexión.")
                         else: st.warning("Ingresa tu nombre.")
+        
         if st.session_state.login_error: st.error(st.session_state.login_error)
 
 else:
+    # --- USUARIO LOGUEADO -> VERIFICAR SETUP ---
     main_placeholder.empty() 
 
-   # ==========================================
-    # 🧬 FASE 2: REGISTRO DE ASPIRANTES (SETUP)
-    # ==========================================
+    # 1. Recuperamos estado de Setup
     props_jugador = st.session_state.jugador.get("properties", {})
     setup_listo = props_jugador.get("Setup_Completo", {}).get("checkbox", False)
 
+    # 2. SI NO TIENE SETUP -> LABORATORIO DE GÉNESIS
     if not setup_listo:
-        # Tono Verde Esmeralda Neón para Praxis
-        PRAXIS_COLOR = "#00ff9d" 
+        # Colores Tácticos
+        PRAXIS_GREEN = "#00ff9d"
+        PRAXIS_BG = "rgba(0, 20, 10, 0.6)"
         
         st.markdown(f"""
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {PRAXIS_COLOR}; font-family: 'Orbitron'; text-shadow: 0 0 15px {PRAXIS_COLOR};">🧬 REGISTRO DE ASPIRANTES<br><span style="font-size:0.6em; color:white;">PRAXIS PRIMORIS</span></h1>
-            <p style="color: #aaa;">"Antes de entrar al sistema, debes forjar tu identidad."</p>
+        <style>
+            .genesis-container {{
+                border: 2px solid {PRAXIS_GREEN};
+                background-color: {PRAXIS_BG};
+                border-radius: 15px;
+                padding: 30px;
+                box-shadow: 0 0 30px {PRAXIS_GREEN}40; /* Glow Effect */
+                text-align: center;
+                margin-bottom: 20px;
+            }}
+            .genesis-title {{
+                font-family: 'Orbitron', sans-serif;
+                font-weight: 900;
+                font-size: 2em;
+                color: {PRAXIS_GREEN};
+                text-shadow: 0 0 10px {PRAXIS_GREEN};
+                margin-bottom: 5px;
+            }}
+            .genesis-subtitle {{
+                color: #b0bec5;
+                font-size: 0.9em;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+            }}
+        </style>
+        <div class="genesis-container">
+            <div class="genesis-title">🧬 LABORATORIO DE GÉNESIS</div>
+            <div class="genesis-subtitle">Protocolo de Asignación Biometríca</div>
+            <p style="color: #fff; margin-top: 15px;">"Aspirante, antes de ingresar al sistema Praxis, debes forjar tu identidad digital y asegurar tus credenciales."</p>
         </div>
         """, unsafe_allow_html=True)
 
         with st.container(border=True):
             c_config, c_preview = st.columns([1.5, 1])
+            
             with c_config:
-                st.subheader("1. Configuración Biométrica")
-                nuevo_nick = st.text_input("Nombre en Clave (Nick):", placeholder="Ej: Dr. Strange", key="gen_nick")
-                nueva_pass = st.text_input("Crear Contraseña Segura:", type="password", help="Será tu llave de acceso futura.", key="gen_pass")
-                st.markdown("---")
-                st.subheader("2. Diseño de Avatar")
-                estilo_avatar = st.selectbox("Arquetipo Visual:", ["bottts", "avataaars", "lorelei", "notionists", "micah", "identicon"], format_func=lambda x: x.upper(), key="gen_style")
+                st.markdown(f"<h4 style='color:{PRAXIS_GREEN};'>1. CONFIGURACIÓN DE ACCESO</h4>", unsafe_allow_html=True)
+                st.info("⚠️ Esta será tu nueva identidad. Recuérdala bien.")
                 
+                # Pre-llenamos con el nombre actual si existe
+                nombre_actual = st.session_state.nombre
+                nuevo_nick = st.text_input("Nuevo Codename (Usuario):", value=nombre_actual, key="gen_nick")
+                nueva_pass = st.text_input("Nueva Contraseña Personal:", type="password", help="Define tu clave definitiva.", key="gen_pass")
+                
+                st.markdown("---")
+                st.markdown(f"<h4 style='color:{PRAXIS_GREEN};'>2. DISEÑO DE AVATAR</h4>", unsafe_allow_html=True)
+                
+                # LISTA AMPLIADA DE ARQUETIPOS
+                opciones_avatar = [
+                    "adventurer", "adventurer-neutral", "avataaars", "big-ears", "big-ears-neutral",
+                    "big-smile", "bottts", "croodles", "croodles-neutral", "fun-emoji", "icons",
+                    "identicon", "lorelei", "micah", "miniavs", "open-peeps", "personas", 
+                    "pixel-art", "pixel-art-neutral"
+                ]
+                
+                estilo_avatar = st.selectbox("Arquetipo Visual:", opciones_avatar, index=6, format_func=lambda x: x.upper(), key="gen_style")
+                
+                st.caption("ℹ️ **Semilla Genética:** Es el código base de tu ADN digital. Cámbialo para generar variaciones aleatorias.")
                 semilla_base = nuevo_nick if nuevo_nick else "UAM2026"
-                st.caption("ℹ️ **Semilla Genética:** Cambia este texto para generar variaciones aleatorias de tu rostro.")
                 semilla = st.text_input("Semilla Genética:", value=semilla_base, key="gen_seed")
 
+            # Generar URL
             avatar_url = f"https://api.dicebear.com/7.x/{estilo_avatar}/svg?seed={semilla}&backgroundColor=b6e3f4,c0aede,d1d4f9"
             
             with c_preview:
-                st.markdown(f"<div style='text-align:center; color:{PRAXIS_COLOR}; font-weight:bold; margin-bottom:10px;'>VISTA PREVIA</div>", unsafe_allow_html=True)
-                # Marco Esmeralda para la foto
-                st.markdown(f"""<div style="border: 2px solid {PRAXIS_COLOR}; border-radius: 10px; padding: 10px; background: rgba(0, 255, 157, 0.05); text-align: center;"><img src="{avatar_url}" width="200"></div>""", unsafe_allow_html=True)
-                st.caption("👆 Así te verán tus compañeros.")
+                st.markdown(f"<div style='text-align:center; color:{PRAXIS_GREEN}; font-weight:bold; margin-bottom:10px; font-family:Orbitron;'>VISTA PREVIA</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="border: 2px solid {PRAXIS_GREEN}; border-radius: 10px; padding: 20px; background: rgba(0, 0, 0, 0.3); text-align: center; box-shadow: inset 0 0 20px rgba(0,255,157,0.1);">
+                    <img src="{avatar_url}" width="200" style="border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px {PRAXIS_GREEN};">
+                    <div style="margin-top: 15px; font-family: 'Orbitron'; color: #fff; font-size: 1.2em;">{nuevo_nick if nuevo_nick else 'DESCONOCIDO'}</div>
+                    <div style="color: #aaa; font-size: 0.8em;">Rango: RECLUTA</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             st.markdown("---")
-            if st.button("💾 FORJAR IDENTIDAD Y ENTRAR", type="primary", use_container_width=True):
+            if st.button("💾 CONFIRMAR IDENTIDAD Y REINICIAR", type="primary", use_container_width=True):
                 if not nuevo_nick or not nueva_pass:
-                    st.error("⚠️ Debes definir tu Nombre y Contraseña.")
+                    st.error("⚠️ Error de Protocolo: Debes definir tu Usuario y Contraseña.")
                 else:
-                    with st.spinner("Sincronizando con la Matriz..."):
-                        # CORRECCIÓN DE LA VARIABLE DE ID
+                    with st.spinner("💾 Escribiendo en la Matriz..."):
                         page_id = st.session_state.player_page_id
                         exito, msg = registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_pass)
+                        
                         if exito:
                             st.balloons()
+                            st.success("✅ ¡IDENTIDAD FORJADA CON ÉXITO!")
+                            st.info("🔄 Reiniciando sistemas para aplicar credenciales...")
+                            time.sleep(3)
                             
-                            # --- CORRECCIÓN: Acceso directo, sin ["properties"] ---
-                            st.session_state.jugador["Setup_Completo"] = {"checkbox": True}
-                            
-                            st.session_state.nombre = nuevo_nick 
-                            st.success("✅ ¡Identidad Forjada! Bienvenido al servicio.")
-                            time.sleep(2)
+                            # --- CAMBIO CLAVE: CERRAR SESIÓN PARA OBLIGAR A USAR NUEVA PASS ---
+                            st.session_state.clear()
                             st.rerun()
                         else:
-                            st.error(msg)
+                            st.error(f"❌ Fallo en el sistema: {msg}")
         
-        st.stop() # DETENER EJECUCIÓN SI NO HAY SETUP
-
-    # ==========================================
-    # 🖥️ APP PRINCIPAL
-    # ==========================================
+        st.stop() # 🛑 DETENER CARGA DE LA APP SI ESTÁ EN SETUP
 
     if "notificaciones_check" not in st.session_state:
         st.session_state.notificaciones_check = False
