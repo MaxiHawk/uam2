@@ -665,3 +665,39 @@ def aprobar_solicitud_mercado(request_id, nombre_jugador, costo_ap, detalles_tex
         
         return True, "✅ Compra procesada y cobrada."
     except: return False, "Error cerrando solicitud en Notion."
+
+# --- AGREGAR AL FINAL DE modules/notion_api.py ---
+
+def registrar_setup_inicial(page_id, nuevo_nick, avatar_url, nueva_password):
+    """
+    Finaliza el proceso de iniciación del recluta.
+    Actualiza: Nombre (Nick), Avatar, Password y marca Setup_Completo.
+    """
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    
+    payload = {
+        "properties": {
+            "Jugador": {"title": [{"text": {"content": nuevo_nick}}]}, # Cambiamos el Título (Nick)
+            "Password": {"rich_text": [{"text": {"content": nueva_password}}]}, # Guardamos la pass
+            "Setup_Completo": {"checkbox": True}, # Marcamos como listo
+            # Guardamos el Avatar como archivo externo (URL)
+            "Avatar": {
+                "files": [
+                    {
+                        "name": "avatar_genesis.png",
+                        "type": "external",
+                        "external": {"url": avatar_url}
+                    }
+                ]
+            }
+        }
+    }
+    
+    try:
+        res = requests.patch(url, headers=headers, json=payload, timeout=API_TIMEOUT)
+        if res.status_code == 200:
+            return True, "Identidad forjada correctamente."
+        else:
+            return False, f"Error en la forja: {res.text}"
+    except Exception as e:
+        return False, f"Error de conexión: {e}"
