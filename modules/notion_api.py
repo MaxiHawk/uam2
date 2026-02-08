@@ -155,12 +155,11 @@ def enviar_solicitud(tipo, asunto, mensaje_texto, remitente):
 
 def cargar_habilidades(rol_filtro):
     """
-    Carga habilidades y filtra en Python para máxima compatibilidad.
-    Maneja singular/plural automáticamente (ej: Visionarios vs Visionario).
+    Carga habilidades y filtra inteligentemente (Soporta Emojis y Singular/Plural).
     """
     if not DB_HABILIDADES_ID: return []
     
-    # 1. Traemos TODAS las habilidades (sin filtrar en la API para evitar errores 400)
+    # Traemos TODAS las habilidades
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
     
     try:
@@ -170,29 +169,40 @@ def cargar_habilidades(rol_filtro):
             for r in res.json()["results"]:
                 p = r["properties"]
                 
-                # --- LÓGICA DE FILTRADO INTELIGENTE ---
-                roles_habilidad = []
-                # Intentamos leer la propiedad "Rol" (Multi-select)
-                try:
-                    tags = get_notion_multi_select(p, "Rol")
-                    if tags: roles_habilidad = tags
-                except: pass
+                # --- CORRECCIÓN 1: Leer propiedad "Select" (No Multi-select) ---
+                rol_db_raw = get_notion_select(p, "Rol") # Devuelve "🔮 Visionarios" o None
                 
-                # Criterios de coincidencia:
-                # A. Tiene la etiqueta "Todos"
-                # B. Tiene el rol exacto (Ej: "Visionarios")
-                # C. Tiene el rol en singular (Ej: "Visionario")
-                rol_singular = rol_filtro[:-1] if rol_filtro.endswith('s') else rol_filtro
-                
-                match = False
-                if "Todos" in roles_habilidad: match = True
-                elif rol_filtro in roles_habilidad: match = True
-                elif rol_singular in roles_habilidad: match = True
-                
-                if not match: continue # Si no coincide, saltamos a la siguiente
-                # --------------------------------------
+                # Si no tiene rol asignado, asumimos que es para todos o lo saltamos
+                if not rol_db_raw: 
+                    # Opcional: Si quieres que las sin rol sean para todos
+                    # rol_db_raw = "Todos"
+                    continue 
 
-                # Extraer datos
+                # --- CORRECCIÓN 2: Limpieza de Emojis y Comparación ---
+                # Convertimos todo a minúsculas para comparar
+                rol_db_clean = rol_db_raw.lower()
+                rol_user_clean = rol_filtro.lower()
+                
+                # Quitamos la 's' final para hacer singular (Visionarios -> visionario)
+                rol_user_singular = rol_user_clean[:-1] if rol_user_clean.endswith('s') else rol_user_clean
+
+                match = False
+                
+                # Criterios de Aceptación:
+                # 1. Si la DB dice "Todos"
+                if "todos" in rol_db_clean: match = True
+                
+                # 2. Si el rol del usuario está CONTENIDO en el de la DB
+                # Ej: "visionarios" está en "🔮 visionarios" -> True
+                elif rol_user_clean in rol_db_clean: match = True
+                
+                # 3. Coincidencia en singular
+                elif rol_user_singular in rol_db_clean: match = True
+                
+                if not match: continue
+                # -----------------------------------------------------------
+
+                # Extraer Cooldown
                 cooldown = get_notion_number(p, "Cooldown")
                 if cooldown is None: cooldown = 0
 
@@ -208,7 +218,6 @@ def cargar_habilidades(rol_filtro):
                 
             return sorted(skills, key=lambda x: x["costo"])
     except Exception as e:
-        # Debug simple por si falla algo crítico
         print(f"Error cargando habilidades: {e}")
         return []
     return []
