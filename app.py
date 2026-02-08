@@ -1530,7 +1530,6 @@ else:
                 st.info(f"No se encontraron habilidades tácticas para **{rol_jugador_actual}**.")
             else:
                 for item in skills:
-                    # --- LÓGICA DE BLOQUEO AVANZADA ---
                     nivel_insuficiente = nivel_num < item['nivel_req']
                     saldo_insuficiente = ap < item['costo']
                     
