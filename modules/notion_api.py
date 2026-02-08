@@ -151,30 +151,50 @@ def enviar_solicitud(tipo, asunto, mensaje_texto, remitente):
         return r.status_code == 200
     except: return False
 
-# --- FUNCIÓN ACTUALIZADA FASE 3 (COOLDOWNS) ---
+# --- REEMPLAZAR ESTA FUNCIÓN EN modules/notion_api.py ---
+
 def cargar_habilidades(rol_filtro):
-    """Carga habilidades filtradas por Rol y obtiene su Cooldown."""
+    """
+    Carga habilidades y filtra en Python para máxima compatibilidad.
+    Maneja singular/plural automáticamente (ej: Visionarios vs Visionario).
+    """
     if not DB_HABILIDADES_ID: return []
     
-    filtros = {
-        "or": [
-            {"property": "Rol", "multi_select": {"contains": "Todos"}},
-            {"property": "Rol", "multi_select": {"contains": rol_filtro}}
-        ]
-    }
-    
+    # 1. Traemos TODAS las habilidades (sin filtrar en la API para evitar errores 400)
     url = f"https://api.notion.com/v1/databases/{DB_HABILIDADES_ID}/query"
+    
     try:
-        res = requests.post(url, headers=headers, json={"filter": filtros}, timeout=API_TIMEOUT)
+        res = requests.post(url, headers=headers, json={}, timeout=API_TIMEOUT)
         skills = []
         if res.status_code == 200:
             for r in res.json()["results"]:
                 p = r["properties"]
                 
-                # --- NUEVO: Extraer Cooldown ---
+                # --- LÓGICA DE FILTRADO INTELIGENTE ---
+                roles_habilidad = []
+                # Intentamos leer la propiedad "Rol" (Multi-select)
+                try:
+                    tags = get_notion_multi_select(p, "Rol")
+                    if tags: roles_habilidad = tags
+                except: pass
+                
+                # Criterios de coincidencia:
+                # A. Tiene la etiqueta "Todos"
+                # B. Tiene el rol exacto (Ej: "Visionarios")
+                # C. Tiene el rol en singular (Ej: "Visionario")
+                rol_singular = rol_filtro[:-1] if rol_filtro.endswith('s') else rol_filtro
+                
+                match = False
+                if "Todos" in roles_habilidad: match = True
+                elif rol_filtro in roles_habilidad: match = True
+                elif rol_singular in roles_habilidad: match = True
+                
+                if not match: continue # Si no coincide, saltamos a la siguiente
+                # --------------------------------------
+
+                # Extraer datos
                 cooldown = get_notion_number(p, "Cooldown")
                 if cooldown is None: cooldown = 0
-                # -------------------------------
 
                 skills.append({
                     "id": r["id"],
@@ -183,10 +203,14 @@ def cargar_habilidades(rol_filtro):
                     "desc": get_notion_text(p, "Descripcion"),
                     "nivel_req": get_notion_number(p, "Nivel Requerido"),
                     "icon_url": get_notion_file_url(p, "Icono"),
-                    "cooldown": cooldown # Agregado
+                    "cooldown": cooldown
                 })
+                
             return sorted(skills, key=lambda x: x["costo"])
-    except: return []
+    except Exception as e:
+        # Debug simple por si falla algo crítico
+        print(f"Error cargando habilidades: {e}")
+        return []
     return []
 
 def procesar_compra_habilidad(nombre_hab, costo, nivel_req, id_hab):
