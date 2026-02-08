@@ -1526,62 +1526,75 @@ else:
             if not skills_reales:
                 st.info(f"No se encontraron habilidades tácticas para **{rol_jugador_actual}**.")
             else:
-                for i, item in enumerate(skills_reales):
-                    bloqueada_por_nivel = nivel_num < item['nivel_req']
-                    sin_saldo = ap < item['costo']
+                for item in skills:
+                    # --- LÓGICA DE BLOQUEO AVANZADA ---
+                    nivel_insuficiente = nivel_num < item['nivel_req']
+                    saldo_insuficiente = ap < item['costo']
                     
-                    primary_col = THEME.get('primary', '#00ff9d')
-                    border_color = primary_col if not bloqueada_por_nivel else "#444"
-                    opacity = "1.0" if not bloqueada_por_nivel else "0.7"
-                    grayscale = "" if not bloqueada_por_nivel else "filter: grayscale(100%);"
-                    img_src = item['icon_url'] if item['icon_url'] else "https://cdn-icons-png.flaticon.com/512/2646/2646067.png"
+                    # 1. Verificación de Cooldown (Solo si no está bloqueado por nivel)
+                    en_cooldown = False
+                    dias_rest = 0
                     
-                    # HTML SIN INLINE STYLES COMPLEJOS (Usa las clases del CSS de arriba)
-                    card_html = f"""
-                    <div class="skill-card-container" style="border-left: 4px solid {border_color}; opacity: {opacity}; {grayscale}">
-                        <div class="skill-banner-col">
-                            <img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
-                        </div>
+                    # Llamamos a la API solo si tiene sentido (usuario tiene nivel y la habilidad tiene cooldown)
+                    if not nivel_insuficiente and item.get('cooldown', 0) > 0:
+                        en_cooldown, dias_rest = verificar_cooldown_habilidad(st.session_state.nombre, item['nombre'], item['cooldown'])
+                    
+                    # 2. Definición de Estilos Visuales (Semáforo Táctico)
+                    col_borde = THEME.get('primary', '#00ff9d')
+                    opacidad = "1.0"
+                    filtro_gris = ""
+                    
+                    if nivel_insuficiente:
+                        col_borde = "#444" # Gris apagado
+                        opacidad = "0.6"
+                        filtro_gris = "filter: grayscale(100%);"
+                    elif en_cooldown:
+                        col_borde = "#ff9100" # Naranja Alerta
+                        opacidad = "0.85"
+                    
+                    # Fallback de imagen
+                    img = item.get('icon_url') or "https://cdn-icons-png.flaticon.com/512/2646/2646067.png"
+                    
+                    # 3. Renderizado de Tarjeta
+                    st.markdown(f"""
+                    <div class="skill-card-container" style="border-left: 4px solid {col_borde}; opacity: {opacidad}; {filtro_gris}">
+                        <div class="skill-banner-col"><img src="{img}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;"></div>
                         <div class="skill-content-col">
-                            <div style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.3em; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,0,0,0.8); margin-bottom: 5px; line-height: 1.2;">{item['nombre']}</div>
-                            <div style="font-size: 0.95em; color: #b0bec5; margin-top: 5px; line-height: 1.4;">{item['desc']}</div>
-                            <div style="font-size: 0.8em; color: {border_color}; margin-top: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">🔒 NIVEL REQUERIDO: {item['nivel_req']}</div>
+                            <div style="font-family: 'Orbitron'; font-weight: bold; color: #fff; font-size: 1.3em;">{item['nombre']}</div>
+                            <div style="font-size: 0.95em; color: #b0bec5;">{item['desc']}</div>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <span style="font-size: 0.8em; color: {col_borde}; font-weight: bold;">🔒 NIVEL {item['nivel_req']}</span>
+                                {f'<span style="font-size: 0.8em; color: #ff9100; font-weight: bold;">⏳ RECARGA: {item["cooldown"]} DÍAS</span>' if item.get("cooldown", 0) > 0 else ''}
+                            </div>
                         </div>
                         <div class="skill-cost-col">
                             <img src="data:image/png;base64,{b64_ap}" class="skill-cost-icon">
                             <div class="skill-cost-val" style="text-shadow: 0 0 10px #00e5ff;">{item['costo']}</div>
                         </div>
                     </div>
-                    """
-                    st.markdown(card_html, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                     
-                    c_fill, c_btn = st.columns([1.5, 1.5])
-                    with c_btn:
-                        if bloqueada_por_nivel:
+                    # 4. Botonera Táctica
+                    c_f, c_b = st.columns([1.5, 1.5])
+                    with c_b:
+                        if nivel_insuficiente:
                             st.button(f"🔒 NVL {item['nivel_req']}", disabled=True, key=f"lk_{item['id']}", use_container_width=True)
-                        elif sin_saldo:
+                        elif en_cooldown:
+                            st.button(f"⏳ ESPERA {dias_rest} DÍA(S)", disabled=True, key=f"cd_{item['id']}", use_container_width=True)
+                        elif saldo_insuficiente:
                             st.button(f"💸 FALTA AP", disabled=True, key=f"noap_{item['id']}", use_container_width=True)
                         else:
+                            # Botón Activo -> Flujo de Compra
                             with st.popover("⚡ ACTIVAR", use_container_width=True):
-                                st.markdown(f"""
-                                <div style="text-align: center; border: 1px solid {primary_col}; padding: 15px; border-radius: 10px; background: rgba(0,0,0,0.5);">
-                                    <div style="color: #aaa; font-size: 0.8em; letter-spacing: 2px;">CONFIRMAR DESPLIEGUE</div>
-                                    <div style="font-family: 'Orbitron'; font-size: 1.6em; font-weight: bold; color: #00e5ff; margin: 10px 0; text-shadow: 0 0 15px #00e5ff;">{item['nombre']}</div>
-                                    <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                        <span style="color: #fff;">COSTO:</span>
-                                        <span style="color: #00e5ff; font-weight: bold; font-size: 1.2em; text-shadow: 0 0 5px #00e5ff;">{item['costo']} AP</span>
-                                    </div>
-                                    <div style="font-size: 0.8em; color: #ccc; font-style: italic;">"Se enviará una solicitud prioritaria al Comando."</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                st.markdown("<br>", unsafe_allow_html=True)
-                                if st.button("🚀 EJECUTAR PROTOCOLO", key=f"btn_{item['id']}", type="primary", use_container_width=True):
-                                    with st.spinner("Estableciendo enlace neural..."):
-                                        exito, msg = procesar_compra_habilidad(item['nombre'], item['costo'], 0, item['id'])
-                                        if exito:
-                                            st.markdown(f"""<div style="text-align:center; padding:15px; border:1px solid #00e5ff; background:rgba(0,229,255,0.1); border-radius:10px;"><div style="font-family:'Orbitron'; color:#00e5ff; font-weight:bold;">✅ SOLICITUD ENVIADA</div></div>""", unsafe_allow_html=True)
+                                st.markdown(f"**{item['nombre']}**")
+                                st.caption(f"Se descontarán {item['costo']} AP.")
+                                if st.button("🚀 CONFIRMAR EJECUCIÓN", key=f"btn_{item['id']}", type="primary", use_container_width=True):
+                                    with st.spinner("Iniciando secuencia..."):
+                                        ok, msg = procesar_compra_habilidad(item['nombre'], item['costo'], 0, item['id'])
+                                        if ok:
+                                            st.toast("HABILIDAD DESPLEGADA", icon="⚡")
                                             time.sleep(2)
-                                            st.rerun()
+                                            actualizar_datos_sesion()
                                         else: st.error(msg)
                                             
        
