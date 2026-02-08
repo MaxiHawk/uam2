@@ -1452,112 +1452,49 @@ else:
                 st.rerun()
 
     with tab_habilidades:
-        # --- CSS TÁCTICO ADAPTATIVO (RESPONSIVE) ---
-        st.markdown("""
-        <style>
-            /* ESTILO BASE (ESCRITORIO) */
-            .skill-card-container {
-                display: flex; align-items: stretch; min-height: 120px;
-                background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px;
-                margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px;
-            }
-            .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; }
-            .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
-            .skill-cost-col { width: 100px; flex-shrink: 0; background: rgba(255, 255, 255, 0.03); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
-            .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; }
-            .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; filter: drop-shadow(0 0 5px #00e5ff); }
-            
-            /* --- MODO MÓVIL (STACK VERTICAL) --- */
-            @media (max-width: 768px) {
-                .skill-card-container {
-                    flex-direction: column !important; /* Cambia a vertical */
-                    height: auto !important;
-                    min-height: auto !important;
-                }
-                .skill-banner-col {
-                    width: 100% !important; /* Banner ocupa todo el ancho */
-                    height: 100px !important;
-                    border-right: none !important;
-                    border-bottom: 1px solid #1c2e3e;
-                }
-                .skill-banner-col img {
-                    width: 100%; height: 100%; object-fit: cover; opacity: 0.8;
-                }
-                .skill-content-col {
-                    width: 100% !important;
-                    padding: 15px !important;
-                }
-                .skill-cost-col {
-                    width: 100% !important;
-                    border-left: none !important;
-                    border-top: 1px solid #1c2e3e;
-                    flex-direction: row !important; /* Costo en fila horizontal abajo */
-                    justify-content: space-between !important;
-                    padding: 10px 20px !important;
-                    background: rgba(0,0,0,0.4) !important;
-                    min-height: 60px !important;
-                }
-                .skill-cost-icon { margin-bottom: 0 !important; margin-right: 10px; }
-                .skill-cost-val { font-size: 1.5em !important; }
-                /* Texto "COSTO:" para móvil */
-                .skill-cost-col::before {
-                    content: "REQUISITO:";
-                    color: #aaa; font-size: 0.8em; letter-spacing: 2px;
-                }
-            }
-        </style>
-        """, unsafe_allow_html=True)
-      
-        # Recuperamos datos del Rol
-        rol_data = p.get("Rol", {}).get("select")
-        rol_jugador_actual = rol_data.get("name") if rol_data else None
+        st.markdown("""<style>.skill-card-container { display: flex; align-items: stretch; min-height: 120px; background: #0a141f; border: 1px solid #1c2e3e; border-radius: 12px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; margin-top: 5px; } .skill-banner-col { width: 130px; flex-shrink: 0; background: #050810; display: flex; align-items: center; justify-content: center; border-right: 1px solid #1c2e3e; } .skill-content-col { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; justify-content: center; } .skill-cost-col { width: 100px; flex-shrink: 0; background: rgba(255, 255, 255, 0.03); border-left: 1px solid #1c2e3e; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; } .skill-cost-val { font-family: 'Orbitron'; font-size: 2em; font-weight: 900; color: #fff; line-height: 1; } .skill-cost-icon { width: 35px; height: 35px; margin-bottom: 5px; filter: drop-shadow(0 0 5px #00e5ff); } @media (max-width: 768px) { .skill-card-container { flex-direction: column !important; height: auto !important; } .skill-banner-col { width: 100% !important; height: 100px !important; border-right: none !important; border-bottom: 1px solid #1c2e3e; } .skill-banner-col img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; } .skill-content-col { width: 100% !important; padding: 15px !important; } .skill-cost-col { width: 100% !important; border-left: none !important; border-top: 1px solid #1c2e3e; flex-direction: row !important; justify-content: space-between !important; padding: 10px 20px !important; background: rgba(0,0,0,0.4) !important; min-height: 60px !important; } .skill-cost-icon { margin-bottom: 0 !important; margin-right: 10px; } .skill-cost-val { font-size: 1.5em !important; } .skill-cost-col::before { content: "REQUISITO:"; color: #aaa; font-size: 0.8em; letter-spacing: 2px; } }</style>""", unsafe_allow_html=True)
         
-        titulo_rol = rol_jugador_actual.upper() if rol_jugador_actual else "RECLUTA"
-        st.markdown(f"### ⚡ HABILIDADES DE: {titulo_rol}")
-        
-        # Panel de Energía (AP)
-        core_html = f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ANGIOPOINTS<br>DISPONIBLES</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>"""
-        st.markdown(core_html, unsafe_allow_html=True)
+        rol_jugador_actual = p.get("Rol", {}).get("select", {}).get("name")
+        st.markdown(f"### ⚡ HABILIDADES DE: {rol_jugador_actual.upper() if rol_jugador_actual else 'RECLUTA'}")
+        st.markdown(f"""<div class="energy-core"><div class="energy-left"><img src="data:image/png;base64,{b64_ap}" class="energy-icon-large"><div class="energy-label">ANGIOPOINTS<br>DISPONIBLES</div></div><div class="energy-val" style="color: #00e5ff; text-shadow: 0 0 15px #00e5ff;">{ap}</div></div>""", unsafe_allow_html=True)
 
-        if is_alumni:
-             st.info("⛔ El mercado de habilidades está cerrado para agentes retirados.")
-        elif not rol_jugador_actual:
-             st.warning("⚠️ Tu perfil no tiene un ROL asignado. Contacta al comando.")
+        if is_alumni: st.info("⛔ Mercado cerrado para agentes retirados.")
+        elif not rol_jugador_actual: st.warning("⚠️ Sin rol asignado.")
         else:
-            skills_reales = cargar_habilidades(rol_jugador_actual)
-            
-            if not skills_reales:
-                st.info(f"No se encontraron habilidades tácticas para **{rol_jugador_actual}**.")
+            # --- ⚠️ AQUÍ ESTABA EL ERROR: RESTAURAMOS LA CARGA DE HABILIDADES ---
+            skills = cargar_habilidades(rol_jugador_actual)
+            # -------------------------------------------------------------------
+
+            if not skills: 
+                st.info(f"No hay habilidades disponibles para la clase {rol_jugador_actual}.")
             else:
                 for item in skills:
+                    # --- LÓGICA DE BLOQUEO FASE 3 ---
                     nivel_insuficiente = nivel_num < item['nivel_req']
                     saldo_insuficiente = ap < item['costo']
                     
-                    # 1. Verificación de Cooldown (Solo si no está bloqueado por nivel)
+                    # 1. Verificación de Cooldown
                     en_cooldown = False
                     dias_rest = 0
-                    
-                    # Llamamos a la API solo si tiene sentido (usuario tiene nivel y la habilidad tiene cooldown)
                     if not nivel_insuficiente and item.get('cooldown', 0) > 0:
                         en_cooldown, dias_rest = verificar_cooldown_habilidad(st.session_state.nombre, item['nombre'], item['cooldown'])
                     
-                    # 2. Definición de Estilos Visuales (Semáforo Táctico)
+                    # 2. Estilos
                     col_borde = THEME.get('primary', '#00ff9d')
                     opacidad = "1.0"
                     filtro_gris = ""
                     
                     if nivel_insuficiente:
-                        col_borde = "#444" # Gris apagado
+                        col_borde = "#444"
                         opacidad = "0.6"
                         filtro_gris = "filter: grayscale(100%);"
                     elif en_cooldown:
-                        col_borde = "#ff9100" # Naranja Alerta
+                        col_borde = "#ff9100" # Naranja
                         opacidad = "0.85"
                     
-                    # Fallback de imagen
                     img = item.get('icon_url') or "https://cdn-icons-png.flaticon.com/512/2646/2646067.png"
                     
-                    # 3. Renderizado de Tarjeta
+                    # 3. HTML Tarjeta
                     st.markdown(f"""
                     <div class="skill-card-container" style="border-left: 4px solid {col_borde}; opacity: {opacidad}; {filtro_gris}">
                         <div class="skill-banner-col"><img src="{img}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;"></div>
@@ -1576,7 +1513,7 @@ else:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # 4. Botonera Táctica
+                    # 4. Botones
                     c_f, c_b = st.columns([1.5, 1.5])
                     with c_b:
                         if nivel_insuficiente:
@@ -1586,7 +1523,6 @@ else:
                         elif saldo_insuficiente:
                             st.button(f"💸 FALTA AP", disabled=True, key=f"noap_{item['id']}", use_container_width=True)
                         else:
-                            # Botón Activo -> Flujo de Compra
                             with st.popover("⚡ ACTIVAR", use_container_width=True):
                                 st.markdown(f"**{item['nombre']}**")
                                 st.caption(f"Se descontarán {item['costo']} AP.")
