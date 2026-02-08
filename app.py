@@ -30,7 +30,10 @@ from modules.notion_api import (
     cargar_misiones_activas, inscribir_jugador_mision, enviar_solicitud,
     procesar_codigo_canje, cargar_pregunta_aleatoria, procesar_recalibracion,
     cargar_estado_suministros, procesar_suministro,
-    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades, procesar_compra_mercado, obtener_miembros_escuadron, registrar_setup_inicial, verificar_cooldown_habilidad
+    cargar_anuncios, procesar_compra_habilidad, cargar_habilidades, 
+    procesar_compra_mercado, obtener_miembros_escuadron, 
+    registrar_setup_inicial,      # <--- Coma asegurada aquí
+    verificar_cooldown_habilidad  # <--- Nueva función Fase 3
 )
 
 from modules.utils import (
